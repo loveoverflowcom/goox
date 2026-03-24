@@ -1,0 +1,39 @@
+@startuml
+title Buffer Ownership
+
+skinparam shadowing false
+skinparam rectangle {
+  RoundCorner 18
+}
+
+rectangle "Rust Core" as Rust {
+  rectangle "EditorBuffer" as Buffer
+  rectangle "Undo/Redo" as History
+  rectangle "Viewport Query" as Viewport
+}
+
+rectangle "Flutter Shell" as Flutter {
+  rectangle "Keyboard + Pointer Input" as Input
+  rectangle "Paragraph Cache" as Cache
+  rectangle "CustomPainter" as Paint
+}
+
+rectangle "Wasm Plugin Host" as PluginHost {
+  rectangle "Snapshot Request" as Snapshot
+  rectangle "Edit Proposal" as Proposal
+}
+
+Input --> Buffer : commands only
+Buffer --> History : inverse ops
+Buffer --> Viewport : visible lines
+Viewport --> Paint : view model
+Cache --> Paint : cached layout
+Snapshot --> Buffer : read-only slice
+Proposal --> Buffer : validate + apply
+
+note bottom of Buffer
+Only Rust mutates the buffer.
+Flutter and plugins observe or propose.
+end note
+
+@enduml

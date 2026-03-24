@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/goox_core"]
+resolver = "2"

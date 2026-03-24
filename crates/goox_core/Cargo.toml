@@ -1,0 +1,10 @@
+[package]
+name = "goox_core"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ropey = "1.6.1"
