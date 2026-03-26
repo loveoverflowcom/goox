@@ -10,29 +10,49 @@ class EditorCanvas extends StatefulWidget {
     required this.state,
     required this.focusNode,
     required this.onTap,
+    this.onTapDown,
   });
 
   final EditorViewState state;
   final FocusNode focusNode;
   final VoidCallback onTap;
+  final void Function(TapDownDetails, BuildContext)? onTapDown;
 
   @override
   State<EditorCanvas> createState() => _EditorCanvasState();
 }
 
-class _EditorCanvasState extends State<EditorCanvas> {
+class _EditorCanvasState extends State<EditorCanvas> with SingleTickerProviderStateMixin {
   final _ParagraphCache _cache = _ParagraphCache();
+  late final AnimationController _cursorController;
 
   @override
   void initState() {
     super.initState();
     widget.focusNode.addListener(_handleFocusChanged);
+    _cursorController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _cursorController.reverse();
+        } else if (status == AnimationStatus.dismissed) {
+          _cursorController.forward();
+        }
+      });
+    
+    if (widget.focusNode.hasFocus) {
+      _cursorController.forward();
+    }
   }
 
   @override
   void didUpdateWidget(covariant EditorCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.focusNode == widget.focusNode) {
+      if (widget.focusNode.hasFocus && !_cursorController.isAnimating) {
+        _cursorController.forward();
+      }
       return;
     }
 
@@ -43,10 +63,19 @@ class _EditorCanvasState extends State<EditorCanvas> {
   @override
   void dispose() {
     widget.focusNode.removeListener(_handleFocusChanged);
+    _cursorController.dispose();
     super.dispose();
   }
 
-  void _handleFocusChanged() => setState(() {});
+  void _handleFocusChanged() {
+    if (widget.focusNode.hasFocus) {
+      _cursorController.forward();
+    } else {
+      _cursorController.stop();
+      _cursorController.value = 0;
+    }
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,29 +83,36 @@ class _EditorCanvasState extends State<EditorCanvas> {
 
     return GestureDetector(
       onTap: widget.onTap,
+      onTapDown: (details) {
+        if (widget.onTapDown != null) {
+          widget.onTapDown!(details, context);
+        }
+      },
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFFBF7EE), Color(0xFFF1EBDF)],
-          ),
+          color: Theme.of(context).colorScheme.surface,
           border: Border.all(
             color: isFocused
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outlineVariant,
-            width: isFocused ? 2 : 1,
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+                : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.1),
+            width: 1,
           ),
         ),
-        child: CustomPaint(
-          painter: _EditorCanvasPainter(
-            state: widget.state,
-            colorScheme: Theme.of(context).colorScheme,
-            textTheme: Theme.of(context).textTheme,
-            paragraphCache: _cache,
-            isFocused: isFocused,
-          ),
-          child: const SizedBox.expand(),
+        child: AnimatedBuilder(
+          animation: _cursorController,
+          builder: (context, child) {
+            return CustomPaint(
+              painter: _EditorCanvasPainter(
+                state: widget.state,
+                colorScheme: Theme.of(context).colorScheme,
+                textTheme: Theme.of(context).textTheme,
+                paragraphCache: _cache,
+                isFocused: isFocused,
+                cursorOpacity: _cursorController.value,
+              ),
+              child: const SizedBox.expand(),
+            );
+          },
         ),
       ),
     );
@@ -90,6 +126,7 @@ class _EditorCanvasPainter extends CustomPainter {
     required this.textTheme,
     required this.paragraphCache,
     required this.isFocused,
+    required this.cursorOpacity,
   });
 
   final EditorViewState state;
@@ -97,11 +134,12 @@ class _EditorCanvasPainter extends CustomPainter {
   final TextTheme textTheme;
   final _ParagraphCache paragraphCache;
   final bool isFocused;
+  final double cursorOpacity;
 
   @override
   void paint(Canvas canvas, Size size) {
     final gutterWidth = 70.0;
-    final lineHeight = 28.0;
+    final lineHeight = 32.0;
     final topPadding = 20.0;
     final textWidth = size.width - gutterWidth - 32;
     final currentLine = state.cursor.line;
@@ -131,6 +169,22 @@ class _EditorCanvasPainter extends CustomPainter {
       );
     }
 
+    final bodyStyle = textTheme.bodyLarge?.copyWith(
+      color: colorScheme.onSurface,
+      fontFamily: 'monospace',
+      height: 1.25,
+      fontSize: 16.0,
+    );
+
+    // Measure character width for monospace cursor positioning
+    final charWidthParagraph = paragraphCache.resolve(
+      cacheKey: 'charWidth:${size.width}',
+      text: 'A',
+      width: textWidth,
+      style: bodyStyle ?? const TextStyle(),
+    );
+    final charWidth = charWidthParagraph.maxIntrinsicWidth;
+
     for (var index = 0; index < state.visibleLines.length; index++) {
       final line = state.visibleLines[index];
       final y = topPadding + (index * lineHeight);
@@ -141,11 +195,6 @@ class _EditorCanvasPainter extends CustomPainter {
         fontWeight: line.lineNumber == currentLine
             ? FontWeight.w700
             : FontWeight.w500,
-      );
-      final bodyStyle = textTheme.bodyLarge?.copyWith(
-        color: colorScheme.onSurface,
-        fontFamily: 'monospace',
-        height: 1.25,
       );
 
       final lineNumberParagraph = paragraphCache.resolve(
@@ -165,32 +214,27 @@ class _EditorCanvasPainter extends CustomPainter {
         style: bodyStyle ?? const TextStyle(),
       );
       canvas.drawParagraph(textParagraph, Offset(gutterWidth + 16, y));
+
+      // Draw cursor if this is the current line and app is focused
+      if (line.lineNumber == currentLine && isFocused) {
+        final cursorX = gutterWidth + 16 + (state.cursor.column - 1) * charWidth;
+        final cursorPaint = Paint()
+          ..color = colorScheme.primary.withValues(alpha: cursorOpacity)
+          ..strokeWidth = 2;
+        canvas.drawLine(
+          Offset(cursorX, y + 4),
+          Offset(cursorX, y + lineHeight - 4),
+          cursorPaint,
+        );
+      }
     }
-
-    final footerRect = Rect.fromLTWH(0, size.height - 52, size.width, 52);
-    final footerPaint = Paint()
-      ..color = colorScheme.surfaceContainerHighest.withValues(alpha: 0.75);
-    canvas.drawRect(footerRect, footerPaint);
-
-    final footerParagraph = paragraphCache.resolve(
-      cacheKey: 'footer:${state.revision}:${size.width}:${state.lastCommand}',
-      text:
-          'viewport ${state.firstVisibleLine + 1}-${state.firstVisibleLine + state.visibleLines.length}  |  '
-          'cursor ${state.cursor.line}:${state.cursor.column}  |  revision ${state.revision}',
-      width: size.width - 24,
-      style:
-          textTheme.labelLarge?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-          ) ??
-          const TextStyle(),
-    );
-    canvas.drawParagraph(footerParagraph, Offset(12, size.height - 38));
   }
 
   @override
   bool shouldRepaint(covariant _EditorCanvasPainter oldDelegate) {
-    return oldDelegate.state != state || oldDelegate.isFocused != isFocused;
+    return oldDelegate.state != state ||
+        oldDelegate.isFocused != isFocused ||
+        oldDelegate.cursorOpacity != cursorOpacity;
   }
 }
 

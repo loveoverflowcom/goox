@@ -5,6 +5,8 @@ edition = "2024"
 
 [lib]
 path = "src/lib.rs"
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 ropey = "1.6.1"
+flutter_rust_bridge = "=2.11.1"

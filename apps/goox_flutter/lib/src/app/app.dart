@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../features/editor/views/editor_demo_page.dart';
+import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 
 class MyApp extends StatelessWidget {
@@ -8,10 +10,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+
     return MaterialApp(
-      title: 'Goox Editor Architecture Demo',
+      title: 'Goox Editor',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: state.themeMode,
       home: const EditorDemoPage(),
     );
   }

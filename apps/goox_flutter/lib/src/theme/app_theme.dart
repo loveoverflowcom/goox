@@ -1,31 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-ThemeData buildAppTheme() {
-  const seedColor = Color(0xFF264653);
-  final colorScheme = ColorScheme.fromSeed(
-    seedColor: seedColor,
-    brightness: Brightness.light,
-    surface: const Color(0xFFF7F3EA),
-  );
+class AppTheme {
+  static const Color _accent = Color(0xFF00ADB5);
 
-  return ThemeData(
-    colorScheme: colorScheme,
-    scaffoldBackgroundColor: const Color(0xFFF3EFE4),
-    textTheme: Typography.material2021().black.apply(
-      bodyColor: const Color(0xFF18252C),
-      displayColor: const Color(0xFF18252C),
-    ),
-    cardTheme: CardThemeData(
-      color: const Color(0xFFFFFCF5),
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+  static ThemeData get darkTheme {
+    final base = ThemeData.dark(useMaterial3: true);
+    return base.copyWith(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: _accent,
+        brightness: Brightness.dark,
+        surface: const Color(0xFF1E1E24),
+        surfaceContainer: const Color(0xFF2B2B36),
       ),
-    ),
-    useMaterial3: true,
-  );
+      textTheme: GoogleFonts.interTextTheme(base.textTheme),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1E1E24),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+    );
+  }
+
+  static ThemeData get lightTheme {
+    final base = ThemeData.light(useMaterial3: true);
+    return base.copyWith(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: _accent,
+        brightness: Brightness.light,
+      ),
+      textTheme: GoogleFonts.interTextTheme(base.textTheme),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.grey.shade100,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+    );
+  }
 }

@@ -1,5 +1,7 @@
+mod frb_generated; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 use ropey::Rope;
 use std::ops::Range;
+pub mod api;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BufferOperation {
@@ -263,6 +265,28 @@ impl EditorBuffer {
                 })
             }
         }
+    }
+
+    pub fn char_to_line_column(&self, char_index: usize) -> (usize, usize) {
+        let line_index = self.rope.char_to_line(char_index.min(self.rope.len_chars()));
+        let line_start_char = self.rope.line_to_char(line_index);
+        let column = char_index.saturating_sub(line_start_char);
+        (line_index, column)
+    }
+
+    pub fn line_range(&self, line_index: usize) -> Option<(usize, usize)> {
+        if line_index >= self.rope.len_lines() {
+            return None;
+        }
+
+        let start = self.rope.line_to_char(line_index);
+        let end = if line_index + 1 < self.rope.len_lines() {
+            self.rope.line_to_char(line_index + 1)
+        } else {
+            self.rope.len_chars()
+        };
+
+        Some((start, end))
     }
 }
 

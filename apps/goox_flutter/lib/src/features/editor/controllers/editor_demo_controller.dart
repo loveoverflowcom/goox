@@ -2,10 +2,11 @@ import 'package:flutter/foundation.dart';
 
 import '../models/editor_models.dart';
 import '../services/editor_core_client.dart';
+import '../services/rust_editor_core_client.dart';
 
 class EditorDemoController {
   EditorDemoController({EditorCoreClient? coreClient})
-    : _coreClient = coreClient ?? LocalEditorCoreClient();
+    : _coreClient = coreClient ?? RustEditorCoreClient();
 
   final EditorCoreClient _coreClient;
 
@@ -13,6 +14,10 @@ class EditorDemoController {
       _coreClient.listenable;
 
   Future<void> seedDocument() => _coreClient.seedDocument();
+
+  Future<void> loadDocument(String text) => _coreClient.loadDocument(text);
+
+  Future<String> getDocumentText() => _coreClient.getDocumentText();
 
   Future<void> loadLargeDocument() => _coreClient.loadLargeDocument();
 
@@ -28,6 +33,12 @@ class EditorDemoController {
 
   Future<void> moveViewport(int lineDelta) =>
       _coreClient.moveViewport(lineDelta);
+
+  Future<void> moveCursorRelative(int charDelta) =>
+      _coreClient.moveCursorRelative(charDelta);
+
+  Future<void> moveCursorToPosition(int line, int column) =>
+      _coreClient.moveCursorToPosition(line, column);
 
   Future<void> undo() => _coreClient.undo();
 
@@ -66,6 +77,13 @@ final class LocalEditorCoreClient implements EditorCoreClient {
   @override
   Future<void> seedDocument() async =>
       _resetTo(seedText, command: 'seed sample');
+
+  @override
+  Future<void> loadDocument(String text) async => 
+      _resetTo(text, command: 'load text');
+
+  @override
+  Future<String> getDocumentText() async => _text;
 
   @override
   Future<void> loadLargeDocument() async {
@@ -145,6 +163,27 @@ final class LocalEditorCoreClient implements EditorCoreClient {
     final maxLine = totalLines > 0 ? totalLines - 1 : 0;
     _firstVisibleLine = (_firstVisibleLine + lineDelta).clamp(0, maxLine);
     _publish(lastCommand: lineDelta > 0 ? 'scroll down' : 'scroll up');
+  }
+
+  @override
+  Future<void> moveCursorRelative(int charDelta) async {
+    _cursorOffset = (_cursorOffset + charDelta).clamp(0, _text.length);
+    _normalizeViewport();
+    _publish(lastCommand: 'move cursor');
+  }
+
+  @override
+  Future<void> moveCursorToPosition(int line, int column) async {
+    final lines = _splitLines();
+    final clampedLine = line.clamp(1, lines.length);
+    int newOffset = 0;
+    for (int i = 0; i < clampedLine - 1; i++) {
+        newOffset += lines[i].length + 1;
+    }
+    int col = column.clamp(1, lines[clampedLine - 1].length + 1);
+    _cursorOffset = (newOffset + col - 1).clamp(0, _text.length);
+    _normalizeViewport();
+    _publish(lastCommand: 'move cursor pos');
   }
 
   @override

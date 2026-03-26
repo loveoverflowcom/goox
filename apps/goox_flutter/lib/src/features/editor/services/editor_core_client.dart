@@ -13,7 +13,11 @@ abstract interface class EditorCoreClient {
   Future<void> backspace();
   Future<void> deleteCurrentLine();
   Future<void> moveViewport(int lineDelta);
+  Future<void> moveCursorRelative(int charDelta);
+  Future<void> moveCursorToPosition(int line, int column);
   Future<void> undo();
   Future<void> redo();
+  Future<void> loadDocument(String text);
+  Future<String> getDocumentText();
   void dispose();
 }
