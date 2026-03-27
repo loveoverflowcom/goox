@@ -7,7 +7,7 @@ import 'package:goox_ui_shared/goox_ui_shared.dart';
 import 'package:provider/provider.dart';
 
 import '../../../state/app_state.dart';
-import '../../layout/views/vscode_layout.dart';
+import '../../layout/views/goox_layout.dart';
 
 class EditorDemoPage extends StatefulWidget {
   const EditorDemoPage({super.key});
@@ -109,7 +109,7 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
     return ValueListenableBuilder<EditorViewState>(
       valueListenable: _controller.stateListenable,
       builder: (context, state, _) {
-        return VscodeLayout(
+        return GooxLayout(
           editor: hasActiveFile
               ? CallbackShortcuts(
                   bindings: <ShortcutActivator, VoidCallback>{

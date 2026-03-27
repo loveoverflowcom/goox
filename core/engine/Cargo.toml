@@ -10,3 +10,5 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 [dependencies]
 ropey = "1.6.1"
 flutter_rust_bridge = "=2.11.1"
+portable-pty = "0.8"
+vte = "0.11"

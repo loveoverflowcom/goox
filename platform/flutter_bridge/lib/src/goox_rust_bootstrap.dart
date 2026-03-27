@@ -16,7 +16,9 @@ final class GooxRustBootstrap {
 
     ExternalLibrary? externalLibrary;
     if (!kIsWeb) {
-      final dylibPath = _resolveLibraryPath(workspaceRoot: workspaceRoot);
+      final dylibPath = await _resolveOrBuildLibraryPath(
+        workspaceRoot: workspaceRoot,
+      );
       if (dylibPath != null) {
         externalLibrary = ExternalLibrary.open(dylibPath);
       }
@@ -24,6 +26,32 @@ final class GooxRustBootstrap {
 
     await RustLib.init(externalLibrary: externalLibrary);
     _initialized = true;
+  }
+
+  static Future<String?> _resolveOrBuildLibraryPath({
+    String? workspaceRoot,
+  }) async {
+    final resolvedPath = _resolveLibraryPath(workspaceRoot: workspaceRoot);
+    if (resolvedPath != null) {
+      return resolvedPath;
+    }
+
+    final root = workspaceRoot ?? _discoverWorkspaceRoot();
+    if (root == null) {
+      return null;
+    }
+
+    final buildResult = await Process.run('cargo', [
+      'build',
+      '-p',
+      'goox_core',
+    ], workingDirectory: root);
+    if (buildResult.exitCode != 0) {
+      debugPrint('Failed to build goox_core:\n${buildResult.stderr}');
+      return null;
+    }
+
+    return _resolveLibraryPath(workspaceRoot: root);
   }
 
   static void initMock({required RustLibApi api}) {
@@ -81,8 +109,23 @@ final class GooxRustBootstrap {
   }
 
   static String? _discoverWorkspaceRoot() {
-    var current = Directory.current.absolute;
+    final seeds = <String>[
+      if (Platform.environment['PWD'] != null) Platform.environment['PWD']!,
+      Directory.current.absolute.path,
+    ];
 
+    for (final seed in seeds) {
+      final match = _walkUpForWorkspaceRoot(seed);
+      if (match != null) {
+        return match;
+      }
+    }
+
+    return null;
+  }
+
+  static String? _walkUpForWorkspaceRoot(String startPath) {
+    var current = Directory(startPath).absolute;
     while (true) {
       final hasCargo = File(path.join(current.path, 'Cargo.toml')).existsSync();
       final hasRules = File(
