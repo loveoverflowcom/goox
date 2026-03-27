@@ -42,6 +42,9 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
   bool _isApplyingExternalValue = false;
   TextEditingValue _lastEditingValue = const TextEditingValue();
 
+  final ScrollController _textScrollController = ScrollController();
+  final ScrollController _lineScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +53,15 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
     _textController.value = _lastEditingValue;
     widget.focusNode.addListener(_handleFocusChanged);
     _textController.addListener(_handleTextEditingChanged);
+    _textScrollController.addListener(_handleScrollSync);
+  }
+
+  void _handleScrollSync() {
+    if (_lineScrollController.hasClients && _textScrollController.hasClients) {
+      if (_lineScrollController.offset != _textScrollController.offset) {
+        _lineScrollController.jumpTo(_textScrollController.offset);
+      }
+    }
   }
 
   @override
@@ -79,7 +91,10 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
   void dispose() {
     widget.focusNode.removeListener(_handleFocusChanged);
     _textController.removeListener(_handleTextEditingChanged);
+    _textScrollController.removeListener(_handleScrollSync);
     _textController.dispose();
+    _textScrollController.dispose();
+    _lineScrollController.dispose();
     super.dispose();
   }
 
@@ -110,6 +125,9 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
       if (callback != null) {
         final change = _calculateTextChange(previousValue.text, nextValue.text);
         callback(change);
+      }
+      if (mounted) {
+        setState(() {}); // Trigger rebuild to update line numbers if lines changed
       }
       return;
     }
@@ -166,6 +184,10 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isFocused = widget.focusNode.hasFocus;
+    
+    // Calculate lines dynamically based on actual text, 1 minimum
+    final lineCount = '\n'.allMatches(_textController.text).length + 1;
+    final lineHeight = 16 * 1.35; // fontSize * height
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -179,10 +201,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
       child: Listener(
         onPointerDown: (event) {
           final callback = widget.onTapDown;
-          if (callback == null) {
-            return;
-          }
-
+          if (callback == null) return;
           callback(
             TapDownDetails(
               globalPosition: event.position,
@@ -192,29 +211,73 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
             context,
           );
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: TextField(
-            controller: _textController,
-            focusNode: widget.focusNode,
-            autofocus: widget.autofocus,
-            onTap: widget.onTap,
-            maxLines: null,
-            expands: true,
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            cursorColor: theme.colorScheme.primary,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface,
-              fontFamily: 'monospace',
-              fontSize: 16,
-              height: 1.35,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Line numbers gutter
+            Container(
+              width: 48,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLow,
+                border: Border(
+                  right: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: ListView.builder(
+                controller: _lineScrollController,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                itemCount: lineCount,
+                itemBuilder: (context, index) {
+                  return Container(
+                    height: lineHeight,
+                    alignment: Alignment.topRight,
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      '${index + 1}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        fontFamily: 'monospace',
+                        fontSize: 12, // Slightly smaller than editor text
+                        height: 1.35 * (16 / 12), // Keep exactly same total line height: 12 * (1.35 * 16/12) = 21.6
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              isCollapsed: true,
+            // Editor text field
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8, right: 16, top: 16, bottom: 16),
+                child: TextField(
+                  controller: _textController,
+                  scrollController: _textScrollController,
+                  focusNode: widget.focusNode,
+                  autofocus: widget.autofocus,
+                  onTap: widget.onTap,
+                  maxLines: null,
+                  expands: true,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
+                  cursorColor: theme.colorScheme.primary,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontFamily: 'monospace',
+                    fontSize: 16,
+                    height: 1.35,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isCollapsed: true,
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
