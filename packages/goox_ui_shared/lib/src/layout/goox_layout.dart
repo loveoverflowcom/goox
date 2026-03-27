@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+enum GooxTabAlignment { top, bottom }
+
 abstract interface class GooxTab {
   String get id;
   String get title;
   IconData get icon;
+  GooxTabAlignment get alignment;
   Widget build(BuildContext context);
 }
 
@@ -13,6 +16,7 @@ class GooxWidgetTab implements GooxTab {
     required this.title,
     required this.icon,
     required this.builder,
+    this.alignment = GooxTabAlignment.top,
   });
 
   @override
@@ -25,6 +29,9 @@ class GooxWidgetTab implements GooxTab {
   final IconData icon;
 
   final WidgetBuilder builder;
+
+  @override
+  final GooxTabAlignment alignment;
 
   @override
   Widget build(BuildContext context) => builder(context);
@@ -310,13 +317,22 @@ class _GooxActivityBar extends StatelessWidget {
         children: [
           const SizedBox(height: 12),
           for (var index = 0; index < tabs.length; index++)
-            _GooxActivityIcon(
-              icon: tabs[index].icon,
-              label: tabs[index].title,
-              isSelected: selectedIndex == index,
-              onTap: () => onSelectedIndexChanged(index),
-            ),
+            if (tabs[index].alignment == GooxTabAlignment.top)
+              _GooxActivityIcon(
+                icon: tabs[index].icon,
+                label: tabs[index].title,
+                isSelected: selectedIndex == index,
+                onTap: () => onSelectedIndexChanged(index),
+              ),
           const Spacer(),
+          for (var index = 0; index < tabs.length; index++)
+            if (tabs[index].alignment == GooxTabAlignment.bottom)
+              _GooxActivityIcon(
+                icon: tabs[index].icon,
+                label: tabs[index].title,
+                isSelected: selectedIndex == index,
+                onTap: () => onSelectedIndexChanged(index),
+              ),
           const SizedBox(height: 12),
         ],
       ),

@@ -605,6 +605,7 @@ class _TerminalViewState extends State<TerminalView> {
         onTap: _focusNode.requestFocus,
         child: Container(
           color: termBg,
+          alignment: Alignment.topLeft,
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: AnimatedBuilder(
             animation: widget.controller,

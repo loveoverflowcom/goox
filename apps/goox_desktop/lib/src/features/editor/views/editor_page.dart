@@ -142,6 +142,7 @@ class _EditorPageState extends State<EditorPage> {
               id: 'settings',
               title: 'Settings',
               icon: Icons.settings_outlined,
+              alignment: GooxTabAlignment.bottom,
               builder: (context) => const SettingsView(),
             ),
           ],
