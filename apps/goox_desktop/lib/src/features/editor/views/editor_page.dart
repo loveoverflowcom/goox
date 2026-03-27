@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
 import 'package:goox_ui_shared/goox_ui_shared.dart';
+import 'package:pdfx/pdfx.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
@@ -47,7 +48,25 @@ class _EditorPageState extends State<EditorPage> {
     }
 
     try {
+      final workspaceRoot = context.read<AppState>().rootPath ?? '';
+      await GooxEditorSdkBootstrap.ensureInitialized(
+        workspaceRoot: workspaceRoot,
+      );
+
       final file = File(path);
+      final isPdf = path.toLowerCase().endsWith('.pdf');
+
+      if (isPdf) {
+        await GooxEditorSdkBootstrap.activateExtensionForFile(
+          workspaceRoot: workspaceRoot,
+          filePath: path,
+        );
+        if (mounted) {
+          context.read<AppState>().markFileDirty(path, false);
+        }
+        return;
+      }
+
       if (file.existsSync()) {
         final text = await file.readAsString();
         await _controller.loadDocument(text);
@@ -106,7 +125,10 @@ class _EditorPageState extends State<EditorPage> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final hasActiveFile = appState.activeFile != null;
+    final activeFile = appState.activeFile;
+    final hasActiveFile = activeFile != null;
+    final isPdf = activeFile != null && activeFile.toLowerCase().endsWith('.pdf');
+    final pdfFilePath = activeFile ?? '';
 
     return ValueListenableBuilder<EditorViewState>(
       valueListenable: _controller.stateListenable,
@@ -151,66 +173,172 @@ class _EditorPageState extends State<EditorPage> {
           ],
           editorHeader: const _EditorTabHeader(),
           editor: hasActiveFile
-              ? CallbackShortcuts(
-                  bindings: <ShortcutActivator, VoidCallback>{
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyS,
-                      control: true,
-                    ): () {
-                      _saveCurrentFile();
-                    },
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyS,
-                      meta: true,
-                    ): () {
-                      _saveCurrentFile();
-                    },
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyZ,
-                      control: true,
-                    ): () {
-                      _controller.undo();
-                      _markDirty();
-                    },
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyZ,
-                      meta: true,
-                    ): () {
-                      _controller.undo();
-                      _markDirty();
-                    },
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyZ,
-                      control: true,
-                      shift: true,
-                    ): () {
-                      _controller.redo();
-                    },
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyZ,
-                      meta: true,
-                      shift: true,
-                    ): () {
-                      _controller.redo();
-                    },
-                  },
-                  child: GooxEditorCanvas(
-                    state: state,
-                    focusNode: _focusNode,
-                    autofocus: true,
-                    onTap: _focusNode.requestFocus,
-                    onTextChanged: _handleEditorTextChanged,
-                    onCursorOffsetChanged: _controller.moveCursorToOffset,
-                  ),
-                )
+              ? isPdf
+                  ? _PdfPreviewPane(
+                      key: ValueKey(activeFile),
+                      filePath: activeFile,
+                    )
+                  : CallbackShortcuts(
+                      bindings: <ShortcutActivator, VoidCallback>{
+                        const SingleActivator(
+                          LogicalKeyboardKey.keyS,
+                          control: true,
+                        ): () {
+                          _saveCurrentFile();
+                        },
+                        const SingleActivator(
+                          LogicalKeyboardKey.keyS,
+                          meta: true,
+                        ): () {
+                          _saveCurrentFile();
+                        },
+                        const SingleActivator(
+                          LogicalKeyboardKey.keyZ,
+                          control: true,
+                        ): () {
+                          _controller.undo();
+                          _markDirty();
+                        },
+                        const SingleActivator(
+                          LogicalKeyboardKey.keyZ,
+                          meta: true,
+                        ): () {
+                          _controller.undo();
+                          _markDirty();
+                        },
+                        const SingleActivator(
+                          LogicalKeyboardKey.keyZ,
+                          control: true,
+                          shift: true,
+                        ): () {
+                          _controller.redo();
+                        },
+                        const SingleActivator(
+                          LogicalKeyboardKey.keyZ,
+                          meta: true,
+                          shift: true,
+                        ): () {
+                          _controller.redo();
+                        },
+                      },
+                      child: GooxEditorCanvas(
+                        state: state,
+                        focusNode: _focusNode,
+                        autofocus: true,
+                        onTap: _focusNode.requestFocus,
+                        onTextChanged: _handleEditorTextChanged,
+                        onCursorOffsetChanged: _controller.moveCursorToOffset,
+                      ),
+                    )
               : _EditorWelcomeView(onOpenFolder: appState.pickDirectory),
-          statusBar: GooxStatusBar(
-            revision: state.revision,
-            line: state.cursor.line,
-            column: state.cursor.column,
-          ),
+          statusBar: isPdf
+              ? _PdfStatusBar(filePath: pdfFilePath)
+              : GooxStatusBar(
+                  revision: state.revision,
+                  line: state.cursor.line,
+                  column: state.cursor.column,
+                ),
         );
       },
+    );
+  }
+}
+
+class _PdfPreviewPane extends StatefulWidget {
+  const _PdfPreviewPane({super.key, required this.filePath});
+
+  final String filePath;
+
+  @override
+  State<_PdfPreviewPane> createState() => _PdfPreviewPaneState();
+}
+
+class _PdfPreviewPaneState extends State<_PdfPreviewPane> {
+  late final PdfControllerPinch _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PdfControllerPinch(
+      document: PdfDocument.openFile(widget.filePath),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
+        ),
+      ),
+      child: PdfViewPinch(
+        controller: _controller,
+        builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
+          options: const DefaultBuilderOptions(),
+          documentLoaderBuilder: (_) => Center(
+            child: CircularProgressIndicator(color: theme.colorScheme.primary),
+          ),
+          pageLoaderBuilder: (_) => Center(
+            child: CircularProgressIndicator(color: theme.colorScheme.primary),
+          ),
+          errorBuilder: (_, error) => Center(
+            child: Text(
+              'Failed to load PDF: $error',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PdfStatusBar extends StatelessWidget {
+  const _PdfStatusBar({required this.filePath});
+
+  final String filePath;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      color: colorScheme.primary,
+      child: Row(
+        children: [
+          Icon(
+            Icons.picture_as_pdf_outlined,
+            size: 12,
+            color: colorScheme.onPrimary,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              path.basename(filePath),
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'PDF view',
+            style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
+          ),
+        ],
+      ),
     );
   }
 }

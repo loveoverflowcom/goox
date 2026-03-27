@@ -96,6 +96,10 @@ class GooxLayout extends StatefulWidget {
   final double initialSidebarWidth;
   final double initialPanelHeight;
 
+  static void togglePanel(BuildContext context, String panelId) {
+    context.findAncestorStateOfType<_GooxLayoutState>()?._togglePanel(panelId);
+  }
+
   @override
   State<GooxLayout> createState() => _GooxLayoutState();
 }
@@ -234,7 +238,7 @@ class _GooxLayoutState extends State<GooxLayout> {
                         children: [
                           if (widget.editorHeader != null) widget.editorHeader!,
                           Expanded(child: widget.editor),
-                          if (activePanel != null) ...[
+                          if (activePanel != null)
                             MouseRegion(
                               cursor: SystemMouseCursors.resizeUpDown,
                               child: GestureDetector(
@@ -262,11 +266,21 @@ class _GooxLayoutState extends State<GooxLayout> {
                                 ),
                               ),
                             ),
-                            SizedBox(
+                          Offstage(
+                            offstage: activePanel == null,
+                            child: SizedBox(
                               height: _panelHeight,
-                              child: activePanel.build(context),
+                              child: Stack(
+                                children: [
+                                  for (final panel in widget.panels)
+                                    Offstage(
+                                      offstage: activePanel?.id != panel.id,
+                                      child: panel.build(context),
+                                    ),
+                                ],
+                              ),
                             ),
-                          ],
+                          ),
                         ],
                       ),
                     ),

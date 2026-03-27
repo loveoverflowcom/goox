@@ -11,253 +11,168 @@ import 'frb_generated.dart';
 import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
-abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
-  RustLibApiImplPlatform({
-    required super.handler,
-    required super.wire,
-    required super.generalizedFrbRustBinding,
-    required super.portManager,
-  });
 
-  @protected
-  String dco_decode_String(dynamic raw);
 
-  @protected
-  bool dco_decode_bool(dynamic raw);
 
-  @protected
-  BufferTransaction dco_decode_box_autoadd_buffer_transaction(dynamic raw);
+                abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
+                  RustLibApiImplPlatform({
+                    required super.handler,
+                    required super.wire,
+                    required super.generalizedFrbRustBinding,
+                    required super.portManager,
+                  });
 
-  @protected
-  ViewportRequest dco_decode_box_autoadd_viewport_request(dynamic raw);
+                  
 
-  @protected
-  BufferError dco_decode_buffer_error(dynamic raw);
+                  @protected String dco_decode_String(dynamic raw);
 
-  @protected
-  BufferOperation dco_decode_buffer_operation(dynamic raw);
+@protected bool dco_decode_bool(dynamic raw);
 
-  @protected
-  BufferPatchBatch dco_decode_buffer_patch_batch(dynamic raw);
+@protected BufferTransaction dco_decode_box_autoadd_buffer_transaction(dynamic raw);
 
-  @protected
-  BufferSnapshot dco_decode_buffer_snapshot(dynamic raw);
+@protected ViewportRequest dco_decode_box_autoadd_viewport_request(dynamic raw);
 
-  @protected
-  BufferTransaction dco_decode_buffer_transaction(dynamic raw);
+@protected BufferError dco_decode_buffer_error(dynamic raw);
 
-  @protected
-  CursorPos dco_decode_cursor_pos(dynamic raw);
+@protected BufferOperation dco_decode_buffer_operation(dynamic raw);
 
-  @protected
-  List<BufferOperation> dco_decode_list_buffer_operation(dynamic raw);
+@protected BufferPatchBatch dco_decode_buffer_patch_batch(dynamic raw);
 
-  @protected
-  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+@protected BufferSnapshot dco_decode_buffer_snapshot(dynamic raw);
 
-  @protected
-  List<ViewportLine> dco_decode_list_viewport_line(dynamic raw);
+@protected BufferTransaction dco_decode_buffer_transaction(dynamic raw);
 
-  @protected
-  BigInt dco_decode_u_64(dynamic raw);
+@protected CursorPos dco_decode_cursor_pos(dynamic raw);
 
-  @protected
-  int dco_decode_u_8(dynamic raw);
+@protected List<String> dco_decode_list_String(dynamic raw);
 
-  @protected
-  void dco_decode_unit(dynamic raw);
+@protected List<BufferOperation> dco_decode_list_buffer_operation(dynamic raw);
 
-  @protected
-  BigInt dco_decode_usize(dynamic raw);
+@protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
-  @protected
-  ViewportLine dco_decode_viewport_line(dynamic raw);
+@protected List<ViewportLine> dco_decode_list_viewport_line(dynamic raw);
 
-  @protected
-  ViewportRequest dco_decode_viewport_request(dynamic raw);
+@protected BigInt dco_decode_u_64(dynamic raw);
 
-  @protected
-  ViewportSnapshot dco_decode_viewport_snapshot(dynamic raw);
+@protected int dco_decode_u_8(dynamic raw);
 
-  @protected
-  String sse_decode_String(SseDeserializer deserializer);
+@protected void dco_decode_unit(dynamic raw);
 
-  @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
+@protected BigInt dco_decode_usize(dynamic raw);
 
-  @protected
-  BufferTransaction sse_decode_box_autoadd_buffer_transaction(
-    SseDeserializer deserializer,
-  );
+@protected ViewportLine dco_decode_viewport_line(dynamic raw);
 
-  @protected
-  ViewportRequest sse_decode_box_autoadd_viewport_request(
-    SseDeserializer deserializer,
-  );
+@protected ViewportRequest dco_decode_viewport_request(dynamic raw);
 
-  @protected
-  BufferError sse_decode_buffer_error(SseDeserializer deserializer);
+@protected ViewportSnapshot dco_decode_viewport_snapshot(dynamic raw);
 
-  @protected
-  BufferOperation sse_decode_buffer_operation(SseDeserializer deserializer);
+@protected String sse_decode_String(SseDeserializer deserializer);
 
-  @protected
-  BufferPatchBatch sse_decode_buffer_patch_batch(SseDeserializer deserializer);
+@protected bool sse_decode_bool(SseDeserializer deserializer);
 
-  @protected
-  BufferSnapshot sse_decode_buffer_snapshot(SseDeserializer deserializer);
+@protected BufferTransaction sse_decode_box_autoadd_buffer_transaction(SseDeserializer deserializer);
 
-  @protected
-  BufferTransaction sse_decode_buffer_transaction(SseDeserializer deserializer);
+@protected ViewportRequest sse_decode_box_autoadd_viewport_request(SseDeserializer deserializer);
 
-  @protected
-  CursorPos sse_decode_cursor_pos(SseDeserializer deserializer);
+@protected BufferError sse_decode_buffer_error(SseDeserializer deserializer);
 
-  @protected
-  List<BufferOperation> sse_decode_list_buffer_operation(
-    SseDeserializer deserializer,
-  );
+@protected BufferOperation sse_decode_buffer_operation(SseDeserializer deserializer);
 
-  @protected
-  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+@protected BufferPatchBatch sse_decode_buffer_patch_batch(SseDeserializer deserializer);
 
-  @protected
-  List<ViewportLine> sse_decode_list_viewport_line(
-    SseDeserializer deserializer,
-  );
+@protected BufferSnapshot sse_decode_buffer_snapshot(SseDeserializer deserializer);
 
-  @protected
-  BigInt sse_decode_u_64(SseDeserializer deserializer);
+@protected BufferTransaction sse_decode_buffer_transaction(SseDeserializer deserializer);
 
-  @protected
-  int sse_decode_u_8(SseDeserializer deserializer);
+@protected CursorPos sse_decode_cursor_pos(SseDeserializer deserializer);
 
-  @protected
-  void sse_decode_unit(SseDeserializer deserializer);
+@protected List<String> sse_decode_list_String(SseDeserializer deserializer);
 
-  @protected
-  BigInt sse_decode_usize(SseDeserializer deserializer);
+@protected List<BufferOperation> sse_decode_list_buffer_operation(SseDeserializer deserializer);
 
-  @protected
-  ViewportLine sse_decode_viewport_line(SseDeserializer deserializer);
+@protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
-  @protected
-  ViewportRequest sse_decode_viewport_request(SseDeserializer deserializer);
+@protected List<ViewportLine> sse_decode_list_viewport_line(SseDeserializer deserializer);
 
-  @protected
-  ViewportSnapshot sse_decode_viewport_snapshot(SseDeserializer deserializer);
+@protected BigInt sse_decode_u_64(SseDeserializer deserializer);
 
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
+@protected int sse_decode_u_8(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_String(String self, SseSerializer serializer);
+@protected void sse_decode_unit(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
+@protected BigInt sse_decode_usize(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_box_autoadd_buffer_transaction(
-    BufferTransaction self,
-    SseSerializer serializer,
-  );
+@protected ViewportLine sse_decode_viewport_line(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_box_autoadd_viewport_request(
-    ViewportRequest self,
-    SseSerializer serializer,
-  );
+@protected ViewportRequest sse_decode_viewport_request(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_buffer_error(BufferError self, SseSerializer serializer);
+@protected ViewportSnapshot sse_decode_viewport_snapshot(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_buffer_operation(
-    BufferOperation self,
-    SseSerializer serializer,
-  );
+@protected int sse_decode_i_32(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_buffer_patch_batch(
-    BufferPatchBatch self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_String(String self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_buffer_snapshot(
-    BufferSnapshot self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_bool(bool self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_buffer_transaction(
-    BufferTransaction self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_box_autoadd_buffer_transaction(BufferTransaction self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cursor_pos(CursorPos self, SseSerializer serializer);
+@protected void sse_encode_box_autoadd_viewport_request(ViewportRequest self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_buffer_operation(
-    List<BufferOperation> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_buffer_error(BufferError self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_u_8_strict(
-    Uint8List self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_buffer_operation(BufferOperation self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_viewport_line(
-    List<ViewportLine> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_buffer_patch_batch(BufferPatchBatch self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_u_64(BigInt self, SseSerializer serializer);
+@protected void sse_encode_buffer_snapshot(BufferSnapshot self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_u_8(int self, SseSerializer serializer);
+@protected void sse_encode_buffer_transaction(BufferTransaction self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_unit(void self, SseSerializer serializer);
+@protected void sse_encode_cursor_pos(CursorPos self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_usize(BigInt self, SseSerializer serializer);
+@protected void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_viewport_line(ViewportLine self, SseSerializer serializer);
+@protected void sse_encode_list_buffer_operation(List<BufferOperation> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_viewport_request(
-    ViewportRequest self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_viewport_snapshot(
-    ViewportSnapshot self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_viewport_line(List<ViewportLine> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
-}
+@protected void sse_encode_u_64(BigInt self, SseSerializer serializer);
+
+@protected void sse_encode_u_8(int self, SseSerializer serializer);
+
+@protected void sse_encode_unit(void self, SseSerializer serializer);
+
+@protected void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+@protected void sse_encode_viewport_line(ViewportLine self, SseSerializer serializer);
+
+@protected void sse_encode_viewport_request(ViewportRequest self, SseSerializer serializer);
+
+@protected void sse_encode_viewport_snapshot(ViewportSnapshot self, SseSerializer serializer);
+
+@protected void sse_encode_i_32(int self, SseSerializer serializer);
+                }
+                
+
 
 // Section: wire_class
 
-class RustLibWire implements BaseWire {
-  factory RustLibWire.fromExternalLibrary(ExternalLibrary lib) =>
-      RustLibWire(lib.ffiDynamicLibrary);
 
-  /// Holds the symbol lookup function.
-  final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
-  _lookup;
+        class RustLibWire implements BaseWire {
 
-  /// The symbols are looked up in [dynamicLibrary].
-  RustLibWire(ffi.DynamicLibrary dynamicLibrary)
-    : _lookup = dynamicLibrary.lookup;
-}
+            factory RustLibWire.fromExternalLibrary(ExternalLibrary lib) =>
+              RustLibWire(lib.ffiDynamicLibrary);
+        
+            /// Holds the symbol lookup function.
+            final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
+                _lookup;
+  
+            /// The symbols are looked up in [dynamicLibrary].
+            RustLibWire(ffi.DynamicLibrary dynamicLibrary)
+                : _lookup = dynamicLibrary.lookup;
+
+            
+        }
+        

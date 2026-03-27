@@ -13,6 +13,7 @@ dependencies:
   google_fonts: ^8.0.2
   path: ^1.9.1
   file_picker: ^10.3.10
+  pdfx: ^2.9.2
   goox_editor_sdk:
     path: ../../packages/goox_editor_sdk
   goox_ui_shared:

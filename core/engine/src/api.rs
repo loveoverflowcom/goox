@@ -63,3 +63,15 @@ pub fn delete_line(char_index: usize) -> Result<BufferPatchBatch, BufferError> {
         Err(crate::BufferError::EmptyTransaction)
     }
 }
+
+pub fn refresh_workspace_extensions(workspace_root: String) -> usize {
+    crate::extensions::refresh_workspace_extensions(workspace_root)
+}
+
+pub fn activate_extension_for_file(workspace_root: String, file_path: String) -> bool {
+    crate::extensions::activate_extension_for_file(workspace_root, file_path)
+}
+
+pub fn registered_extension_commands() -> Vec<String> {
+    crate::extensions::registered_extension_commands()
+}

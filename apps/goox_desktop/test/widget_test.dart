@@ -85,4 +85,19 @@ class MockRustLibApi extends bridge.RustLibApi {
         label: 'mock',
         patches: const [],
       );
+
+  @override
+  Future<bool> crateApiActivateExtensionForFile({
+    required String workspaceRoot,
+    required String filePath,
+  }) async => false;
+
+  @override
+  Future<BigInt> crateApiRefreshWorkspaceExtensions({
+    required String workspaceRoot,
+  }) async => BigInt.zero;
+
+  @override
+  Future<List<String>> crateApiRegisteredExtensionCommands() async =>
+      const <String>[];
 }

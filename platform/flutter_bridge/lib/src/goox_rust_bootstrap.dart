@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:path/path.dart' as path;
 
+import 'raw_bridge/api.dart' as bridge_api;
 import 'raw_bridge/frb_generated.dart';
 
 final class GooxRustBootstrap {
@@ -11,6 +12,9 @@ final class GooxRustBootstrap {
 
   static Future<void> ensureInitialized({String? workspaceRoot}) async {
     if (_initialized) {
+      if (workspaceRoot != null && workspaceRoot.isNotEmpty) {
+        await refreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
+      }
       return;
     }
 
@@ -18,6 +22,7 @@ final class GooxRustBootstrap {
     if (!kIsWeb) {
       final dylibPath = await _resolveOrBuildLibraryPath(
         workspaceRoot: workspaceRoot,
+        forceRebuild: kDebugMode,
       );
       if (dylibPath != null) {
         externalLibrary = ExternalLibrary.open(dylibPath);
@@ -26,25 +31,60 @@ final class GooxRustBootstrap {
 
     await RustLib.init(externalLibrary: externalLibrary);
     _initialized = true;
+
+    if (workspaceRoot != null && workspaceRoot.isNotEmpty) {
+      await refreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
+    }
+  }
+
+  static Future<void> refreshWorkspaceExtensions({
+    required String workspaceRoot,
+  }) async {
+    if (!_initialized) {
+      await ensureInitialized(workspaceRoot: workspaceRoot);
+      return;
+    }
+
+    await bridge_api.refreshWorkspaceExtensions(
+      workspaceRoot: workspaceRoot,
+    );
+  }
+
+  static Future<bool> activateExtensionForFile({
+    required String workspaceRoot,
+    required String filePath,
+  }) async {
+    if (!_initialized) {
+      await ensureInitialized(workspaceRoot: workspaceRoot);
+    }
+
+    return bridge_api.activateExtensionForFile(
+      workspaceRoot: workspaceRoot,
+      filePath: filePath,
+    );
   }
 
   static Future<String?> _resolveOrBuildLibraryPath({
     String? workspaceRoot,
+    bool forceRebuild = false,
   }) async {
-    final resolvedPath = _resolveLibraryPath(workspaceRoot: workspaceRoot);
-    if (resolvedPath != null) {
-      return resolvedPath;
-    }
-
     final root = workspaceRoot ?? _discoverWorkspaceRoot();
     if (root == null) {
       return null;
+    }
+
+    if (!forceRebuild) {
+      final resolvedPath = _resolveLibraryPath(workspaceRoot: root);
+      if (resolvedPath != null) {
+        return resolvedPath;
+      }
     }
 
     final buildResult = await Process.run('cargo', [
       'build',
       '-p',
       'goox_core',
+      if (!kDebugMode) '--release',
     ], workingDirectory: root);
     if (buildResult.exitCode != 0) {
       debugPrint('Failed to build goox_core:\n${buildResult.stderr}');

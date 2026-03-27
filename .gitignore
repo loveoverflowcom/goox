@@ -1,1 +1,3 @@
 /target
+.goox/extensions/*/target/
+.goox/extensions/*/Cargo.lock

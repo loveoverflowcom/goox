@@ -2,6 +2,7 @@ mod frb_generated; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be
 use ropey::Rope;
 use std::ops::Range;
 pub mod api;
+pub mod extensions;
 pub mod terminal;
 
 

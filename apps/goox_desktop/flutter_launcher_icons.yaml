@@ -6,4 +6,4 @@ flutter_launcher_icons:
     icon_size: 256
   macos:
     generate: true
-    image_path: "launch_assets/goox_icon_macos.png"
+    image_path: "launch_assets/goox_icon.png"

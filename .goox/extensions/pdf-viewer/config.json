@@ -1,0 +1,5 @@
+{
+  "name": "pdf-viewer",
+  "entry": "plugin.wasm",
+  "filetypes": ["pdf"]
+}
