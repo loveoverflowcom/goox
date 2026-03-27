@@ -1,0 +1,22 @@
+name: goox_flutter_bridge
+description: "Generated flutter_rust_bridge bindings and raw bootstrap helpers for goox."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.3
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_rust_bridge: ^2.11.1
+  freezed_annotation: ^2.4.4
+  path: ^1.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

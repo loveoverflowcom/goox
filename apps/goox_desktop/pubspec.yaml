@@ -1,0 +1,29 @@
+name: goox_desktop
+description: "Desktop shell for the goox editor."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.5+1
+  google_fonts: ^8.0.2
+  path: ^1.9.1
+  file_picker: ^10.3.10
+  goox_editor_sdk:
+    path: ../../packages/goox_editor_sdk
+  goox_ui_shared:
+    path: ../../packages/goox_ui_shared
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  goox_flutter_bridge:
+    path: ../../platform/flutter_bridge
+
+flutter:
+  uses-material-design: true

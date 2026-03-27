@@ -1,0 +1,10 @@
+[package]
+name = "goox_storage"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+goox_core = { path = "../engine" }

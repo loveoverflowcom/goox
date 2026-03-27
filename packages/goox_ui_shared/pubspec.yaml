@@ -1,0 +1,21 @@
+name: goox_ui_shared
+description: "Shared Flutter widgets for goox apps and examples."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.3
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  goox_editor_sdk:
+    path: ../goox_editor_sdk
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

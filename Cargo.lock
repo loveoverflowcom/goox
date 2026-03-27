@@ -370,6 +370,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "goox_storage"
+version = "0.1.0"
+dependencies = [
+ "goox_core",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

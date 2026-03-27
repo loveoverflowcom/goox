@@ -4,11 +4,15 @@
 
 This workspace intentionally builds only the core primitives for a low-latency editor:
 
-- `crates/goox_core`: Rust buffer primitives, revision clock, patch batches, undo/redo, viewport extraction.
-- `apps/goox_flutter`: Flutter shell that demonstrates the intended rendering and interaction pipeline.
-- `docs/`: architecture notes and PlantUML diagrams.
+- `core/engine`: Rust buffer primitives, revision clock, patch batches, undo/redo, and viewport extraction.
+- `core/storage`: persistence-facing Rust crate reserved for file I/O and workspace state.
+- `platform/flutter_bridge`: raw `flutter_rust_bridge` bindings and low-level bootstrap code.
+- `packages/goox_editor_sdk`: high-level Dart API and controller/state surface for Flutter apps.
+- `packages/goox_ui_shared`: reusable editor widgets and shared visual primitives.
+- `apps/goox_desktop`: desktop shell that composes the SDK and shared UI packages.
+- `examples/simple_editor`: lightweight playground used to validate the editor path quickly.
 
-The demo does **not** wire `flutter_rust_bridge` yet. Instead, Flutter talks to a local `EditorCoreClient` that mirrors the same patch-based protocol so the UI can run immediately while the Rust core stays focused on ownership and data flow.
+The repo now wires FRB into the Rust engine through a dedicated platform boundary. Flutter apps are expected to talk to `goox_editor_sdk`, not to generated bindings directly.
 
 ## Core Decisions
 
@@ -30,7 +34,8 @@ The demo does **not** wire `flutter_rust_bridge` yet. Instead, Flutter talks to 
 
 ### 3. Sync model
 
-- Input events originate in Flutter.
+- Input events originate in Flutter UI layers.
+- `goox_editor_sdk` translates those events into bridge calls and exposes editor state back to the app.
 - Rust applies operations and increments a monotonic revision.
 - A patch batch crosses the bridge in-order.
 - Flutter updates local presentation state from patches and repaints the viewport.
@@ -47,19 +52,24 @@ The demo does **not** wire `flutter_rust_bridge` yet. Instead, Flutter talks to 
   - gestures
   - key dispatch
   - paragraph cache and paint scheduling
+- SDK owns:
+  - editor session lifecycle
+  - bridge bootstrapping and translation to Dart models
+  - state exposure for app and shared widgets
 - Plugins should own:
   - isolated compute
   - async edit proposals
 
 ## Recommended Next Steps
 
-1. Add `flutter_rust_bridge` codegen and replace the local `LocalEditorCoreClient`.
-2. Move syntax highlighting, search, and plugins onto a worker pool in Rust.
-3. Add a dedicated line index cache beside the rope before implementing folding or minimap features.
-4. Introduce CRDT only after the single-player pipeline is stable and measurable.
+1. Flesh out `core/storage` so the new crate split becomes operational, not just structural.
+2. Expand `goox_editor_sdk` mocks and adapters so UI packages can test richer behaviors without native Rust.
+3. Move syntax highlighting, search, and plugins onto a worker pool in Rust.
+4. Add a dedicated line index cache beside the rope before implementing folding or minimap features.
+5. Introduce CRDT only after the single-player pipeline is stable and measurable.
 
 ## Trade-offs
 
-- The Flutter demo uses an in-memory Dart buffer for runtime convenience. That keeps the demo runnable but means the FRB bridge is still a design boundary, not a finished integration.
-- The Rust crate uses `ropey` now because the architecture already assumes rope semantics. That is the right foundation for editor-scale text, but line index caching is still the next likely hotspot.
+- The repo now has the right boundaries, but `core/storage`, `platform/ffi`, and some platform metadata are still intentionally lightweight until the runtime surface stabilizes.
+- The Rust engine uses `ropey` because the architecture already assumes rope semantics. That is the right foundation for editor-scale text, but line index caching is still the next likely hotspot.
 - Undo merging is supported conceptually via `mergeable`, but the current demo does not yet perform time-window batching.
