@@ -11,8 +11,20 @@ use wasmtime::{Caller, Engine, Instance, Linker, Module, Store};
 pub struct ExtensionMeta {
     pub name: String,
     pub path: PathBuf,
-    pub entry: String,
+    pub entry: Option<String>,
     pub filetypes: Vec<String>,
+    pub language_id: Option<String>,
+    pub lsp_executable: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExtensionInfo {
+    pub name: String,
+    pub path: String,
+    pub entry: Option<String>,
+    pub filetypes: Vec<String>,
+    pub language_id: Option<String>,
+    pub lsp_executable: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,15 +74,19 @@ impl ExtensionRegistry {
         let extension_name = self.filetype_index.get(&normalize_filetype(filetype))?;
         self.extensions_by_name.get(extension_name).cloned()
     }
-
 }
 
 #[derive(Debug, Deserialize)]
 struct ExtensionConfig {
     name: String,
-    entry: String,
+    #[serde(default)]
+    entry: Option<String>,
     #[serde(default)]
     filetypes: Vec<String>,
+    #[serde(default)]
+    language_id: Option<String>,
+    #[serde(default)]
+    lsp_executable: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -99,9 +115,8 @@ pub fn refresh_workspace_extensions(workspace_root: String) -> usize {
 
 pub fn activate_extension_for_file(workspace_root: String, file_path: String) -> bool {
     let workspace_root = normalize_workspace_root(&workspace_root);
-    let filetype = match Path::new(&file_path).extension().and_then(|ext| ext.to_str()) {
-        Some(filetype) if !filetype.is_empty() => filetype.to_string(),
-        _ => return false,
+    let Some(filetype) = filetype_for_path(Path::new(&file_path)) else {
+        return false;
     };
 
     let registry = ExtensionRegistry::build(workspace_root.as_deref());
@@ -119,6 +134,38 @@ pub fn activate_extension_for_file(workspace_root: String, file_path: String) ->
     activate_extension(&extension)
 }
 
+pub fn extension_for_file(workspace_root: String, file_path: String) -> Option<ExtensionInfo> {
+    let workspace_root = normalize_workspace_root(&workspace_root);
+    let filetype = filetype_for_path(Path::new(&file_path))?;
+    let registry = ExtensionRegistry::build(workspace_root.as_deref());
+    {
+        let mut runtime = RUNTIME.lock().unwrap();
+        runtime.registry = registry.clone();
+    }
+    let extension = registry.find_for_filetype(&filetype)?;
+    debug_log(format!(
+        "matched extension {} for .{} (language_id={}, lsp_executable={})",
+        extension.name,
+        filetype,
+        extension.language_id.as_deref().unwrap_or("none"),
+        extension.lsp_executable.as_deref().unwrap_or("none")
+    ));
+    Some(ExtensionInfo::from(&extension))
+}
+
+pub fn validate_source_text(language_id: String, text: String) -> Option<String> {
+    let normalized = language_id.trim().to_lowercase();
+    if normalized.is_empty() || text.trim().is_empty() {
+        return None;
+    }
+
+    match normalized.as_str() {
+        "python" => validate_python_source(&text),
+        "javascript" | "js" | "typescript" => validate_javascript_source(&text),
+        _ => None,
+    }
+}
+
 pub fn registered_extension_commands() -> Vec<String> {
     RUNTIME
         .lock()
@@ -134,7 +181,11 @@ pub fn extension_logs() -> Vec<String> {
 }
 
 fn activate_extension(extension: &ExtensionMeta) -> bool {
-    let module_path = extension.path.join(&extension.entry);
+    let Some(entry) = extension.entry.as_deref() else {
+        return false;
+    };
+
+    let module_path = extension.path.join(entry);
     let canonical_module_path = fs::canonicalize(&module_path).unwrap_or(module_path.clone());
 
     {
@@ -177,10 +228,7 @@ fn activate_extension(extension: &ExtensionMeta) -> bool {
 
     let module = {
         let runtime = RUNTIME.lock().unwrap();
-        runtime
-            .module_cache
-            .get(&canonical_module_path)
-            .cloned()
+        runtime.module_cache.get(&canonical_module_path).cloned()
     };
 
     let Some(module) = module else {
@@ -248,11 +296,7 @@ fn host_register_command(_caller: Caller<'_, ()>, ptr: i32, len: i32) -> wasmtim
     Ok(())
 }
 
-fn read_guest_string(
-    caller: &mut Caller<'_, ()>,
-    ptr: i32,
-    len: i32,
-) -> wasmtime::Result<String> {
+fn read_guest_string(caller: &mut Caller<'_, ()>, ptr: i32, len: i32) -> wasmtime::Result<String> {
     let memory = caller
         .get_export("memory")
         .and_then(|export| export.into_memory())
@@ -275,7 +319,11 @@ fn scan_extensions_dir(root: &Path, scope: ExtensionScope) -> Vec<ExtensionMeta>
 
     let mut directories = Vec::new();
     for entry in entries.flatten() {
-        if entry.file_type().map(|file_type| file_type.is_dir()).unwrap_or(false) {
+        if entry
+            .file_type()
+            .map(|file_type| file_type.is_dir())
+            .unwrap_or(false)
+        {
             directories.push(entry.path());
         }
     }
@@ -305,7 +353,7 @@ fn read_extension_config(path: &Path, scope: ExtensionScope) -> Option<Extension
     let config = fs::read_to_string(&config_path).ok()?;
     let parsed: ExtensionConfig = serde_json::from_str(&config).ok()?;
 
-    if parsed.name.trim().is_empty() || parsed.entry.trim().is_empty() {
+    if parsed.name.trim().is_empty() {
         return None;
     }
 
@@ -314,11 +362,24 @@ fn read_extension_config(path: &Path, scope: ExtensionScope) -> Option<Extension
     filetypes.sort_by_key(|filetype| filetype.to_lowercase());
     filetypes.dedup_by(|left, right| left.eq_ignore_ascii_case(right));
 
+    if filetypes.is_empty() {
+        return None;
+    }
+
     let extension = ExtensionMeta {
         name: parsed.name,
         path: path.to_path_buf(),
-        entry: parsed.entry,
-        filetypes: filetypes.into_iter().map(|filetype| normalize_filetype(&filetype)).collect(),
+        entry: parsed.entry.filter(|entry| !entry.trim().is_empty()),
+        filetypes: filetypes
+            .into_iter()
+            .map(|filetype| normalize_filetype(&filetype))
+            .collect(),
+        language_id: parsed
+            .language_id
+            .filter(|language_id| !language_id.trim().is_empty()),
+        lsp_executable: parsed
+            .lsp_executable
+            .filter(|lsp_executable| !lsp_executable.trim().is_empty()),
     };
 
     match scope {
@@ -344,6 +405,262 @@ fn normalize_filetype(filetype: &str) -> String {
     filetype.trim().trim_start_matches('.').to_lowercase()
 }
 
+fn validate_python_source(text: &str) -> Option<String> {
+    validate_source_with_rules(text, SyntaxRules::python())
+}
+
+fn validate_javascript_source(text: &str) -> Option<String> {
+    validate_source_with_rules(text, SyntaxRules::javascript())
+}
+
+fn validate_source_with_rules(text: &str, rules: SyntaxRules) -> Option<String> {
+    let mut stack: Vec<(char, usize)> = Vec::new();
+    let bytes = text.as_bytes();
+    let mut index = 0usize;
+
+    while index < bytes.len() {
+        let current = bytes[index] as char;
+
+        if rules.allow_hash_comments && current == '#' {
+            index = line_end(text, index);
+            continue;
+        }
+
+        if rules.allow_block_comments && starts_with(text, index, "/*") {
+            match text[index + 2..].find("*/") {
+                Some(offset) => {
+                    index += offset + 4;
+                    continue;
+                }
+                None => {
+                    return Some(format!(
+                        "{} syntax error: block comment is not closed.",
+                        rules.language_name
+                    ));
+                }
+            }
+        }
+
+        if rules.allow_block_comments && starts_with(text, index, "//") {
+            index = line_end(text, index);
+            continue;
+        }
+
+        if rules.allow_backticks && current == '`' {
+            match consume_string(text, index, '`', true) {
+                Some(end) => {
+                    index = end;
+                    continue;
+                }
+                None => {
+                    return Some(format!(
+                        "{} syntax error: template string is not closed.",
+                        rules.language_name
+                    ));
+                }
+            }
+        }
+
+        if starts_with(text, index, "'''") || starts_with(text, index, "\"\"\"") {
+            let quote = if starts_with(text, index, "'''") {
+                "'''"
+            } else {
+                "\"\"\""
+            };
+            match consume_triple_string(text, index, quote) {
+                Some(end) => {
+                    index = end;
+                    continue;
+                }
+                None => {
+                    return Some(format!(
+                        "{} syntax error: string is not closed.",
+                        rules.language_name
+                    ));
+                }
+            }
+        }
+
+        if current == '\'' || current == '"' {
+            match consume_string(text, index, current, false) {
+                Some(end) => {
+                    index = end;
+                    continue;
+                }
+                None => {
+                    return Some(format!(
+                        "{} syntax error: string is not closed.",
+                        rules.language_name
+                    ));
+                }
+            }
+        }
+
+        if is_open_delimiter(current) {
+            stack.push((current, index));
+            index += 1;
+            continue;
+        }
+
+        if is_close_delimiter(current) {
+            let Some((opening, _opening_index)) = stack.pop() else {
+                return Some(format!(
+                    "{} syntax error: unexpected \"{}\".",
+                    rules.language_name, current
+                ));
+            };
+
+            if matching_closing(opening) != current {
+                return Some(format!(
+                    "{} syntax error: expected \"{}\" before \"{}\".",
+                    rules.language_name,
+                    matching_closing(opening),
+                    current
+                ));
+            }
+
+            index += 1;
+            continue;
+        }
+
+        index += 1;
+    }
+
+    if let Some((opening, _)) = stack.last().copied() {
+        return Some(format!(
+            "{} syntax error: missing \"{}\".",
+            rules.language_name,
+            matching_closing(opening)
+        ));
+    }
+
+    None
+}
+
+fn starts_with(text: &str, index: usize, pattern: &str) -> bool {
+    text.get(index..)
+        .is_some_and(|remaining| remaining.starts_with(pattern))
+}
+
+fn line_end(text: &str, index: usize) -> usize {
+    match text[index..].find('\n') {
+        Some(offset) => index + offset,
+        None => text.len(),
+    }
+}
+
+fn consume_string(text: &str, start: usize, quote: char, allow_multiline: bool) -> Option<usize> {
+    let mut escaped = false;
+    let mut index = start + quote.len_utf8();
+
+    while index < text.len() {
+        let current = text[index..].chars().next()?;
+        if !allow_multiline && current == '\n' {
+            return None;
+        }
+
+        if escaped {
+            escaped = false;
+            index += current.len_utf8();
+            continue;
+        }
+
+        if current == '\\' {
+            escaped = true;
+            index += current.len_utf8();
+            continue;
+        }
+
+        if current == quote {
+            return Some(index + current.len_utf8());
+        }
+
+        index += current.len_utf8();
+    }
+
+    None
+}
+
+fn consume_triple_string(text: &str, start: usize, quote: &str) -> Option<usize> {
+    let mut index = start + quote.len();
+    while index < text.len() {
+        if starts_with(text, index, quote) {
+            return Some(index + quote.len());
+        }
+        let current = text[index..].chars().next()?;
+        index += current.len_utf8();
+    }
+
+    None
+}
+
+fn is_open_delimiter(current: char) -> bool {
+    matches!(current, '(' | '{' | '[')
+}
+
+fn is_close_delimiter(current: char) -> bool {
+    matches!(current, ')' | '}' | ']')
+}
+
+fn matching_closing(current: char) -> char {
+    match current {
+        '(' => ')',
+        '{' => '}',
+        '[' => ']',
+        _ => current,
+    }
+}
+
+struct SyntaxRules {
+    language_name: &'static str,
+    allow_hash_comments: bool,
+    allow_block_comments: bool,
+    allow_backticks: bool,
+}
+
+impl SyntaxRules {
+    fn python() -> Self {
+        Self {
+            language_name: "Python",
+            allow_hash_comments: true,
+            allow_block_comments: false,
+            allow_backticks: false,
+        }
+    }
+
+    fn javascript() -> Self {
+        Self {
+            language_name: "JavaScript",
+            allow_hash_comments: false,
+            allow_block_comments: true,
+            allow_backticks: true,
+        }
+    }
+}
+
+fn filetype_for_path(path: &Path) -> Option<String> {
+    let extension = path.extension().and_then(|ext| ext.to_str())?;
+    let normalized = normalize_filetype(extension);
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized)
+    }
+}
+
+impl From<&ExtensionMeta> for ExtensionInfo {
+    fn from(value: &ExtensionMeta) -> Self {
+        Self {
+            name: value.name.clone(),
+            path: value.path.display().to_string(),
+            entry: value.entry.clone(),
+            filetypes: value.filetypes.clone(),
+            language_id: value.language_id.clone(),
+            lsp_executable: value.lsp_executable.clone(),
+        }
+    }
+}
+
 fn debug_log(message: String) {
     eprintln!("{message}");
     RUNTIME.lock().unwrap().logs.push(message);
@@ -366,7 +683,14 @@ mod tests {
         std::env::temp_dir().join(format!("goox-{label}-{nanos}"))
     }
 
-    fn write_config(dir: &Path, name: &str, entry: &str, filetypes: &[&str]) {
+    fn write_config(
+        dir: &Path,
+        name: &str,
+        entry: Option<&str>,
+        filetypes: &[&str],
+        language_id: Option<&str>,
+        lsp_executable: Option<&str>,
+    ) {
         fs::create_dir_all(dir).unwrap();
         let mut file = File::create(dir.join("config.json")).unwrap();
         let filetypes_json = filetypes
@@ -374,8 +698,14 @@ mod tests {
             .map(|filetype| format!("\"{filetype}\""))
             .collect::<Vec<_>>()
             .join(",");
+        let entry_json = entry.map_or(String::from("null"), |entry| format!(r#""{entry}""#));
+        let language_id_json = language_id.map_or(String::from("null"), |language_id| {
+            format!(r#""{language_id}""#)
+        });
+        let lsp_executable_json =
+            lsp_executable.map_or(String::from("null"), |lsp| format!(r#""{lsp}""#));
         let body = format!(
-            r#"{{"name":"{name}","entry":"{entry}","filetypes":[{filetypes_json}]}}"#
+            r#"{{"name":"{name}","entry":{entry_json},"filetypes":[{filetypes_json}],"language_id":{language_id_json},"lsp_executable":{lsp_executable_json}}}"#
         );
         file.write_all(body.as_bytes()).unwrap();
     }
@@ -387,12 +717,21 @@ mod tests {
         let global_plugin = global_root.join("pdf-viewer");
         let workspace_plugin = workspace_root.join(".goox/extensions/pdf-viewer");
 
-        write_config(&global_plugin, "pdf-viewer", "plugin.wasm", &["pdf"]);
+        write_config(
+            &global_plugin,
+            "pdf-viewer",
+            Some("plugin.wasm"),
+            &["pdf"],
+            None,
+            None,
+        );
         write_config(
             &workspace_plugin,
             "pdf-viewer",
-            "plugin.wasm",
+            Some("plugin.wasm"),
             &["pdf", "pdfa"],
+            None,
+            None,
         );
 
         let mut registry = ExtensionRegistry::default();
@@ -404,15 +743,41 @@ mod tests {
 
         let extension = registry.find_for_filetype("pdf").unwrap();
         assert_eq!(extension.path, workspace_plugin);
-        assert_eq!(extension.filetypes, vec!["pdf".to_string(), "pdfa".to_string()]);
+        assert_eq!(
+            extension.filetypes,
+            vec!["pdf".to_string(), "pdfa".to_string()]
+        );
+    }
+
+    #[test]
+    fn scans_metadata_only_language_extension() {
+        let workspace_root = unique_temp_dir("workspace-language");
+        let python_plugin = workspace_root.join(".goox/extensions/python");
+
+        write_config(
+            &python_plugin,
+            "python",
+            None,
+            &["py", "pyw"],
+            Some("python"),
+            Some("pyright-langserver"),
+        );
+
+        let registry = ExtensionRegistry::build(Some(&workspace_root));
+        let extension = registry.find_for_filetype("py").unwrap();
+        assert_eq!(extension.name, "python");
+        assert_eq!(extension.entry, None);
+        assert_eq!(extension.language_id.as_deref(), Some("python"));
+        assert_eq!(
+            extension.lsp_executable.as_deref(),
+            Some("pyright-langserver")
+        );
     }
 
     #[test]
     fn activates_sample_pdf_viewer_plugin() {
-        let workspace_root = fs::canonicalize(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        )
-        .expect("workspace root should exist");
+        let workspace_root = fs::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+            .expect("workspace root should exist");
         let pdf_path = workspace_root.join("sample.pdf");
 
         {
@@ -424,9 +789,7 @@ mod tests {
             runtime.logs.clear();
         }
 
-        assert!(refresh_workspace_extensions(
-            workspace_root.display().to_string(),
-        ) > 0);
+        assert!(refresh_workspace_extensions(workspace_root.display().to_string(),) > 0);
         assert!(activate_extension_for_file(
             workspace_root.display().to_string(),
             pdf_path.display().to_string(),

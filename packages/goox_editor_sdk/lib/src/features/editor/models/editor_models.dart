@@ -41,6 +41,32 @@ class ViewportLine {
 }
 
 @immutable
+class ActiveExtensionInfo {
+  const ActiveExtensionInfo({
+    required this.name,
+    required this.path,
+    required this.filetypes,
+    this.entry,
+    this.languageId,
+    this.lspExecutable,
+  });
+
+  factory ActiveExtensionInfo.empty() =>
+      const ActiveExtensionInfo(name: '', path: '', filetypes: []);
+
+  final String name;
+  final String path;
+  final String? entry;
+  final List<String> filetypes;
+  final String? languageId;
+  final String? lspExecutable;
+
+  bool get hasWasmEntry => entry != null && entry!.trim().isNotEmpty;
+
+  bool get isEmpty => name.isEmpty;
+}
+
+@immutable
 class EditorViewState {
   const EditorViewState({
     required this.revision,
@@ -56,6 +82,7 @@ class EditorViewState {
     required this.hasUndo,
     required this.hasRedo,
     required this.lastCommand,
+    required this.activeExtension,
   });
 
   factory EditorViewState.empty() => const EditorViewState(
@@ -72,6 +99,7 @@ class EditorViewState {
     hasUndo: false,
     hasRedo: false,
     lastCommand: 'idle',
+    activeExtension: null,
   );
 
   final int revision;
@@ -87,4 +115,5 @@ class EditorViewState {
   final bool hasUndo;
   final bool hasRedo;
   final String lastCommand;
+  final ActiveExtensionInfo? activeExtension;
 }

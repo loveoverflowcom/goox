@@ -6,732 +6,1339 @@
 import 'api.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'extensions.dart';
 import 'frb_generated.dart';
-import 'frb_generated.io.dart' if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'frb_generated.io.dart'
+    if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+/// Main entrypoint of the Rust API
+class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
+  @internal
+  static final instance = RustLib._();
 
-                /// Main entrypoint of the Rust API
-                class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
-                  @internal
-                  static final instance = RustLib._();
+  RustLib._();
 
-                  RustLib._();
+  /// Initialize flutter_rust_bridge
+  static Future<void> init({
+    RustLibApi? api,
+    BaseHandler? handler,
+    ExternalLibrary? externalLibrary,
+    bool forceSameCodegenVersion = true,
+  }) async {
+    await instance.initImpl(
+      api: api,
+      handler: handler,
+      externalLibrary: externalLibrary,
+      forceSameCodegenVersion: forceSameCodegenVersion,
+    );
+  }
 
-                  /// Initialize flutter_rust_bridge
-                  static Future<void> init({
-                    RustLibApi? api,
-                    BaseHandler? handler,
-                    ExternalLibrary? externalLibrary,
-                    bool forceSameCodegenVersion = true,
-                  }) async {
-                    await instance.initImpl(
-                      api: api,
-                      handler: handler,
-                      externalLibrary: externalLibrary,
-                      forceSameCodegenVersion: forceSameCodegenVersion,
-                    );
-                  }
+  /// Initialize flutter_rust_bridge in mock mode.
+  /// No libraries for FFI are loaded.
+  static void initMock({required RustLibApi api}) {
+    instance.initMockImpl(api: api);
+  }
 
-                  /// Initialize flutter_rust_bridge in mock mode.
-                  /// No libraries for FFI are loaded.
-                  static void initMock({
-                    required RustLibApi api,
-                  }) {
-                    instance.initMockImpl(
-                      api: api,
-                    );
-                  }
+  /// Dispose flutter_rust_bridge
+  ///
+  /// The call to this function is optional, since flutter_rust_bridge (and everything else)
+  /// is automatically disposed when the app stops.
+  static void dispose() => instance.disposeImpl();
 
-                  /// Dispose flutter_rust_bridge
-                  ///
-                  /// The call to this function is optional, since flutter_rust_bridge (and everything else)
-                  /// is automatically disposed when the app stops.
-                  static void dispose() => instance.disposeImpl();
+  @override
+  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor =>
+      RustLibApiImpl.new;
 
-                  @override
-                  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor => RustLibApiImpl.new;
+  @override
+  WireConstructor<RustLibWire> get wireConstructor =>
+      RustLibWire.fromExternalLibrary;
 
-                  @override
-                  WireConstructor<RustLibWire> get wireConstructor => RustLibWire.fromExternalLibrary;
+  @override
+  Future<void> executeRustInitializers() async {
+    await api.crateApiInitApp();
+  }
 
-                  @override
-                  Future<void> executeRustInitializers() async {
-                    await api.crateApiInitApp();
+  @override
+  ExternalLibraryLoaderConfig get defaultExternalLibraryLoaderConfig =>
+      kDefaultExternalLibraryLoaderConfig;
 
-                  }
+  @override
+  String get codegenVersion => '2.11.1';
 
-                  @override
-                  ExternalLibraryLoaderConfig get defaultExternalLibraryLoaderConfig => kDefaultExternalLibraryLoaderConfig;
+  @override
+  int get rustContentHash => 1635640340;
 
-                  @override
-                  String get codegenVersion => '2.11.1';
+  static const kDefaultExternalLibraryLoaderConfig =
+      ExternalLibraryLoaderConfig(
+        stem: 'goox_core',
+        ioDirectory: '../../core/engine/target/release/',
+        webPrefix: 'pkg/',
+      );
+}
 
-                  @override
-                  int get rustContentHash => 636796880;
+abstract class RustLibApi extends BaseApi {
+  Future<bool> crateApiActivateExtensionForFile({
+    required String workspaceRoot,
+    required String filePath,
+  });
 
-                  static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
-                    stem: 'goox_core',
-                    ioDirectory: '../../core/engine/target/release/',
-                    webPrefix: 'pkg/',
-                  );
-                }
-                
+  Future<BufferPatchBatch> crateApiApplyTransaction({
+    required BufferTransaction transaction,
+  });
 
-                abstract class RustLibApi extends BaseApi {
-                  Future<bool> crateApiActivateExtensionForFile({required String workspaceRoot , required String filePath });
+  Future<BufferPatchBatch> crateApiDeleteLine({required BigInt charIndex});
 
-Future<BufferPatchBatch> crateApiApplyTransaction({required BufferTransaction transaction });
+  Future<ExtensionInfo?> crateApiExtensionForFile({
+    required String workspaceRoot,
+    required String filePath,
+  });
 
-Future<BufferPatchBatch> crateApiDeleteLine({required BigInt charIndex });
+  Future<CursorPos> crateApiGetCursorPosition({required BigInt charIndex});
 
-Future<CursorPos> crateApiGetCursorPosition({required BigInt charIndex });
+  Future<BufferSnapshot> crateApiGetSnapshot();
 
-Future<BufferSnapshot> crateApiGetSnapshot();
+  Future<ViewportSnapshot> crateApiGetViewport({
+    required ViewportRequest request,
+  });
 
-Future<ViewportSnapshot> crateApiGetViewport({required ViewportRequest request });
+  Future<void> crateApiInitApp();
 
-Future<void> crateApiInitApp();
+  Future<BufferPatchBatch> crateApiRedo();
 
-Future<BufferPatchBatch> crateApiRedo();
+  Future<BigInt> crateApiRefreshWorkspaceExtensions({
+    required String workspaceRoot,
+  });
 
-Future<BigInt> crateApiRefreshWorkspaceExtensions({required String workspaceRoot });
+  Future<List<String>> crateApiRegisteredExtensionCommands();
 
-Future<List<String>> crateApiRegisteredExtensionCommands();
+  Future<void> crateApiSeedDocument({required String text});
 
-Future<void> crateApiSeedDocument({required String text });
+  Future<BufferPatchBatch> crateApiUndo();
 
-Future<BufferPatchBatch> crateApiUndo();
+  Future<String?> crateApiValidateSourceText({
+    required String languageId,
+    required String text,
+  });
+}
 
+class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
+  RustLibApiImpl({
+    required super.handler,
+    required super.wire,
+    required super.generalizedFrbRustBinding,
+    required super.portManager,
+  });
 
-                }
-                
-
-                class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
-                  RustLibApiImpl({
-                    required super.handler,
-                    required super.wire,
-                    required super.generalizedFrbRustBinding,
-                    required super.portManager,
-                  });
-
-                  @override Future<bool> crateApiActivateExtensionForFile({required String workspaceRoot , required String filePath })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(workspaceRoot, serializer);
-sse_encode_String(filePath, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<bool> crateApiActivateExtensionForFile({
+    required String workspaceRoot,
+    required String filePath,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(workspaceRoot, serializer);
+          sse_encode_String(filePath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
           decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateApiActivateExtensionForFileConstMeta,
-            argValues: [workspaceRoot, filePath],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiActivateExtensionForFileConstMeta,
+        argValues: [workspaceRoot, filePath],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiActivateExtensionForFileConstMeta =>
+      const TaskConstMeta(
+        debugName: "activate_extension_for_file",
+        argNames: ["workspaceRoot", "filePath"],
+      );
 
-        TaskConstMeta get kCrateApiActivateExtensionForFileConstMeta => const TaskConstMeta(
-            debugName: "activate_extension_for_file",
-            argNames: ["workspaceRoot", "filePath"],
-        );
-        
-
-@override Future<BufferPatchBatch> crateApiApplyTransaction({required BufferTransaction transaction })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_buffer_transaction(transaction, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<BufferPatchBatch> crateApiApplyTransaction({
+    required BufferTransaction transaction,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_buffer_transaction(transaction, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_buffer_patch_batch,
           decodeErrorData: sse_decode_buffer_error,
-        )
-        ,
-            constMeta: kCrateApiApplyTransactionConstMeta,
-            argValues: [transaction],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiApplyTransactionConstMeta,
+        argValues: [transaction],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiApplyTransactionConstMeta => const TaskConstMeta(
+    debugName: "apply_transaction",
+    argNames: ["transaction"],
+  );
 
-        TaskConstMeta get kCrateApiApplyTransactionConstMeta => const TaskConstMeta(
-            debugName: "apply_transaction",
-            argNames: ["transaction"],
-        );
-        
-
-@override Future<BufferPatchBatch> crateApiDeleteLine({required BigInt charIndex })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_usize(charIndex, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<BufferPatchBatch> crateApiDeleteLine({required BigInt charIndex}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_usize(charIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_buffer_patch_batch,
           decodeErrorData: sse_decode_buffer_error,
-        )
-        ,
-            constMeta: kCrateApiDeleteLineConstMeta,
-            argValues: [charIndex],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiDeleteLineConstMeta,
+        argValues: [charIndex],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiDeleteLineConstMeta =>
+      const TaskConstMeta(debugName: "delete_line", argNames: ["charIndex"]);
 
-        TaskConstMeta get kCrateApiDeleteLineConstMeta => const TaskConstMeta(
-            debugName: "delete_line",
-            argNames: ["charIndex"],
-        );
-        
+  @override
+  Future<ExtensionInfo?> crateApiExtensionForFile({
+    required String workspaceRoot,
+    required String filePath,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(workspaceRoot, serializer);
+          sse_encode_String(filePath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_extension_info,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiExtensionForFileConstMeta,
+        argValues: [workspaceRoot, filePath],
+        apiImpl: this,
+      ),
+    );
+  }
 
-@override Future<CursorPos> crateApiGetCursorPosition({required BigInt charIndex })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_usize(charIndex, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  TaskConstMeta get kCrateApiExtensionForFileConstMeta => const TaskConstMeta(
+    debugName: "extension_for_file",
+    argNames: ["workspaceRoot", "filePath"],
+  );
+
+  @override
+  Future<CursorPos> crateApiGetCursorPosition({required BigInt charIndex}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_usize(charIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_cursor_pos,
           decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateApiGetCursorPositionConstMeta,
-            argValues: [charIndex],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiGetCursorPositionConstMeta,
+        argValues: [charIndex],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiGetCursorPositionConstMeta => const TaskConstMeta(
+    debugName: "get_cursor_position",
+    argNames: ["charIndex"],
+  );
 
-        TaskConstMeta get kCrateApiGetCursorPositionConstMeta => const TaskConstMeta(
-            debugName: "get_cursor_position",
-            argNames: ["charIndex"],
-        );
-        
-
-@override Future<BufferSnapshot> crateApiGetSnapshot()  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<BufferSnapshot> crateApiGetSnapshot() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_buffer_snapshot,
           decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateApiGetSnapshotConstMeta,
-            argValues: [],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiGetSnapshotConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiGetSnapshotConstMeta =>
+      const TaskConstMeta(debugName: "get_snapshot", argNames: []);
 
-        TaskConstMeta get kCrateApiGetSnapshotConstMeta => const TaskConstMeta(
-            debugName: "get_snapshot",
-            argNames: [],
-        );
-        
-
-@override Future<ViewportSnapshot> crateApiGetViewport({required ViewportRequest request })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_viewport_request(request, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<ViewportSnapshot> crateApiGetViewport({
+    required ViewportRequest request,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_viewport_request(request, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_viewport_snapshot,
           decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateApiGetViewportConstMeta,
-            argValues: [request],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiGetViewportConstMeta,
+        argValues: [request],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiGetViewportConstMeta =>
+      const TaskConstMeta(debugName: "get_viewport", argNames: ["request"]);
 
-        TaskConstMeta get kCrateApiGetViewportConstMeta => const TaskConstMeta(
-            debugName: "get_viewport",
-            argNames: ["request"],
-        );
-        
-
-@override Future<void> crateApiInitApp()  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<void> crateApiInitApp() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateApiInitAppConstMeta,
-            argValues: [],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiInitAppConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiInitAppConstMeta =>
+      const TaskConstMeta(debugName: "init_app", argNames: []);
 
-        TaskConstMeta get kCrateApiInitAppConstMeta => const TaskConstMeta(
-            debugName: "init_app",
-            argNames: [],
-        );
-        
-
-@override Future<BufferPatchBatch> crateApiRedo()  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<BufferPatchBatch> crateApiRedo() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_buffer_patch_batch,
           decodeErrorData: sse_decode_buffer_error,
-        )
-        ,
-            constMeta: kCrateApiRedoConstMeta,
-            argValues: [],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiRedoConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiRedoConstMeta =>
+      const TaskConstMeta(debugName: "redo", argNames: []);
 
-        TaskConstMeta get kCrateApiRedoConstMeta => const TaskConstMeta(
-            debugName: "redo",
-            argNames: [],
-        );
-        
-
-@override Future<BigInt> crateApiRefreshWorkspaceExtensions({required String workspaceRoot })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(workspaceRoot, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<BigInt> crateApiRefreshWorkspaceExtensions({
+    required String workspaceRoot,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(workspaceRoot, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_usize,
           decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateApiRefreshWorkspaceExtensionsConstMeta,
-            argValues: [workspaceRoot],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiRefreshWorkspaceExtensionsConstMeta,
+        argValues: [workspaceRoot],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiRefreshWorkspaceExtensionsConstMeta =>
+      const TaskConstMeta(
+        debugName: "refresh_workspace_extensions",
+        argNames: ["workspaceRoot"],
+      );
 
-        TaskConstMeta get kCrateApiRefreshWorkspaceExtensionsConstMeta => const TaskConstMeta(
-            debugName: "refresh_workspace_extensions",
-            argNames: ["workspaceRoot"],
-        );
-        
-
-@override Future<List<String>> crateApiRegisteredExtensionCommands()  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<List<String>> crateApiRegisteredExtensionCommands() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_list_String,
           decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateApiRegisteredExtensionCommandsConstMeta,
-            argValues: [],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiRegisteredExtensionCommandsConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiRegisteredExtensionCommandsConstMeta =>
+      const TaskConstMeta(
+        debugName: "registered_extension_commands",
+        argNames: [],
+      );
 
-        TaskConstMeta get kCrateApiRegisteredExtensionCommandsConstMeta => const TaskConstMeta(
-            debugName: "registered_extension_commands",
-            argNames: [],
-        );
-        
-
-@override Future<void> crateApiSeedDocument({required String text })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(text, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<void> crateApiSeedDocument({required String text}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(text, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateApiSeedDocumentConstMeta,
-            argValues: [text],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiSeedDocumentConstMeta,
+        argValues: [text],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiSeedDocumentConstMeta =>
+      const TaskConstMeta(debugName: "seed_document", argNames: ["text"]);
 
-        TaskConstMeta get kCrateApiSeedDocumentConstMeta => const TaskConstMeta(
-            debugName: "seed_document",
-            argNames: ["text"],
-        );
-        
-
-@override Future<BufferPatchBatch> crateApiUndo()  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
+  @override
+  Future<BufferPatchBatch> crateApiUndo() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_buffer_patch_batch,
           decodeErrorData: sse_decode_buffer_error,
-        )
-        ,
-            constMeta: kCrateApiUndoConstMeta,
-            argValues: [],
-            apiImpl: this,
-        )); }
+        ),
+        constMeta: kCrateApiUndoConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
 
+  TaskConstMeta get kCrateApiUndoConstMeta =>
+      const TaskConstMeta(debugName: "undo", argNames: []);
 
-        TaskConstMeta get kCrateApiUndoConstMeta => const TaskConstMeta(
-            debugName: "undo",
-            argNames: [],
+  @override
+  Future<String?> crateApiValidateSourceText({
+    required String languageId,
+    required String text,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(languageId, serializer);
+          sse_encode_String(text, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiValidateSourceTextConstMeta,
+        argValues: [languageId, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiValidateSourceTextConstMeta => const TaskConstMeta(
+    debugName: "validate_source_text",
+    argNames: ["languageId", "text"],
+  );
+
+  @protected
+  String dco_decode_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as String;
+  }
+
+  @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  BufferTransaction dco_decode_box_autoadd_buffer_transaction(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_buffer_transaction(raw);
+  }
+
+  @protected
+  ExtensionInfo dco_decode_box_autoadd_extension_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_extension_info(raw);
+  }
+
+  @protected
+  ViewportRequest dco_decode_box_autoadd_viewport_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_viewport_request(raw);
+  }
+
+  @protected
+  BufferError dco_decode_buffer_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return BufferError_EmptyTransaction();
+      case 1:
+        return BufferError_InvalidInsertPosition(
+          charIndex: dco_decode_usize(raw[1]),
+          lenChars: dco_decode_usize(raw[2]),
         );
-        
-
-
-
-                  @protected String dco_decode_String(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return raw as String; }
-
-@protected bool dco_decode_bool(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return raw as bool; }
-
-@protected BufferTransaction dco_decode_box_autoadd_buffer_transaction(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return dco_decode_buffer_transaction(raw); }
-
-@protected ViewportRequest dco_decode_box_autoadd_viewport_request(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return dco_decode_viewport_request(raw); }
-
-@protected BufferError dco_decode_buffer_error(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-switch (raw[0]) {
-                case 0: return BufferError_EmptyTransaction();
-case 1: return BufferError_InvalidInsertPosition(charIndex: dco_decode_usize(raw[1]),lenChars: dco_decode_usize(raw[2]),);
-case 2: return BufferError_InvalidDeleteRange(start: dco_decode_usize(raw[1]),end: dco_decode_usize(raw[2]),lenChars: dco_decode_usize(raw[3]),);
-case 3: return BufferError_NoUndoEntry();
-case 4: return BufferError_NoRedoEntry();
-                default: throw Exception("unreachable");
-            } }
-
-@protected BufferOperation dco_decode_buffer_operation(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-switch (raw[0]) {
-                case 0: return BufferOperation_Insert(charIndex: dco_decode_usize(raw[1]),text: dco_decode_String(raw[2]),);
-case 1: return BufferOperation_Delete(start: dco_decode_usize(raw[1]),end: dco_decode_usize(raw[2]),);
-                default: throw Exception("unreachable");
-            } }
-
-@protected BufferPatchBatch dco_decode_buffer_patch_batch(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-final arr = raw as List<dynamic>;
-                if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-                return BufferPatchBatch(revision: dco_decode_u_64(arr[0]),
-label: dco_decode_String(arr[1]),
-patches: dco_decode_list_buffer_operation(arr[2]),); }
-
-@protected BufferSnapshot dco_decode_buffer_snapshot(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-final arr = raw as List<dynamic>;
-                if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-                return BufferSnapshot(revision: dco_decode_u_64(arr[0]),
-lineCount: dco_decode_usize(arr[1]),
-charCount: dco_decode_usize(arr[2]),); }
-
-@protected BufferTransaction dco_decode_buffer_transaction(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-final arr = raw as List<dynamic>;
-                if (arr.length != 3) throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-                return BufferTransaction(operations: dco_decode_list_buffer_operation(arr[0]),
-mergeable: dco_decode_bool(arr[1]),
-label: dco_decode_String(arr[2]),); }
-
-@protected CursorPos dco_decode_cursor_pos(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-final arr = raw as List<dynamic>;
-                if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-                return CursorPos(line: dco_decode_usize(arr[0]),
-column: dco_decode_usize(arr[1]),); }
-
-@protected List<String> dco_decode_list_String(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return (raw as List<dynamic>).map(dco_decode_String).toList(); }
-
-@protected List<BufferOperation> dco_decode_list_buffer_operation(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return (raw as List<dynamic>).map(dco_decode_buffer_operation).toList(); }
-
-@protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return raw as Uint8List; }
-
-@protected List<ViewportLine> dco_decode_list_viewport_line(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return (raw as List<dynamic>).map(dco_decode_viewport_line).toList(); }
-
-@protected BigInt dco_decode_u_64(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return dcoDecodeU64(raw); }
-
-@protected int dco_decode_u_8(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return raw as int; }
-
-@protected void dco_decode_unit(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return; }
-
-@protected BigInt dco_decode_usize(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return dcoDecodeU64(raw); }
-
-@protected ViewportLine dco_decode_viewport_line(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-final arr = raw as List<dynamic>;
-                if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-                return ViewportLine(lineIndex: dco_decode_usize(arr[0]),
-text: dco_decode_String(arr[1]),); }
-
-@protected ViewportRequest dco_decode_viewport_request(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-final arr = raw as List<dynamic>;
-                if (arr.length != 2) throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-                return ViewportRequest(firstLine: dco_decode_usize(arr[0]),
-maxLines: dco_decode_usize(arr[1]),); }
-
-@protected ViewportSnapshot dco_decode_viewport_snapshot(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-final arr = raw as List<dynamic>;
-                if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-                return ViewportSnapshot(revision: dco_decode_u_64(arr[0]),
-firstVisibleLine: dco_decode_usize(arr[1]),
-totalLines: dco_decode_usize(arr[2]),
-lines: dco_decode_list_viewport_line(arr[3]),); }
-
-@protected String sse_decode_String(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var inner = sse_decode_list_prim_u_8_strict(deserializer);
-        return utf8.decoder.convert(inner); }
-
-@protected bool sse_decode_bool(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return deserializer.buffer.getUint8() != 0; }
-
-@protected BufferTransaction sse_decode_box_autoadd_buffer_transaction(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return (sse_decode_buffer_transaction(deserializer)); }
-
-@protected ViewportRequest sse_decode_box_autoadd_viewport_request(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return (sse_decode_viewport_request(deserializer)); }
-
-@protected BufferError sse_decode_buffer_error(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-
-            var tag_ = sse_decode_i_32(deserializer);
-            switch (tag_) { case 0: return BufferError_EmptyTransaction();case 1: var var_charIndex = sse_decode_usize(deserializer);
-var var_lenChars = sse_decode_usize(deserializer);
-return BufferError_InvalidInsertPosition(charIndex: var_charIndex, lenChars: var_lenChars);case 2: var var_start = sse_decode_usize(deserializer);
-var var_end = sse_decode_usize(deserializer);
-var var_lenChars = sse_decode_usize(deserializer);
-return BufferError_InvalidDeleteRange(start: var_start, end: var_end, lenChars: var_lenChars);case 3: return BufferError_NoUndoEntry();case 4: return BufferError_NoRedoEntry(); default: throw UnimplementedError(''); }
-             }
-
-@protected BufferOperation sse_decode_buffer_operation(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-
-            var tag_ = sse_decode_i_32(deserializer);
-            switch (tag_) { case 0: var var_charIndex = sse_decode_usize(deserializer);
-var var_text = sse_decode_String(deserializer);
-return BufferOperation_Insert(charIndex: var_charIndex, text: var_text);case 1: var var_start = sse_decode_usize(deserializer);
-var var_end = sse_decode_usize(deserializer);
-return BufferOperation_Delete(start: var_start, end: var_end); default: throw UnimplementedError(''); }
-             }
-
-@protected BufferPatchBatch sse_decode_buffer_patch_batch(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var var_revision = sse_decode_u_64(deserializer);
-var var_label = sse_decode_String(deserializer);
-var var_patches = sse_decode_list_buffer_operation(deserializer);
-return BufferPatchBatch(revision: var_revision, label: var_label, patches: var_patches); }
-
-@protected BufferSnapshot sse_decode_buffer_snapshot(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var var_revision = sse_decode_u_64(deserializer);
-var var_lineCount = sse_decode_usize(deserializer);
-var var_charCount = sse_decode_usize(deserializer);
-return BufferSnapshot(revision: var_revision, lineCount: var_lineCount, charCount: var_charCount); }
-
-@protected BufferTransaction sse_decode_buffer_transaction(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var var_operations = sse_decode_list_buffer_operation(deserializer);
-var var_mergeable = sse_decode_bool(deserializer);
-var var_label = sse_decode_String(deserializer);
-return BufferTransaction(operations: var_operations, mergeable: var_mergeable, label: var_label); }
-
-@protected CursorPos sse_decode_cursor_pos(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var var_line = sse_decode_usize(deserializer);
-var var_column = sse_decode_usize(deserializer);
-return CursorPos(line: var_line, column: var_column); }
-
-@protected List<String> sse_decode_list_String(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-
-        var len_ = sse_decode_i_32(deserializer);
-        var ans_ = <String>[];
-        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_String(deserializer)); }
-        return ans_;
-         }
-
-@protected List<BufferOperation> sse_decode_list_buffer_operation(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-
-        var len_ = sse_decode_i_32(deserializer);
-        var ans_ = <BufferOperation>[];
-        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_buffer_operation(deserializer)); }
-        return ans_;
-         }
-
-@protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var len_ = sse_decode_i_32(deserializer);
-                return deserializer.buffer.getUint8List(len_); }
-
-@protected List<ViewportLine> sse_decode_list_viewport_line(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-
-        var len_ = sse_decode_i_32(deserializer);
-        var ans_ = <ViewportLine>[];
-        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_viewport_line(deserializer)); }
-        return ans_;
-         }
-
-@protected BigInt sse_decode_u_64(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return deserializer.buffer.getBigUint64(); }
-
-@protected int sse_decode_u_8(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return deserializer.buffer.getUint8(); }
-
-@protected void sse_decode_unit(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
- }
-
-@protected BigInt sse_decode_usize(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return deserializer.buffer.getBigUint64(); }
-
-@protected ViewportLine sse_decode_viewport_line(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var var_lineIndex = sse_decode_usize(deserializer);
-var var_text = sse_decode_String(deserializer);
-return ViewportLine(lineIndex: var_lineIndex, text: var_text); }
-
-@protected ViewportRequest sse_decode_viewport_request(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var var_firstLine = sse_decode_usize(deserializer);
-var var_maxLines = sse_decode_usize(deserializer);
-return ViewportRequest(firstLine: var_firstLine, maxLines: var_maxLines); }
-
-@protected ViewportSnapshot sse_decode_viewport_snapshot(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var var_revision = sse_decode_u_64(deserializer);
-var var_firstVisibleLine = sse_decode_usize(deserializer);
-var var_totalLines = sse_decode_usize(deserializer);
-var var_lines = sse_decode_list_viewport_line(deserializer);
-return ViewportSnapshot(revision: var_revision, firstVisibleLine: var_firstVisibleLine, totalLines: var_totalLines, lines: var_lines); }
-
-@protected int sse_decode_i_32(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return deserializer.buffer.getInt32(); }
-
-@protected void sse_encode_String(String self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer); }
-
-@protected void sse_encode_bool(bool self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-serializer.buffer.putUint8(self ? 1 : 0); }
-
-@protected void sse_encode_box_autoadd_buffer_transaction(BufferTransaction self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_buffer_transaction(self, serializer); }
-
-@protected void sse_encode_box_autoadd_viewport_request(ViewportRequest self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_viewport_request(self, serializer); }
-
-@protected void sse_encode_buffer_error(BufferError self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-switch (self) { case BufferError_EmptyTransaction(): sse_encode_i_32(0, serializer); case BufferError_InvalidInsertPosition(charIndex: final charIndex,lenChars: final lenChars): sse_encode_i_32(1, serializer); sse_encode_usize(charIndex, serializer);
-sse_encode_usize(lenChars, serializer);
-case BufferError_InvalidDeleteRange(start: final start,end: final end,lenChars: final lenChars): sse_encode_i_32(2, serializer); sse_encode_usize(start, serializer);
-sse_encode_usize(end, serializer);
-sse_encode_usize(lenChars, serializer);
-case BufferError_NoUndoEntry(): sse_encode_i_32(3, serializer); case BufferError_NoRedoEntry(): sse_encode_i_32(4, serializer);   } }
-
-@protected void sse_encode_buffer_operation(BufferOperation self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-switch (self) { case BufferOperation_Insert(charIndex: final charIndex,text: final text): sse_encode_i_32(0, serializer); sse_encode_usize(charIndex, serializer);
-sse_encode_String(text, serializer);
-case BufferOperation_Delete(start: final start,end: final end): sse_encode_i_32(1, serializer); sse_encode_usize(start, serializer);
-sse_encode_usize(end, serializer);
-  } }
-
-@protected void sse_encode_buffer_patch_batch(BufferPatchBatch self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_u_64(self.revision, serializer);
-sse_encode_String(self.label, serializer);
-sse_encode_list_buffer_operation(self.patches, serializer);
- }
-
-@protected void sse_encode_buffer_snapshot(BufferSnapshot self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_u_64(self.revision, serializer);
-sse_encode_usize(self.lineCount, serializer);
-sse_encode_usize(self.charCount, serializer);
- }
-
-@protected void sse_encode_buffer_transaction(BufferTransaction self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_list_buffer_operation(self.operations, serializer);
-sse_encode_bool(self.mergeable, serializer);
-sse_encode_String(self.label, serializer);
- }
-
-@protected void sse_encode_cursor_pos(CursorPos self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize(self.line, serializer);
-sse_encode_usize(self.column, serializer);
- }
-
-@protected void sse_encode_list_String(List<String> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_i_32(self.length, serializer);
-        for (final item in self) { sse_encode_String(item, serializer); } }
-
-@protected void sse_encode_list_buffer_operation(List<BufferOperation> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_i_32(self.length, serializer);
-        for (final item in self) { sse_encode_buffer_operation(item, serializer); } }
-
-@protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_i_32(self.length, serializer);
-                    serializer.buffer.putUint8List(self); }
-
-@protected void sse_encode_list_viewport_line(List<ViewportLine> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_i_32(self.length, serializer);
-        for (final item in self) { sse_encode_viewport_line(item, serializer); } }
-
-@protected void sse_encode_u_64(BigInt self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-serializer.buffer.putBigUint64(self); }
-
-@protected void sse_encode_u_8(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-serializer.buffer.putUint8(self); }
-
-@protected void sse_encode_unit(void self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
- }
-
-@protected void sse_encode_usize(BigInt self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-serializer.buffer.putBigUint64(self); }
-
-@protected void sse_encode_viewport_line(ViewportLine self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize(self.lineIndex, serializer);
-sse_encode_String(self.text, serializer);
- }
-
-@protected void sse_encode_viewport_request(ViewportRequest self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize(self.firstLine, serializer);
-sse_encode_usize(self.maxLines, serializer);
- }
-
-@protected void sse_encode_viewport_snapshot(ViewportSnapshot self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_u_64(self.revision, serializer);
-sse_encode_usize(self.firstVisibleLine, serializer);
-sse_encode_usize(self.totalLines, serializer);
-sse_encode_list_viewport_line(self.lines, serializer);
- }
-
-@protected void sse_encode_i_32(int self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-serializer.buffer.putInt32(self); }
-                }
-                
+      case 2:
+        return BufferError_InvalidDeleteRange(
+          start: dco_decode_usize(raw[1]),
+          end: dco_decode_usize(raw[2]),
+          lenChars: dco_decode_usize(raw[3]),
+        );
+      case 3:
+        return BufferError_NoUndoEntry();
+      case 4:
+        return BufferError_NoRedoEntry();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  BufferOperation dco_decode_buffer_operation(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return BufferOperation_Insert(
+          charIndex: dco_decode_usize(raw[1]),
+          text: dco_decode_String(raw[2]),
+        );
+      case 1:
+        return BufferOperation_Delete(
+          start: dco_decode_usize(raw[1]),
+          end: dco_decode_usize(raw[2]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  BufferPatchBatch dco_decode_buffer_patch_batch(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return BufferPatchBatch(
+      revision: dco_decode_u_64(arr[0]),
+      label: dco_decode_String(arr[1]),
+      patches: dco_decode_list_buffer_operation(arr[2]),
+    );
+  }
+
+  @protected
+  BufferSnapshot dco_decode_buffer_snapshot(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return BufferSnapshot(
+      revision: dco_decode_u_64(arr[0]),
+      lineCount: dco_decode_usize(arr[1]),
+      charCount: dco_decode_usize(arr[2]),
+    );
+  }
+
+  @protected
+  BufferTransaction dco_decode_buffer_transaction(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return BufferTransaction(
+      operations: dco_decode_list_buffer_operation(arr[0]),
+      mergeable: dco_decode_bool(arr[1]),
+      label: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  CursorPos dco_decode_cursor_pos(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return CursorPos(
+      line: dco_decode_usize(arr[0]),
+      column: dco_decode_usize(arr[1]),
+    );
+  }
+
+  @protected
+  ExtensionInfo dco_decode_extension_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return ExtensionInfo(
+      name: dco_decode_String(arr[0]),
+      path: dco_decode_String(arr[1]),
+      entry: dco_decode_opt_String(arr[2]),
+      filetypes: dco_decode_list_String(arr[3]),
+      languageId: dco_decode_opt_String(arr[4]),
+      lspExecutable: dco_decode_opt_String(arr[5]),
+    );
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<BufferOperation> dco_decode_list_buffer_operation(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_buffer_operation).toList();
+  }
+
+  @protected
+  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as Uint8List;
+  }
+
+  @protected
+  List<ViewportLine> dco_decode_list_viewport_line(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_viewport_line).toList();
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  ExtensionInfo? dco_decode_opt_box_autoadd_extension_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_extension_info(raw);
+  }
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
+  int dco_decode_u_8(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  void dco_decode_unit(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return;
+  }
+
+  @protected
+  BigInt dco_decode_usize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
+  ViewportLine dco_decode_viewport_line(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ViewportLine(
+      lineIndex: dco_decode_usize(arr[0]),
+      text: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  ViewportRequest dco_decode_viewport_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ViewportRequest(
+      firstLine: dco_decode_usize(arr[0]),
+      maxLines: dco_decode_usize(arr[1]),
+    );
+  }
+
+  @protected
+  ViewportSnapshot dco_decode_viewport_snapshot(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ViewportSnapshot(
+      revision: dco_decode_u_64(arr[0]),
+      firstVisibleLine: dco_decode_usize(arr[1]),
+      totalLines: dco_decode_usize(arr[2]),
+      lines: dco_decode_list_viewport_line(arr[3]),
+    );
+  }
+
+  @protected
+  String sse_decode_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_prim_u_8_strict(deserializer);
+    return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  BufferTransaction sse_decode_box_autoadd_buffer_transaction(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_buffer_transaction(deserializer));
+  }
+
+  @protected
+  ExtensionInfo sse_decode_box_autoadd_extension_info(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_extension_info(deserializer));
+  }
+
+  @protected
+  ViewportRequest sse_decode_box_autoadd_viewport_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_viewport_request(deserializer));
+  }
+
+  @protected
+  BufferError sse_decode_buffer_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        return BufferError_EmptyTransaction();
+      case 1:
+        var var_charIndex = sse_decode_usize(deserializer);
+        var var_lenChars = sse_decode_usize(deserializer);
+        return BufferError_InvalidInsertPosition(
+          charIndex: var_charIndex,
+          lenChars: var_lenChars,
+        );
+      case 2:
+        var var_start = sse_decode_usize(deserializer);
+        var var_end = sse_decode_usize(deserializer);
+        var var_lenChars = sse_decode_usize(deserializer);
+        return BufferError_InvalidDeleteRange(
+          start: var_start,
+          end: var_end,
+          lenChars: var_lenChars,
+        );
+      case 3:
+        return BufferError_NoUndoEntry();
+      case 4:
+        return BufferError_NoRedoEntry();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  BufferOperation sse_decode_buffer_operation(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_charIndex = sse_decode_usize(deserializer);
+        var var_text = sse_decode_String(deserializer);
+        return BufferOperation_Insert(charIndex: var_charIndex, text: var_text);
+      case 1:
+        var var_start = sse_decode_usize(deserializer);
+        var var_end = sse_decode_usize(deserializer);
+        return BufferOperation_Delete(start: var_start, end: var_end);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  BufferPatchBatch sse_decode_buffer_patch_batch(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_revision = sse_decode_u_64(deserializer);
+    var var_label = sse_decode_String(deserializer);
+    var var_patches = sse_decode_list_buffer_operation(deserializer);
+    return BufferPatchBatch(
+      revision: var_revision,
+      label: var_label,
+      patches: var_patches,
+    );
+  }
+
+  @protected
+  BufferSnapshot sse_decode_buffer_snapshot(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_revision = sse_decode_u_64(deserializer);
+    var var_lineCount = sse_decode_usize(deserializer);
+    var var_charCount = sse_decode_usize(deserializer);
+    return BufferSnapshot(
+      revision: var_revision,
+      lineCount: var_lineCount,
+      charCount: var_charCount,
+    );
+  }
+
+  @protected
+  BufferTransaction sse_decode_buffer_transaction(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_operations = sse_decode_list_buffer_operation(deserializer);
+    var var_mergeable = sse_decode_bool(deserializer);
+    var var_label = sse_decode_String(deserializer);
+    return BufferTransaction(
+      operations: var_operations,
+      mergeable: var_mergeable,
+      label: var_label,
+    );
+  }
+
+  @protected
+  CursorPos sse_decode_cursor_pos(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_line = sse_decode_usize(deserializer);
+    var var_column = sse_decode_usize(deserializer);
+    return CursorPos(line: var_line, column: var_column);
+  }
+
+  @protected
+  ExtensionInfo sse_decode_extension_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_path = sse_decode_String(deserializer);
+    var var_entry = sse_decode_opt_String(deserializer);
+    var var_filetypes = sse_decode_list_String(deserializer);
+    var var_languageId = sse_decode_opt_String(deserializer);
+    var var_lspExecutable = sse_decode_opt_String(deserializer);
+    return ExtensionInfo(
+      name: var_name,
+      path: var_path,
+      entry: var_entry,
+      filetypes: var_filetypes,
+      languageId: var_languageId,
+      lspExecutable: var_lspExecutable,
+    );
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<BufferOperation> sse_decode_list_buffer_operation(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <BufferOperation>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_buffer_operation(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<ViewportLine> sse_decode_list_viewport_line(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ViewportLine>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_viewport_line(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ExtensionInfo? sse_decode_opt_box_autoadd_extension_info(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_extension_info(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
+  int sse_decode_u_8(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8();
+  }
+
+  @protected
+  void sse_decode_unit(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
+  ViewportLine sse_decode_viewport_line(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_lineIndex = sse_decode_usize(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    return ViewportLine(lineIndex: var_lineIndex, text: var_text);
+  }
+
+  @protected
+  ViewportRequest sse_decode_viewport_request(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_firstLine = sse_decode_usize(deserializer);
+    var var_maxLines = sse_decode_usize(deserializer);
+    return ViewportRequest(firstLine: var_firstLine, maxLines: var_maxLines);
+  }
+
+  @protected
+  ViewportSnapshot sse_decode_viewport_snapshot(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_revision = sse_decode_u_64(deserializer);
+    var var_firstVisibleLine = sse_decode_usize(deserializer);
+    var var_totalLines = sse_decode_usize(deserializer);
+    var var_lines = sse_decode_list_viewport_line(deserializer);
+    return ViewportSnapshot(
+      revision: var_revision,
+      firstVisibleLine: var_firstVisibleLine,
+      totalLines: var_totalLines,
+      lines: var_lines,
+    );
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  void sse_encode_String(String self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_buffer_transaction(
+    BufferTransaction self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_buffer_transaction(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_extension_info(
+    ExtensionInfo self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_extension_info(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_viewport_request(
+    ViewportRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_viewport_request(self, serializer);
+  }
+
+  @protected
+  void sse_encode_buffer_error(BufferError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case BufferError_EmptyTransaction():
+        sse_encode_i_32(0, serializer);
+      case BufferError_InvalidInsertPosition(
+        charIndex: final charIndex,
+        lenChars: final lenChars,
+      ):
+        sse_encode_i_32(1, serializer);
+        sse_encode_usize(charIndex, serializer);
+        sse_encode_usize(lenChars, serializer);
+      case BufferError_InvalidDeleteRange(
+        start: final start,
+        end: final end,
+        lenChars: final lenChars,
+      ):
+        sse_encode_i_32(2, serializer);
+        sse_encode_usize(start, serializer);
+        sse_encode_usize(end, serializer);
+        sse_encode_usize(lenChars, serializer);
+      case BufferError_NoUndoEntry():
+        sse_encode_i_32(3, serializer);
+      case BufferError_NoRedoEntry():
+        sse_encode_i_32(4, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_buffer_operation(
+    BufferOperation self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case BufferOperation_Insert(charIndex: final charIndex, text: final text):
+        sse_encode_i_32(0, serializer);
+        sse_encode_usize(charIndex, serializer);
+        sse_encode_String(text, serializer);
+      case BufferOperation_Delete(start: final start, end: final end):
+        sse_encode_i_32(1, serializer);
+        sse_encode_usize(start, serializer);
+        sse_encode_usize(end, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_buffer_patch_batch(
+    BufferPatchBatch self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.revision, serializer);
+    sse_encode_String(self.label, serializer);
+    sse_encode_list_buffer_operation(self.patches, serializer);
+  }
+
+  @protected
+  void sse_encode_buffer_snapshot(
+    BufferSnapshot self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.revision, serializer);
+    sse_encode_usize(self.lineCount, serializer);
+    sse_encode_usize(self.charCount, serializer);
+  }
+
+  @protected
+  void sse_encode_buffer_transaction(
+    BufferTransaction self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_buffer_operation(self.operations, serializer);
+    sse_encode_bool(self.mergeable, serializer);
+    sse_encode_String(self.label, serializer);
+  }
+
+  @protected
+  void sse_encode_cursor_pos(CursorPos self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.line, serializer);
+    sse_encode_usize(self.column, serializer);
+  }
+
+  @protected
+  void sse_encode_extension_info(ExtensionInfo self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.path, serializer);
+    sse_encode_opt_String(self.entry, serializer);
+    sse_encode_list_String(self.filetypes, serializer);
+    sse_encode_opt_String(self.languageId, serializer);
+    sse_encode_opt_String(self.lspExecutable, serializer);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_buffer_operation(
+    List<BufferOperation> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_buffer_operation(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_prim_u_8_strict(
+    Uint8List self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_list_viewport_line(
+    List<ViewportLine> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_viewport_line(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_extension_info(
+    ExtensionInfo? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_extension_info(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
+  }
+
+  @protected
+  void sse_encode_u_8(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self);
+  }
+
+  @protected
+  void sse_encode_unit(void self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
+  }
+
+  @protected
+  void sse_encode_viewport_line(ViewportLine self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.lineIndex, serializer);
+    sse_encode_String(self.text, serializer);
+  }
+
+  @protected
+  void sse_encode_viewport_request(
+    ViewportRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.firstLine, serializer);
+    sse_encode_usize(self.maxLines, serializer);
+  }
+
+  @protected
+  void sse_encode_viewport_snapshot(
+    ViewportSnapshot self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.revision, serializer);
+    sse_encode_usize(self.firstVisibleLine, serializer);
+    sse_encode_usize(self.totalLines, serializer);
+    sse_encode_list_viewport_line(self.lines, serializer);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
+  }
+}

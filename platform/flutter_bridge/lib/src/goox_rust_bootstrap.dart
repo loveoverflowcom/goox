@@ -5,6 +5,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:path/path.dart' as path;
 
 import 'raw_bridge/api.dart' as bridge_api;
+import 'raw_bridge/extensions.dart' as bridge_types;
 import 'raw_bridge/frb_generated.dart';
 
 final class GooxRustBootstrap {
@@ -45,9 +46,7 @@ final class GooxRustBootstrap {
       return;
     }
 
-    await bridge_api.refreshWorkspaceExtensions(
-      workspaceRoot: workspaceRoot,
-    );
+    await bridge_api.refreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
   }
 
   static Future<bool> activateExtensionForFile({
@@ -62,6 +61,31 @@ final class GooxRustBootstrap {
       workspaceRoot: workspaceRoot,
       filePath: filePath,
     );
+  }
+
+  static Future<bridge_types.ExtensionInfo?> resolveExtensionForFile({
+    required String workspaceRoot,
+    required String filePath,
+  }) async {
+    if (!_initialized) {
+      await ensureInitialized(workspaceRoot: workspaceRoot);
+    }
+
+    return bridge_api.extensionForFile(
+      workspaceRoot: workspaceRoot,
+      filePath: filePath,
+    );
+  }
+
+  static Future<String?> validateSourceText({
+    required String languageId,
+    required String text,
+  }) async {
+    if (!_initialized) {
+      await ensureInitialized();
+    }
+
+    return bridge_api.validateSourceText(languageId: languageId, text: text);
   }
 
   static Future<String?> _resolveOrBuildLibraryPath({

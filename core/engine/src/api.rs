@@ -72,6 +72,17 @@ pub fn activate_extension_for_file(workspace_root: String, file_path: String) ->
     crate::extensions::activate_extension_for_file(workspace_root, file_path)
 }
 
+pub fn extension_for_file(
+    workspace_root: String,
+    file_path: String,
+) -> Option<crate::extensions::ExtensionInfo> {
+    crate::extensions::extension_for_file(workspace_root, file_path)
+}
+
+pub fn validate_source_text(language_id: String, text: String) -> Option<String> {
+    crate::extensions::validate_source_text(language_id, text)
+}
+
 pub fn registered_extension_commands() -> Vec<String> {
     crate::extensions::registered_extension_commands()
 }

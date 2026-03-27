@@ -1,5 +1,5 @@
 use flutter_rust_bridge::frb;
-use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -62,9 +62,7 @@ impl Screen {
             rows: self
                 .grid
                 .iter()
-                .map(|row| Row {
-                    cells: row.clone(),
-                })
+                .map(|row| Row { cells: row.clone() })
                 .collect(),
             cursor_r: self.cursor_row as i64,
             cursor_c: self.cursor_col as i64,
@@ -281,13 +279,7 @@ impl vte::Perform for VtePerformer {
     }
 
     fn osc_dispatch(&mut self, _params: &[&[u8]], _bell_terminated: bool) {}
-    fn hook(
-        &mut self,
-        _params: &vte::Params,
-        _intermediates: &[u8],
-        _ignore: bool,
-        _action: char,
-    ) {
+    fn hook(&mut self, _params: &vte::Params, _intermediates: &[u8], _ignore: bool, _action: char) {
     }
     fn put(&mut self, _byte: u8) {}
     fn unhook(&mut self) {}

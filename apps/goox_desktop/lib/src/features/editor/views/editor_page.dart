@@ -23,6 +23,7 @@ class _EditorPageState extends State<EditorPage> {
   late final GooxEditorController _controller;
   late final FocusNode _focusNode;
   String? _loadedFilePath;
+  String? _lastSyntaxErrorSignature;
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _EditorPageState extends State<EditorPage> {
 
   Future<void> _loadFile(String? path) async {
     if (path == null) {
+      await _controller.setActiveExtension(null);
       await _controller.loadDocument('');
       return;
     }
@@ -54,9 +56,14 @@ class _EditorPageState extends State<EditorPage> {
       );
 
       final file = File(path);
+      final extension = await GooxEditorSdkBootstrap.resolveExtensionForFile(
+        workspaceRoot: workspaceRoot,
+        filePath: path,
+      );
+      await _controller.setActiveExtension(extension);
       final isPdf = path.toLowerCase().endsWith('.pdf');
 
-      if (isPdf) {
+      if (isPdf && extension?.hasWasmEntry == true) {
         await GooxEditorSdkBootstrap.activateExtensionForFile(
           workspaceRoot: workspaceRoot,
           filePath: path,
@@ -70,8 +77,10 @@ class _EditorPageState extends State<EditorPage> {
       if (file.existsSync()) {
         final text = await file.readAsString();
         await _controller.loadDocument(text);
+        await _updateSyntaxFeedback(text);
       } else {
         await _controller.loadDocument('');
+        await _hideSyntaxError();
       }
 
       if (mounted) {
@@ -113,6 +122,63 @@ class _EditorPageState extends State<EditorPage> {
       change.replacement,
     );
     _markDirty();
+
+    final activeExtension = _controller.stateListenable.value.activeExtension;
+    final languageId = activeExtension?.languageId;
+    if (languageId != null && languageId.trim().isNotEmpty) {
+      final text = await _controller.getDocumentText();
+      await _updateSyntaxFeedback(text);
+    }
+  }
+
+  Future<void> _updateSyntaxFeedback(String text) async {
+    final activeExtension = _controller.stateListenable.value.activeExtension;
+    final languageId = activeExtension?.languageId?.trim().toLowerCase();
+    if (languageId == null || languageId.isEmpty) {
+      await _hideSyntaxError();
+      return;
+    }
+
+    final syntaxError = await GooxEditorSdkBootstrap.validateSourceText(
+      languageId: languageId,
+      text: text,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final signature =
+        '${_loadedFilePath ?? ''}|$languageId|${syntaxError ?? 'ok'}';
+    if (_lastSyntaxErrorSignature == signature) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (syntaxError == null) {
+      _lastSyntaxErrorSignature = signature;
+      messenger.hideCurrentSnackBar();
+      return;
+    }
+
+    _lastSyntaxErrorSignature = signature;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(syntaxError),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
+  Future<void> _hideSyntaxError() async {
+    _lastSyntaxErrorSignature = null;
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
   }
 
   @override
@@ -127,7 +193,8 @@ class _EditorPageState extends State<EditorPage> {
     final appState = context.watch<AppState>();
     final activeFile = appState.activeFile;
     final hasActiveFile = activeFile != null;
-    final isPdf = activeFile != null && activeFile.toLowerCase().endsWith('.pdf');
+    final isPdf =
+        activeFile != null && activeFile.toLowerCase().endsWith('.pdf');
     final pdfFilePath = activeFile ?? '';
 
     return ValueListenableBuilder<EditorViewState>(
@@ -168,68 +235,66 @@ class _EditorPageState extends State<EditorPage> {
               builder: (context) => const SettingsView(),
             ),
           ],
-          panels: [
-            GooxTerminalPanelTab(workingDirectory: appState.rootPath),
-          ],
+          panels: [GooxTerminalPanelTab(workingDirectory: appState.rootPath)],
           editorHeader: const _EditorTabHeader(),
           editor: hasActiveFile
               ? isPdf
-                  ? _PdfPreviewPane(
-                      key: ValueKey(activeFile),
-                      filePath: activeFile,
-                    )
-                  : CallbackShortcuts(
-                      bindings: <ShortcutActivator, VoidCallback>{
-                        const SingleActivator(
-                          LogicalKeyboardKey.keyS,
-                          control: true,
-                        ): () {
-                          _saveCurrentFile();
+                    ? _PdfPreviewPane(
+                        key: ValueKey(activeFile),
+                        filePath: activeFile,
+                      )
+                    : CallbackShortcuts(
+                        bindings: <ShortcutActivator, VoidCallback>{
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyS,
+                            control: true,
+                          ): () {
+                            _saveCurrentFile();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyS,
+                            meta: true,
+                          ): () {
+                            _saveCurrentFile();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyZ,
+                            control: true,
+                          ): () {
+                            _controller.undo();
+                            _markDirty();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyZ,
+                            meta: true,
+                          ): () {
+                            _controller.undo();
+                            _markDirty();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyZ,
+                            control: true,
+                            shift: true,
+                          ): () {
+                            _controller.redo();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyZ,
+                            meta: true,
+                            shift: true,
+                          ): () {
+                            _controller.redo();
+                          },
                         },
-                        const SingleActivator(
-                          LogicalKeyboardKey.keyS,
-                          meta: true,
-                        ): () {
-                          _saveCurrentFile();
-                        },
-                        const SingleActivator(
-                          LogicalKeyboardKey.keyZ,
-                          control: true,
-                        ): () {
-                          _controller.undo();
-                          _markDirty();
-                        },
-                        const SingleActivator(
-                          LogicalKeyboardKey.keyZ,
-                          meta: true,
-                        ): () {
-                          _controller.undo();
-                          _markDirty();
-                        },
-                        const SingleActivator(
-                          LogicalKeyboardKey.keyZ,
-                          control: true,
-                          shift: true,
-                        ): () {
-                          _controller.redo();
-                        },
-                        const SingleActivator(
-                          LogicalKeyboardKey.keyZ,
-                          meta: true,
-                          shift: true,
-                        ): () {
-                          _controller.redo();
-                        },
-                      },
-                      child: GooxEditorCanvas(
-                        state: state,
-                        focusNode: _focusNode,
-                        autofocus: true,
-                        onTap: _focusNode.requestFocus,
-                        onTextChanged: _handleEditorTextChanged,
-                        onCursorOffsetChanged: _controller.moveCursorToOffset,
-                      ),
-                    )
+                        child: GooxEditorCanvas(
+                          state: state,
+                          focusNode: _focusNode,
+                          autofocus: true,
+                          onTap: _focusNode.requestFocus,
+                          onTextChanged: _handleEditorTextChanged,
+                          onCursorOffsetChanged: _controller.moveCursorToOffset,
+                        ),
+                      )
               : _EditorWelcomeView(onOpenFolder: appState.pickDirectory),
           statusBar: isPdf
               ? _PdfStatusBar(filePath: pdfFilePath)
@@ -242,6 +307,218 @@ class _EditorPageState extends State<EditorPage> {
       },
     );
   }
+}
+
+// ignore: unused_element
+String? _syntaxErrorMessage({
+  required String text,
+  required String? languageId,
+}) {
+  if (text.trim().isEmpty || languageId == null) {
+    return null;
+  }
+
+  switch (languageId) {
+    case 'python':
+      return _validatePythonSyntax(text);
+    case 'javascript':
+    case 'js':
+    case 'typescript':
+      return _validateJavaScriptSyntax(text);
+    default:
+      return null;
+  }
+}
+
+String? _validatePythonSyntax(String text) {
+  final scanner = _SyntaxScanner(text);
+  return scanner.scan(
+    allowHashComments: true,
+    allowBlockComments: false,
+    allowBackticks: false,
+    languageName: 'Python',
+  );
+}
+
+String? _validateJavaScriptSyntax(String text) {
+  final scanner = _SyntaxScanner(text);
+  return scanner.scan(
+    allowHashComments: false,
+    allowBlockComments: true,
+    allowBackticks: true,
+    languageName: 'JavaScript',
+  );
+}
+
+class _SyntaxScanner {
+  _SyntaxScanner(this.text);
+
+  final String text;
+
+  final List<_Delimiter> _stack = [];
+
+  String? scan({
+    required bool allowHashComments,
+    required bool allowBlockComments,
+    required bool allowBackticks,
+    required String languageName,
+  }) {
+    var index = 0;
+
+    while (index < text.length) {
+      final current = text[index];
+
+      if (allowHashComments && current == '#') {
+        index = _lineEnd(index);
+        continue;
+      }
+
+      if (allowBlockComments && _startsWith(index, '/*')) {
+        final end = text.indexOf('*/', index + 2);
+        if (end == -1) {
+          return '$languageName syntax error: block comment is not closed.';
+        }
+        index = end + 2;
+        continue;
+      }
+
+      if (allowBlockComments && _startsWith(index, '//')) {
+        index = _lineEnd(index);
+        continue;
+      }
+
+      if (allowBackticks && current == '`') {
+        final end = _consumeString(index, '`', allowMultiline: true);
+        if (end == -1) {
+          return '$languageName syntax error: template string is not closed.';
+        }
+        index = end;
+        continue;
+      }
+
+      if (_startsWith(index, "'''") || _startsWith(index, '"""')) {
+        final quote = _startsWith(index, "'''") ? "'''" : '"""';
+        final end = _consumeTripleString(index, quote);
+        if (end == -1) {
+          return '$languageName syntax error: string is not closed.';
+        }
+        index = end;
+        continue;
+      }
+
+      if (current == '\'' || current == '"') {
+        final end = _consumeString(index, current, allowMultiline: false);
+        if (end == -1) {
+          return '$languageName syntax error: string is not closed.';
+        }
+        index = end;
+        continue;
+      }
+
+      if (_isOpenDelimiter(current)) {
+        _stack.add(_Delimiter(current, index));
+        index++;
+        continue;
+      }
+
+      if (_isCloseDelimiter(current)) {
+        if (_stack.isEmpty) {
+          return '$languageName syntax error: unexpected "$current".';
+        }
+
+        final last = _stack.removeLast();
+        if (last.closing != current) {
+          return '$languageName syntax error: expected "${last.closing}" before "$current".';
+        }
+
+        index++;
+        continue;
+      }
+
+      index++;
+    }
+
+    if (_stack.isNotEmpty) {
+      final last = _stack.last;
+      return '$languageName syntax error: missing "${last.closing}".';
+    }
+
+    return null;
+  }
+
+  bool _startsWith(int index, String pattern) {
+    return index + pattern.length <= text.length &&
+        text.substring(index, index + pattern.length) == pattern;
+  }
+
+  int _lineEnd(int index) {
+    final newline = text.indexOf('\n', index);
+    return newline == -1 ? text.length : newline;
+  }
+
+  int _consumeString(int start, String quote, {required bool allowMultiline}) {
+    var index = start + 1;
+    var escaped = false;
+
+    while (index < text.length) {
+      final current = text[index];
+      if (!allowMultiline && current == '\n') {
+        return -1;
+      }
+
+      if (escaped) {
+        escaped = false;
+        index++;
+        continue;
+      }
+
+      if (current == '\\') {
+        escaped = true;
+        index++;
+        continue;
+      }
+
+      if (current == quote) {
+        return index + 1;
+      }
+
+      index++;
+    }
+
+    return -1;
+  }
+
+  int _consumeTripleString(int start, String quote) {
+    var index = start + 3;
+    while (index < text.length) {
+      if (_startsWith(index, quote)) {
+        return index + 3;
+      }
+      index++;
+    }
+
+    return -1;
+  }
+
+  bool _isOpenDelimiter(String char) =>
+      char == '(' || char == '{' || char == '[';
+
+  bool _isCloseDelimiter(String char) =>
+      char == ')' || char == '}' || char == ']';
+}
+
+class _Delimiter {
+  const _Delimiter(this.opening, this.index);
+
+  final String opening;
+  final int index;
+
+  String get closing => switch (opening) {
+    '(' => ')',
+    '{' => '}',
+    '[' => ']',
+    _ => '',
+  };
 }
 
 class _PdfPreviewPane extends StatefulWidget {
@@ -397,7 +674,9 @@ class _EditorWelcomeView extends StatelessWidget {
                 label: const Text('Open Folder'),
               ),
               const SizedBox(height: 28),
-              if (recentFolders.isNotEmpty) ...[
+              if (recentFolders
+                  .where((f) => f.path != appState.rootPath)
+                  .isNotEmpty) ...[
                 Text(
                   'Recent Folders',
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -405,26 +684,58 @@ class _EditorWelcomeView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: recentFolders
                       .where((folder) => folder.path != appState.rootPath)
                       .map((folder) {
-                    final folderName = path.basename(folder.path);
-                    final folderPath = folder.path;
-                    final isOpen = folderPath == appState.rootPath;
+                        final folderName = path.basename(folder.path);
+                        final folderPath = folder.path;
 
-                    return InkWell(
-                      onTap: () => appState.openDirectory(folderPath),
-                      borderRadius: BorderRadius.circular(12),
-                      child: _ShortcutCard(
-                        title: folderName,
-                        shortcut: isOpen ? 'Active' : 'Open',
-                        description: folderPath,
-                      ),
-                    );
-                  }).toList(),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: InkWell(
+                            onTap: () => appState.openDirectory(folderPath),
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.folder_open_outlined,
+                                    size: 16,
+                                    color: colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    folderName,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: colorScheme.primary
+                                          .withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    folderPath,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant
+                                          .withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      })
+                      .toList(),
                 ),
               ] else ...[
                 Wrap(
@@ -544,9 +855,7 @@ class _TabItem extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Material(
-      color: isSelected
-          ? colorScheme.surface
-          : colorScheme.surfaceContainerLow,
+      color: isSelected ? colorScheme.surface : colorScheme.surfaceContainerLow,
       child: InkWell(
         onTap: onTap,
         child: Container(

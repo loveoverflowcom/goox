@@ -1,20 +1,52 @@
 import 'package:goox_flutter_bridge/goox_flutter_bridge.dart';
 
+import '../features/editor/models/editor_models.dart';
+
 final class GooxEditorSdkBootstrap {
   static Future<void> ensureInitialized({String? workspaceRoot}) =>
       GooxRustBootstrap.ensureInitialized(workspaceRoot: workspaceRoot);
 
-  static Future<void> refreshWorkspaceExtensions({required String workspaceRoot}) =>
-      GooxRustBootstrap.refreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
+  static Future<void> refreshWorkspaceExtensions({
+    required String workspaceRoot,
+  }) => GooxRustBootstrap.refreshWorkspaceExtensions(
+    workspaceRoot: workspaceRoot,
+  );
 
   static Future<bool> activateExtensionForFile({
     required String workspaceRoot,
     required String filePath,
+  }) => GooxRustBootstrap.activateExtensionForFile(
+    workspaceRoot: workspaceRoot,
+    filePath: filePath,
+  );
+
+  static Future<ActiveExtensionInfo?> resolveExtensionForFile({
+    required String workspaceRoot,
+    required String filePath,
+  }) async {
+    final extension = await GooxRustBootstrap.resolveExtensionForFile(
+      workspaceRoot: workspaceRoot,
+      filePath: filePath,
+    );
+    if (extension == null) {
+      return null;
+    }
+
+    return ActiveExtensionInfo(
+      name: extension.name,
+      path: extension.path,
+      entry: extension.entry,
+      filetypes: extension.filetypes,
+      languageId: extension.languageId,
+      lspExecutable: extension.lspExecutable,
+    );
+  }
+
+  static Future<String?> validateSourceText({
+    required String languageId,
+    required String text,
   }) =>
-      GooxRustBootstrap.activateExtensionForFile(
-        workspaceRoot: workspaceRoot,
-        filePath: filePath,
-      );
+      GooxRustBootstrap.validateSourceText(languageId: languageId, text: text);
 
   static void initMock({required RustLibApi api}) =>
       GooxRustBootstrap.initMock(api: api);

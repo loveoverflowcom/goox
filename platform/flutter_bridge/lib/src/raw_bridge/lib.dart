@@ -8,183 +8,174 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'lib.freezed.dart';
 
-            
+@freezed
+sealed class BufferError with _$BufferError implements FrbException {
+  const BufferError._();
 
-            
-
-            @freezed
-                sealed class BufferError with _$BufferError implements FrbException {
-                    const BufferError._();
-
-                     const factory BufferError.emptyTransaction() = BufferError_EmptyTransaction;
- const factory BufferError.invalidInsertPosition({   required BigInt charIndex ,  required BigInt lenChars , }) = BufferError_InvalidInsertPosition;
- const factory BufferError.invalidDeleteRange({   required BigInt start ,  required BigInt end ,  required BigInt lenChars , }) = BufferError_InvalidDeleteRange;
- const factory BufferError.noUndoEntry() = BufferError_NoUndoEntry;
- const factory BufferError.noRedoEntry() = BufferError_NoRedoEntry;
-
-                    
-
-                    
-                }
+  const factory BufferError.emptyTransaction() = BufferError_EmptyTransaction;
+  const factory BufferError.invalidInsertPosition({
+    required BigInt charIndex,
+    required BigInt lenChars,
+  }) = BufferError_InvalidInsertPosition;
+  const factory BufferError.invalidDeleteRange({
+    required BigInt start,
+    required BigInt end,
+    required BigInt lenChars,
+  }) = BufferError_InvalidDeleteRange;
+  const factory BufferError.noUndoEntry() = BufferError_NoUndoEntry;
+  const factory BufferError.noRedoEntry() = BufferError_NoRedoEntry;
+}
 
 @freezed
-                sealed class BufferOperation with _$BufferOperation  {
-                    const BufferOperation._();
+sealed class BufferOperation with _$BufferOperation {
+  const BufferOperation._();
 
-                     const factory BufferOperation.insert({   required BigInt charIndex ,  required String text , }) = BufferOperation_Insert;
- const factory BufferOperation.delete({   required BigInt start ,  required BigInt end , }) = BufferOperation_Delete;
+  const factory BufferOperation.insert({
+    required BigInt charIndex,
+    required String text,
+  }) = BufferOperation_Insert;
+  const factory BufferOperation.delete({
+    required BigInt start,
+    required BigInt end,
+  }) = BufferOperation_Delete;
+}
 
-                    
+class BufferPatchBatch {
+  final BigInt revision;
+  final String label;
+  final List<BufferOperation> patches;
 
-                    
-                }
+  const BufferPatchBatch({
+    required this.revision,
+    required this.label,
+    required this.patches,
+  });
 
-class BufferPatchBatch  {
-                final BigInt revision;
-final String label;
-final List<BufferOperation> patches;
+  @override
+  int get hashCode => revision.hashCode ^ label.hashCode ^ patches.hashCode;
 
-                const BufferPatchBatch({required this.revision ,required this.label ,required this.patches ,});
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BufferPatchBatch &&
+          runtimeType == other.runtimeType &&
+          revision == other.revision &&
+          label == other.label &&
+          patches == other.patches;
+}
 
-                
-                
+class BufferSnapshot {
+  final BigInt revision;
+  final BigInt lineCount;
+  final BigInt charCount;
 
-                
-        @override
-        int get hashCode => revision.hashCode^label.hashCode^patches.hashCode;
-        
+  const BufferSnapshot({
+    required this.revision,
+    required this.lineCount,
+    required this.charCount,
+  });
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is BufferPatchBatch &&
-                runtimeType == other.runtimeType
-                && revision == other.revision&& label == other.label&& patches == other.patches;
-        
-            }
+  @override
+  int get hashCode =>
+      revision.hashCode ^ lineCount.hashCode ^ charCount.hashCode;
 
-class BufferSnapshot  {
-                final BigInt revision;
-final BigInt lineCount;
-final BigInt charCount;
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BufferSnapshot &&
+          runtimeType == other.runtimeType &&
+          revision == other.revision &&
+          lineCount == other.lineCount &&
+          charCount == other.charCount;
+}
 
-                const BufferSnapshot({required this.revision ,required this.lineCount ,required this.charCount ,});
+class BufferTransaction {
+  final List<BufferOperation> operations;
+  final bool mergeable;
+  final String label;
 
-                
-                
+  const BufferTransaction({
+    required this.operations,
+    required this.mergeable,
+    required this.label,
+  });
 
-                
-        @override
-        int get hashCode => revision.hashCode^lineCount.hashCode^charCount.hashCode;
-        
+  @override
+  int get hashCode => operations.hashCode ^ mergeable.hashCode ^ label.hashCode;
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is BufferSnapshot &&
-                runtimeType == other.runtimeType
-                && revision == other.revision&& lineCount == other.lineCount&& charCount == other.charCount;
-        
-            }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BufferTransaction &&
+          runtimeType == other.runtimeType &&
+          operations == other.operations &&
+          mergeable == other.mergeable &&
+          label == other.label;
+}
 
-class BufferTransaction  {
-                final List<BufferOperation> operations;
-final bool mergeable;
-final String label;
+class ViewportLine {
+  final BigInt lineIndex;
+  final String text;
 
-                const BufferTransaction({required this.operations ,required this.mergeable ,required this.label ,});
+  const ViewportLine({required this.lineIndex, required this.text});
 
-                
-                
+  @override
+  int get hashCode => lineIndex.hashCode ^ text.hashCode;
 
-                
-        @override
-        int get hashCode => operations.hashCode^mergeable.hashCode^label.hashCode;
-        
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ViewportLine &&
+          runtimeType == other.runtimeType &&
+          lineIndex == other.lineIndex &&
+          text == other.text;
+}
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is BufferTransaction &&
-                runtimeType == other.runtimeType
-                && operations == other.operations&& mergeable == other.mergeable&& label == other.label;
-        
-            }
+class ViewportRequest {
+  final BigInt firstLine;
+  final BigInt maxLines;
 
-class ViewportLine  {
-                final BigInt lineIndex;
-final String text;
+  const ViewportRequest({required this.firstLine, required this.maxLines});
 
-                const ViewportLine({required this.lineIndex ,required this.text ,});
+  @override
+  int get hashCode => firstLine.hashCode ^ maxLines.hashCode;
 
-                
-                
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ViewportRequest &&
+          runtimeType == other.runtimeType &&
+          firstLine == other.firstLine &&
+          maxLines == other.maxLines;
+}
 
-                
-        @override
-        int get hashCode => lineIndex.hashCode^text.hashCode;
-        
+class ViewportSnapshot {
+  final BigInt revision;
+  final BigInt firstVisibleLine;
+  final BigInt totalLines;
+  final List<ViewportLine> lines;
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is ViewportLine &&
-                runtimeType == other.runtimeType
-                && lineIndex == other.lineIndex&& text == other.text;
-        
-            }
+  const ViewportSnapshot({
+    required this.revision,
+    required this.firstVisibleLine,
+    required this.totalLines,
+    required this.lines,
+  });
 
-class ViewportRequest  {
-                final BigInt firstLine;
-final BigInt maxLines;
+  @override
+  int get hashCode =>
+      revision.hashCode ^
+      firstVisibleLine.hashCode ^
+      totalLines.hashCode ^
+      lines.hashCode;
 
-                const ViewportRequest({required this.firstLine ,required this.maxLines ,});
-
-                
-                
-
-                
-        @override
-        int get hashCode => firstLine.hashCode^maxLines.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is ViewportRequest &&
-                runtimeType == other.runtimeType
-                && firstLine == other.firstLine&& maxLines == other.maxLines;
-        
-            }
-
-class ViewportSnapshot  {
-                final BigInt revision;
-final BigInt firstVisibleLine;
-final BigInt totalLines;
-final List<ViewportLine> lines;
-
-                const ViewportSnapshot({required this.revision ,required this.firstVisibleLine ,required this.totalLines ,required this.lines ,});
-
-                
-                
-
-                
-        @override
-        int get hashCode => revision.hashCode^firstVisibleLine.hashCode^totalLines.hashCode^lines.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is ViewportSnapshot &&
-                runtimeType == other.runtimeType
-                && revision == other.revision&& firstVisibleLine == other.firstVisibleLine&& totalLines == other.totalLines&& lines == other.lines;
-        
-            }
-            
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ViewportSnapshot &&
+          runtimeType == other.runtimeType &&
+          revision == other.revision &&
+          firstVisibleLine == other.firstVisibleLine &&
+          totalLines == other.totalLines &&
+          lines == other.lines;
+}

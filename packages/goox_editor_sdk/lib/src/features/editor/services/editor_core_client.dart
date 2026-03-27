@@ -6,6 +6,7 @@ abstract interface class EditorCoreClient {
   ValueListenable<EditorViewState> get listenable;
 
   Future<void> seedDocument();
+  Future<void> setActiveExtension(ActiveExtensionInfo? extension);
   Future<void> loadLargeDocument();
   Future<void> insertText(String text);
   Future<void> insertBurst();

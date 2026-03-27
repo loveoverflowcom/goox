@@ -5,7 +5,6 @@ pub mod api;
 pub mod extensions;
 pub mod terminal;
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BufferOperation {
     Insert { char_index: usize, text: String },

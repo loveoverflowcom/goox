@@ -3,56 +3,80 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import 'extensions.dart';
 import 'frb_generated.dart';
 import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+Future<void> seedDocument({required String text}) =>
+    RustLib.instance.api.crateApiSeedDocument(text: text);
 
-            
+Future<BufferSnapshot> getSnapshot() =>
+    RustLib.instance.api.crateApiGetSnapshot();
 
-            Future<void>  seedDocument({required String text }) => RustLib.instance.api.crateApiSeedDocument(text: text);
+Future<BufferPatchBatch> applyTransaction({
+  required BufferTransaction transaction,
+}) => RustLib.instance.api.crateApiApplyTransaction(transaction: transaction);
 
-Future<BufferSnapshot>  getSnapshot() => RustLib.instance.api.crateApiGetSnapshot();
+Future<BufferPatchBatch> undo() => RustLib.instance.api.crateApiUndo();
 
-Future<BufferPatchBatch>  applyTransaction({required BufferTransaction transaction }) => RustLib.instance.api.crateApiApplyTransaction(transaction: transaction);
+Future<BufferPatchBatch> redo() => RustLib.instance.api.crateApiRedo();
 
-Future<BufferPatchBatch>  undo() => RustLib.instance.api.crateApiUndo();
+Future<ViewportSnapshot> getViewport({required ViewportRequest request}) =>
+    RustLib.instance.api.crateApiGetViewport(request: request);
 
-Future<BufferPatchBatch>  redo() => RustLib.instance.api.crateApiRedo();
+Future<CursorPos> getCursorPosition({required BigInt charIndex}) =>
+    RustLib.instance.api.crateApiGetCursorPosition(charIndex: charIndex);
 
-Future<ViewportSnapshot>  getViewport({required ViewportRequest request }) => RustLib.instance.api.crateApiGetViewport(request: request);
+Future<BufferPatchBatch> deleteLine({required BigInt charIndex}) =>
+    RustLib.instance.api.crateApiDeleteLine(charIndex: charIndex);
 
-Future<CursorPos>  getCursorPosition({required BigInt charIndex }) => RustLib.instance.api.crateApiGetCursorPosition(charIndex: charIndex);
+Future<BigInt> refreshWorkspaceExtensions({required String workspaceRoot}) =>
+    RustLib.instance.api.crateApiRefreshWorkspaceExtensions(
+      workspaceRoot: workspaceRoot,
+    );
 
-Future<BufferPatchBatch>  deleteLine({required BigInt charIndex }) => RustLib.instance.api.crateApiDeleteLine(charIndex: charIndex);
+Future<bool> activateExtensionForFile({
+  required String workspaceRoot,
+  required String filePath,
+}) => RustLib.instance.api.crateApiActivateExtensionForFile(
+  workspaceRoot: workspaceRoot,
+  filePath: filePath,
+);
 
-Future<BigInt>  refreshWorkspaceExtensions({required String workspaceRoot }) => RustLib.instance.api.crateApiRefreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
+Future<ExtensionInfo?> extensionForFile({
+  required String workspaceRoot,
+  required String filePath,
+}) => RustLib.instance.api.crateApiExtensionForFile(
+  workspaceRoot: workspaceRoot,
+  filePath: filePath,
+);
 
-Future<bool>  activateExtensionForFile({required String workspaceRoot , required String filePath }) => RustLib.instance.api.crateApiActivateExtensionForFile(workspaceRoot: workspaceRoot, filePath: filePath);
+Future<String?> validateSourceText({
+  required String languageId,
+  required String text,
+}) => RustLib.instance.api.crateApiValidateSourceText(
+  languageId: languageId,
+  text: text,
+);
 
-Future<List<String>>  registeredExtensionCommands() => RustLib.instance.api.crateApiRegisteredExtensionCommands();
+Future<List<String>> registeredExtensionCommands() =>
+    RustLib.instance.api.crateApiRegisteredExtensionCommands();
 
-            class CursorPos  {
-                final BigInt line;
-final BigInt column;
+class CursorPos {
+  final BigInt line;
+  final BigInt column;
 
-                const CursorPos({required this.line ,required this.column ,});
+  const CursorPos({required this.line, required this.column});
 
-                
-                
+  @override
+  int get hashCode => line.hashCode ^ column.hashCode;
 
-                
-        @override
-        int get hashCode => line.hashCode^column.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is CursorPos &&
-                runtimeType == other.runtimeType
-                && line == other.line&& column == other.column;
-        
-            }
-            
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CursorPos &&
+          runtimeType == other.runtimeType &&
+          line == other.line &&
+          column == other.column;
+}

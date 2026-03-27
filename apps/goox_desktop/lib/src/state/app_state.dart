@@ -173,6 +173,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void unselectFile() {
+    if (_activeFile != null) {
+      _activeFile = null;
+      notifyListeners();
+    }
+  }
+
   void closeFile(String path) {
     _openFiles.remove(path);
     if (_activeFile == path) {

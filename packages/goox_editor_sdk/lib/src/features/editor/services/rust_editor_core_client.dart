@@ -17,6 +17,7 @@ class RustEditorCoreClient implements EditorCoreClient {
   final GooxEditorRepository _repository;
   final ValueNotifier<EditorViewState> _state;
   final List<String> _eventLog = [];
+  ActiveExtensionInfo? _activeExtension;
 
   int _cursorOffset = 0;
   int _firstVisibleLine = 0;
@@ -40,6 +41,12 @@ class RustEditorCoreClient implements EditorCoreClient {
     _firstVisibleLine = 0;
     _recordEvent('Rust core seeded');
     await _publish(lastCommand: 'seed sample');
+  }
+
+  @override
+  Future<void> setActiveExtension(ActiveExtensionInfo? extension) async {
+    _activeExtension = extension;
+    await _publish(lastCommand: 'set active extension');
   }
 
   @override
@@ -423,6 +430,7 @@ class RustEditorCoreClient implements EditorCoreClient {
       hasUndo: true,
       hasRedo: true,
       lastCommand: lastCommand,
+      activeExtension: _activeExtension,
     );
   }
 

@@ -15,6 +15,9 @@ class GooxEditorController {
 
   Future<void> seedDocument() => _coreClient.seedDocument();
 
+  Future<void> setActiveExtension(ActiveExtensionInfo? extension) =>
+      _coreClient.setActiveExtension(extension);
+
   Future<void> loadDocument(String text) => _coreClient.loadDocument(text);
 
   Future<String> getDocumentText() => _coreClient.getDocumentText();

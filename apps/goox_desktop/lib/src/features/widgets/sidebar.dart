@@ -202,6 +202,10 @@ class ExplorerView extends StatelessWidget {
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
+          onTap: () {
+            // Unselect file when clicking empty space
+            state.unselectFile();
+          },
           onSecondaryTapDown: (details) => _showExplorerContextMenu(
             context,
             details.globalPosition,
@@ -220,7 +224,8 @@ class ExplorerView extends StatelessWidget {
                   isExpanded: state.isFolderExpanded(state.rootPath!),
                   path: state.rootPath!,
                   onToggle: () => state.toggleFolder(state.rootPath!),
-                  onCreateFile: () => _promptCreateFile(context, state.rootPath!),
+                  onCreateFile: () =>
+                      _promptCreateFile(context, state.rootPath!),
                   onCreateFolder: () =>
                       _promptCreateFolder(context, state.rootPath!),
                   children: state.files
@@ -246,6 +251,7 @@ class ExplorerView extends StatelessWidget {
     VoidCallback? onRename,
     VoidCallback? onDelete,
   }) async {
+    final rootPath = context.read<AppState>().rootPath;
     final colorScheme = Theme.of(context).colorScheme;
 
     final action = await showGeneralDialog<_ExplorerContextAction>(
@@ -259,10 +265,10 @@ class ExplorerView extends StatelessWidget {
         const menuWidth = 220.0;
         // Estimate height based on items (approx 40 per item + dividers)
         final menuHeight = (isDirectory ? 6 : 4) * 40.0;
-        
+
         double left = globalPosition.dx;
         double top = globalPosition.dy;
-        
+
         if (left + menuWidth > screenSize.width) {
           left = screenSize.width - menuWidth - 8;
         }
@@ -366,7 +372,6 @@ class ExplorerView extends StatelessWidget {
         await Clipboard.setData(ClipboardData(text: path));
         break;
       case _ExplorerContextAction.copyRelativePath:
-        final rootPath = context.read<AppState>().rootPath;
         if (rootPath != null) {
           final relative = p.relative(path, from: rootPath);
           await Clipboard.setData(ClipboardData(text: relative));
@@ -614,9 +619,9 @@ class _FileItemState extends State<_FileItem> {
                   ),
                 if (!widget.isDirectory)
                   Icon(
-                    Icons.description_outlined,
+                    _iconForFile(widget.path),
                     size: 18,
-                    color: colorScheme.onSurfaceVariant,
+                    color: _iconColorForFile(widget.path, colorScheme),
                   ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -655,6 +660,74 @@ class _FileItemState extends State<_FileItem> {
         ),
       ),
     );
+  }
+}
+
+IconData _iconForFile(String path) {
+  final extension = p.extension(path).toLowerCase().replaceFirst('.', '');
+  switch (extension) {
+    case 'py':
+    case 'pyw':
+      return Icons.code;
+    case 'js':
+    case 'mjs':
+    case 'cjs':
+    case 'jsx':
+    case 'ts':
+    case 'tsx':
+      return Icons.javascript;
+    case 'pdf':
+      return Icons.picture_as_pdf_outlined;
+    case 'dart':
+      return Icons.flutter_dash;
+    case 'json':
+    case 'yaml':
+    case 'yml':
+      return Icons.data_object_outlined;
+    case 'md':
+    case 'markdown':
+      return Icons.menu_book_outlined;
+    case 'html':
+    case 'htm':
+    case 'css':
+      return Icons.web_outlined;
+    case 'xml':
+      return Icons.integration_instructions_outlined;
+    default:
+      return Icons.description_outlined;
+  }
+}
+
+Color _iconColorForFile(String path, ColorScheme colorScheme) {
+  final extension = p.extension(path).toLowerCase().replaceFirst('.', '');
+  switch (extension) {
+    case 'py':
+    case 'pyw':
+      return const Color(0xFF3776AB);
+    case 'js':
+    case 'mjs':
+    case 'cjs':
+    case 'jsx':
+    case 'ts':
+    case 'tsx':
+      return const Color(0xFFF7DF1E);
+    case 'pdf':
+      return const Color(0xFFE53935);
+    case 'dart':
+      return const Color(0xFF0175C2);
+    case 'json':
+    case 'yaml':
+    case 'yml':
+      return colorScheme.secondary;
+    case 'md':
+    case 'markdown':
+      return colorScheme.primary;
+    case 'html':
+    case 'htm':
+    case 'css':
+      return colorScheme.tertiary;
+    default:
+      return colorScheme.onSurfaceVariant;
   }
 }
 
