@@ -1,11 +1,20 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
 
 import '../../state/app_state.dart';
 
-enum _ExplorerContextAction { rename, delete }
+enum _ExplorerContextAction {
+  newFile,
+  newFolder,
+  openInFileSystem,
+  copyPath,
+  copyRelativePath,
+  rename,
+  delete,
+}
 
 class Sidebar extends StatelessWidget {
   const Sidebar({
@@ -191,27 +200,214 @@ class ExplorerView extends StatelessWidget {
 
         final rootName = p.basename(state.rootPath!).toUpperCase();
 
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ExplorerSection(
-                title: rootName,
-                isExpanded: state.isFolderExpanded(state.rootPath!),
-                path: state.rootPath!,
-                onToggle: () => state.toggleFolder(state.rootPath!),
-                onCreateFile: () => _promptCreateFile(context, state.rootPath!),
-                onCreateFolder: () =>
-                    _promptCreateFolder(context, state.rootPath!),
-                children: state.files
-                    .map((e) => _buildTree(e, context, state, 1))
-                    .toList(),
-              ),
-              // OUTLINE removed (Task 2)
-            ],
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onSecondaryTapDown: (details) => _showExplorerContextMenu(
+            context,
+            details.globalPosition,
+            state.rootPath!,
+            isDirectory: true,
+            onNewFile: () => _promptCreateFile(context, state.rootPath!),
+            onNewFolder: () => _promptCreateFolder(context, state.rootPath!),
+            // Root rename/delete might not be desired or handled differently
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ExplorerSection(
+                  title: rootName,
+                  isExpanded: state.isFolderExpanded(state.rootPath!),
+                  path: state.rootPath!,
+                  onToggle: () => state.toggleFolder(state.rootPath!),
+                  onCreateFile: () => _promptCreateFile(context, state.rootPath!),
+                  onCreateFolder: () =>
+                      _promptCreateFolder(context, state.rootPath!),
+                  children: state.files
+                      .map((e) => _buildTree(e, context, state, 1))
+                      .toList(),
+                ),
+                // OUTLINE removed (Task 2)
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  static Future<void> _showExplorerContextMenu(
+    BuildContext context,
+    Offset globalPosition,
+    String path, {
+    required bool isDirectory,
+    VoidCallback? onNewFile,
+    VoidCallback? onNewFolder,
+    VoidCallback? onRename,
+    VoidCallback? onDelete,
+  }) async {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final action = await showGeneralDialog<_ExplorerContextAction>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.transparent,
+      transitionDuration: Duration.zero,
+      pageBuilder: (context, animation, secondaryAnimation) {
+        final screenSize = MediaQuery.sizeOf(context);
+        const menuWidth = 220.0;
+        // Estimate height based on items (approx 40 per item + dividers)
+        final menuHeight = (isDirectory ? 6 : 4) * 40.0;
+        
+        double left = globalPosition.dx;
+        double top = globalPosition.dy;
+        
+        if (left + menuWidth > screenSize.width) {
+          left = screenSize.width - menuWidth - 8;
+        }
+        if (top + menuHeight > screenSize.height) {
+          top = screenSize.height - menuHeight - 8;
+        }
+
+        return Stack(
+          children: [
+            Positioned(
+              left: left,
+              top: top,
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(8),
+                color: colorScheme.surface,
+                shadowColor: Colors.black.withValues(alpha: 0.3),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  width: menuWidth,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isDirectory) ...[
+                        _buildMenuItem(
+                          context,
+                          _ExplorerContextAction.newFile,
+                          Icons.note_add_outlined,
+                          'New File',
+                        ),
+                        _buildMenuItem(
+                          context,
+                          _ExplorerContextAction.newFolder,
+                          Icons.create_new_folder_outlined,
+                          'New Folder',
+                        ),
+                        const Divider(height: 1),
+                      ],
+                      _buildMenuItem(
+                        context,
+                        _ExplorerContextAction.openInFileSystem,
+                        Icons.folder_shared_outlined,
+                        'Reveal in Finder',
+                      ),
+                      const Divider(height: 1),
+                      _buildMenuItem(
+                        context,
+                        _ExplorerContextAction.copyPath,
+                        Icons.copy_all_rounded,
+                        'Copy Path',
+                      ),
+                      _buildMenuItem(
+                        context,
+                        _ExplorerContextAction.copyRelativePath,
+                        Icons.copy_rounded,
+                        'Copy Relative Path',
+                      ),
+                      if (onRename != null || onDelete != null) ...[
+                        const Divider(height: 1),
+                        if (onRename != null)
+                          _buildMenuItem(
+                            context,
+                            _ExplorerContextAction.rename,
+                            Icons.edit_outlined,
+                            'Rename',
+                          ),
+                        if (onDelete != null)
+                          _buildMenuItem(
+                            context,
+                            _ExplorerContextAction.delete,
+                            Icons.delete_outline_rounded,
+                            'Delete',
+                            textColor: Colors.red,
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (action == null) {
+      return;
+    }
+
+    switch (action) {
+      case _ExplorerContextAction.newFile:
+        onNewFile?.call();
+        break;
+      case _ExplorerContextAction.newFolder:
+        onNewFolder?.call();
+        break;
+      case _ExplorerContextAction.openInFileSystem:
+        await Process.run('open', ['-R', path]);
+        break;
+      case _ExplorerContextAction.copyPath:
+        await Clipboard.setData(ClipboardData(text: path));
+        break;
+      case _ExplorerContextAction.copyRelativePath:
+        final rootPath = context.read<AppState>().rootPath;
+        if (rootPath != null) {
+          final relative = p.relative(path, from: rootPath);
+          await Clipboard.setData(ClipboardData(text: relative));
+        }
+        break;
+      case _ExplorerContextAction.rename:
+        onRename?.call();
+        break;
+      case _ExplorerContextAction.delete:
+        onDelete?.call();
+        break;
+    }
+  }
+
+  static Widget _buildMenuItem(
+    BuildContext context,
+    _ExplorerContextAction action,
+    IconData icon,
+    String label, {
+    Color? textColor,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => Navigator.pop(context, action),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: const BoxConstraints(minWidth: 200),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: textColor ?? colorScheme.onSurface),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: textColor ?? colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -370,41 +566,16 @@ class _FileItemState extends State<_FileItem> {
   bool _isHovered = false;
 
   Future<void> _showContextMenu(TapDownDetails details) async {
-    final overlay = Overlay.maybeOf(context);
-    if (overlay == null) {
-      return;
-    }
-
-    final action = await showMenu<_ExplorerContextAction>(
-      context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromPoints(details.globalPosition, details.globalPosition),
-        Offset.zero & MediaQuery.sizeOf(context),
-      ),
-      items: const [
-        PopupMenuItem<_ExplorerContextAction>(
-          value: _ExplorerContextAction.rename,
-          child: Text('Rename'),
-        ),
-        PopupMenuItem<_ExplorerContextAction>(
-          value: _ExplorerContextAction.delete,
-          child: Text('Delete'),
-        ),
-      ],
+    await ExplorerView._showExplorerContextMenu(
+      context,
+      details.globalPosition,
+      widget.path,
+      isDirectory: widget.isDirectory,
+      onNewFile: widget.onNewFile,
+      onNewFolder: widget.onNewFolder,
+      onRename: widget.onRename,
+      onDelete: widget.onDelete,
     );
-
-    if (!mounted || action == null) {
-      return;
-    }
-
-    switch (action) {
-      case _ExplorerContextAction.rename:
-        await widget.onRename?.call();
-        return;
-      case _ExplorerContextAction.delete:
-        await widget.onDelete?.call();
-        return;
-    }
   }
 
   @override

@@ -408,11 +408,13 @@ class _EditorWelcomeView extends StatelessWidget {
                 Wrap(
                   spacing: 16,
                   runSpacing: 16,
-                  children: recentFolders.map((folder) {
+                  children: recentFolders
+                      .where((folder) => folder.path != appState.rootPath)
+                      .map((folder) {
                     final folderName = path.basename(folder.path);
                     final folderPath = folder.path;
                     final isOpen = folderPath == appState.rootPath;
-                    
+
                     return InkWell(
                       onTap: () => appState.openDirectory(folderPath),
                       borderRadius: BorderRadius.circular(12),
