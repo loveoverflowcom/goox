@@ -284,6 +284,8 @@ class _EditorPageState extends State<EditorPage> {
                           onTextChanged: _handleEditorTextChanged,
                           onCursorOffsetChanged: _controller.moveCursorToOffset,
                           onSyntaxErrorChanged: _handleSyntaxErrorChanged,
+                          fontSize: appState.settings.fontSize,
+                          fontWeight: appState.settings.fontWeight,
                         ),
                       )
               : _EditorWelcomeView(onOpenFolder: appState.pickDirectory),

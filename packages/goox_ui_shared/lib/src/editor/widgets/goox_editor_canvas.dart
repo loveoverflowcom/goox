@@ -144,6 +144,8 @@ class GooxEditorCanvas extends StatefulWidget {
     this.onCursorOffsetChanged,
     this.onSyntaxErrorChanged,
     this.autofocus = false,
+    this.fontSize = 16.0,
+    this.fontWeight = FontWeight.normal,
   });
 
   final EditorViewState state;
@@ -154,6 +156,8 @@ class GooxEditorCanvas extends StatefulWidget {
   final ValueChanged<int>? onCursorOffsetChanged;
   final Future<void> Function(String? syntaxError)? onSyntaxErrorChanged;
   final bool autofocus;
+  final double fontSize;
+  final FontWeight fontWeight;
 
   @override
   State<GooxEditorCanvas> createState() => _GooxEditorCanvasState();
@@ -363,7 +367,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
     final theme = Theme.of(context);
     final isFocused = widget.focusNode.hasFocus;
     final lineCount = '\n'.allMatches(_textController.text).length + 1;
-    final lineHeight = 16 * 1.35;
+    final lineHeight = widget.fontSize * 1.35;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -420,8 +424,8 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
                           alpha: 0.6,
                         ),
                         fontFamily: 'monospace',
-                        fontSize: 12,
-                        height: 1.35 * (16 / 12),
+                        fontSize: widget.fontSize * 0.75, // Scaled with main font
+                        height: 1.35 * (widget.fontSize / (widget.fontSize * 0.75)),
                       ),
                     ),
                   );
@@ -450,7 +454,8 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onSurface,
                     fontFamily: 'monospace',
-                    fontSize: 16,
+                    fontSize: widget.fontSize,
+                    fontWeight: widget.fontWeight,
                     height: 1.35,
                   ),
                   decoration: const InputDecoration(
