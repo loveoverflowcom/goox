@@ -48,34 +48,6 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
-  obx_int.ModelEntity(
-    id: const obx_int.IdUid(2, 4607131333001934319),
-    name: 'WorkspaceSettings',
-    lastPropertyId: const obx_int.IdUid(3, 160845104749809634),
-    flags: 0,
-    properties: <obx_int.ModelProperty>[
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 6919006718822668366),
-        name: 'id',
-        type: 6,
-        flags: 1,
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 4370965694249021353),
-        name: 'lastFolderPath',
-        type: 9,
-        flags: 0,
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 160845104749809634),
-        name: 'themeMode',
-        type: 9,
-        flags: 0,
-      ),
-    ],
-    relations: <obx_int.ModelRelation>[],
-    backlinks: <obx_int.ModelBacklink>[],
-  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -125,9 +97,13 @@ obx_int.ModelDefinition getObjectBoxModel() {
     lastIndexId: const obx_int.IdUid(1, 6568457746231698196),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
-    retiredEntityUids: const [],
+    retiredEntityUids: const [4607131333001934319],
     retiredIndexUids: const [],
-    retiredPropertyUids: const [],
+    retiredPropertyUids: const [
+      6919006718822668366,
+      4370965694249021353,
+      160845104749809634,
+    ],
     retiredRelationUids: const [],
     modelVersion: 5,
     modelVersionParserMinimum: 5,
@@ -176,50 +152,6 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
-    WorkspaceSettings: obx_int.EntityDefinition<WorkspaceSettings>(
-      model: _entities[1],
-      toOneRelations: (WorkspaceSettings object) => [],
-      toManyRelations: (WorkspaceSettings object) => {},
-      getId: (WorkspaceSettings object) => object.id,
-      setId: (WorkspaceSettings object, int id) {
-        object.id = id;
-      },
-      objectToFB: (WorkspaceSettings object, fb.Builder fbb) {
-        final lastFolderPathOffset = object.lastFolderPath == null
-            ? null
-            : fbb.writeString(object.lastFolderPath!);
-        final themeModeOffset = fbb.writeString(object.themeMode);
-        fbb.startTable(4);
-        fbb.addInt64(0, object.id);
-        fbb.addOffset(1, lastFolderPathOffset);
-        fbb.addOffset(2, themeModeOffset);
-        fbb.finish(fbb.endTable());
-        return object.id;
-      },
-      objectFromFB: (obx.Store store, ByteData fbData) {
-        final buffer = fb.BufferContext(fbData);
-        final rootOffset = buffer.derefObject(0);
-        final idParam = const fb.Int64Reader().vTableGet(
-          buffer,
-          rootOffset,
-          4,
-          0,
-        );
-        final lastFolderPathParam = const fb.StringReader(
-          asciiOptimization: true,
-        ).vTableGetNullable(buffer, rootOffset, 6);
-        final themeModeParam = const fb.StringReader(
-          asciiOptimization: true,
-        ).vTableGet(buffer, rootOffset, 8, '');
-        final object = WorkspaceSettings(
-          id: idParam,
-          lastFolderPath: lastFolderPathParam,
-          themeMode: themeModeParam,
-        );
-
-        return object;
-      },
-    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -240,23 +172,5 @@ class RecentFolder_ {
   /// See [RecentFolder.lastOpenedAt].
   static final lastOpenedAt = obx.QueryDateProperty<RecentFolder>(
     _entities[0].properties[2],
-  );
-}
-
-/// [WorkspaceSettings] entity fields to define ObjectBox queries.
-class WorkspaceSettings_ {
-  /// See [WorkspaceSettings.id].
-  static final id = obx.QueryIntegerProperty<WorkspaceSettings>(
-    _entities[1].properties[0],
-  );
-
-  /// See [WorkspaceSettings.lastFolderPath].
-  static final lastFolderPath = obx.QueryStringProperty<WorkspaceSettings>(
-    _entities[1].properties[1],
-  );
-
-  /// See [WorkspaceSettings.themeMode].
-  static final themeMode = obx.QueryStringProperty<WorkspaceSettings>(
-    _entities[1].properties[2],
   );
 }

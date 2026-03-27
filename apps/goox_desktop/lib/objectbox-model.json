@@ -28,30 +28,6 @@
         }
       ],
       "relations": []
-    },
-    {
-      "id": "2:4607131333001934319",
-      "lastPropertyId": "3:160845104749809634",
-      "name": "WorkspaceSettings",
-      "properties": [
-        {
-          "id": "1:6919006718822668366",
-          "name": "id",
-          "type": 6,
-          "flags": 1
-        },
-        {
-          "id": "2:4370965694249021353",
-          "name": "lastFolderPath",
-          "type": 9
-        },
-        {
-          "id": "3:160845104749809634",
-          "name": "themeMode",
-          "type": 9
-        }
-      ],
-      "relations": []
     }
   ],
   "lastEntityId": "2:4607131333001934319",
@@ -60,9 +36,15 @@
   "lastSequenceId": "0:0",
   "modelVersion": 5,
   "modelVersionParserMinimum": 5,
-  "retiredEntityUids": [],
+  "retiredEntityUids": [
+    4607131333001934319
+  ],
   "retiredIndexUids": [],
-  "retiredPropertyUids": [],
+  "retiredPropertyUids": [
+    6919006718822668366,
+    4370965694249021353,
+    160845104749809634
+  ],
   "retiredRelationUids": [],
   "version": 1
 }

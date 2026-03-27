@@ -23,7 +23,6 @@ class _EditorPageState extends State<EditorPage> {
   late final GooxEditorController _controller;
   late final FocusNode _focusNode;
   String? _loadedFilePath;
-  String? _lastSyntaxErrorSignature;
 
   @override
   void initState() {
@@ -61,6 +60,7 @@ class _EditorPageState extends State<EditorPage> {
         filePath: path,
       );
       await _controller.setActiveExtension(extension);
+      await _logLanguageServerStatus(extension);
       final isPdf = path.toLowerCase().endsWith('.pdf');
 
       if (isPdf && extension?.hasWasmEntry == true) {
@@ -77,10 +77,8 @@ class _EditorPageState extends State<EditorPage> {
       if (file.existsSync()) {
         final text = await file.readAsString();
         await _controller.loadDocument(text);
-        await _updateSyntaxFeedback(text);
       } else {
         await _controller.loadDocument('');
-        await _hideSyntaxError();
       }
 
       if (mounted) {
@@ -88,6 +86,26 @@ class _EditorPageState extends State<EditorPage> {
       }
     } catch (error) {
       await _controller.loadDocument('Error loading file: $error');
+    }
+  }
+
+  Future<void> _logLanguageServerStatus(ActiveExtensionInfo? extension) async {
+    final executable = extension?.lspExecutable?.trim();
+    if (executable == null || executable.isEmpty) {
+      debugPrint('Goox LSP: no language server configured for this file.');
+      return;
+    }
+
+    try {
+      final command = Platform.isWindows ? 'where' : 'which';
+      final result = await Process.run(command, [executable]);
+      final found = result.exitCode == 0;
+      debugPrint(
+        'Goox LSP: $executable ${found ? "found" : "missing"}'
+        '${found ? " -> ${result.stdout}" : ""}',
+      );
+    } catch (error) {
+      debugPrint('Goox LSP: failed to check $executable: $error');
     }
   }
 
@@ -122,45 +140,26 @@ class _EditorPageState extends State<EditorPage> {
       change.replacement,
     );
     _markDirty();
-
-    final activeExtension = _controller.stateListenable.value.activeExtension;
-    final languageId = activeExtension?.languageId;
-    if (languageId != null && languageId.trim().isNotEmpty) {
-      final text = await _controller.getDocumentText();
-      await _updateSyntaxFeedback(text);
-    }
   }
 
-  Future<void> _updateSyntaxFeedback(String text) async {
-    final activeExtension = _controller.stateListenable.value.activeExtension;
-    final languageId = activeExtension?.languageId?.trim().toLowerCase();
-    if (languageId == null || languageId.isEmpty) {
-      await _hideSyntaxError();
-      return;
-    }
-
-    final syntaxError = await GooxEditorSdkBootstrap.validateSourceText(
-      languageId: languageId,
-      text: text,
-    );
+  Future<void> _handleSyntaxErrorChanged(String? syntaxError) async {
     if (!mounted) {
       return;
     }
 
-    final signature =
-        '${_loadedFilePath ?? ''}|$languageId|${syntaxError ?? 'ok'}';
-    if (_lastSyntaxErrorSignature == signature) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) {
+      debugPrint('Syntax feedback: $syntaxError');
       return;
     }
 
-    final messenger = ScaffoldMessenger.of(context);
     if (syntaxError == null) {
-      _lastSyntaxErrorSignature = signature;
+      debugPrint('Syntax feedback cleared');
       messenger.hideCurrentSnackBar();
       return;
     }
 
-    _lastSyntaxErrorSignature = signature;
+    debugPrint('Syntax feedback: $syntaxError');
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -170,15 +169,6 @@ class _EditorPageState extends State<EditorPage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-  }
-
-  Future<void> _hideSyntaxError() async {
-    _lastSyntaxErrorSignature = null;
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
   }
 
   @override
@@ -293,6 +283,7 @@ class _EditorPageState extends State<EditorPage> {
                           onTap: _focusNode.requestFocus,
                           onTextChanged: _handleEditorTextChanged,
                           onCursorOffsetChanged: _controller.moveCursorToOffset,
+                          onSyntaxErrorChanged: _handleSyntaxErrorChanged,
                         ),
                       )
               : _EditorWelcomeView(onOpenFolder: appState.pickDirectory),
@@ -307,218 +298,6 @@ class _EditorPageState extends State<EditorPage> {
       },
     );
   }
-}
-
-// ignore: unused_element
-String? _syntaxErrorMessage({
-  required String text,
-  required String? languageId,
-}) {
-  if (text.trim().isEmpty || languageId == null) {
-    return null;
-  }
-
-  switch (languageId) {
-    case 'python':
-      return _validatePythonSyntax(text);
-    case 'javascript':
-    case 'js':
-    case 'typescript':
-      return _validateJavaScriptSyntax(text);
-    default:
-      return null;
-  }
-}
-
-String? _validatePythonSyntax(String text) {
-  final scanner = _SyntaxScanner(text);
-  return scanner.scan(
-    allowHashComments: true,
-    allowBlockComments: false,
-    allowBackticks: false,
-    languageName: 'Python',
-  );
-}
-
-String? _validateJavaScriptSyntax(String text) {
-  final scanner = _SyntaxScanner(text);
-  return scanner.scan(
-    allowHashComments: false,
-    allowBlockComments: true,
-    allowBackticks: true,
-    languageName: 'JavaScript',
-  );
-}
-
-class _SyntaxScanner {
-  _SyntaxScanner(this.text);
-
-  final String text;
-
-  final List<_Delimiter> _stack = [];
-
-  String? scan({
-    required bool allowHashComments,
-    required bool allowBlockComments,
-    required bool allowBackticks,
-    required String languageName,
-  }) {
-    var index = 0;
-
-    while (index < text.length) {
-      final current = text[index];
-
-      if (allowHashComments && current == '#') {
-        index = _lineEnd(index);
-        continue;
-      }
-
-      if (allowBlockComments && _startsWith(index, '/*')) {
-        final end = text.indexOf('*/', index + 2);
-        if (end == -1) {
-          return '$languageName syntax error: block comment is not closed.';
-        }
-        index = end + 2;
-        continue;
-      }
-
-      if (allowBlockComments && _startsWith(index, '//')) {
-        index = _lineEnd(index);
-        continue;
-      }
-
-      if (allowBackticks && current == '`') {
-        final end = _consumeString(index, '`', allowMultiline: true);
-        if (end == -1) {
-          return '$languageName syntax error: template string is not closed.';
-        }
-        index = end;
-        continue;
-      }
-
-      if (_startsWith(index, "'''") || _startsWith(index, '"""')) {
-        final quote = _startsWith(index, "'''") ? "'''" : '"""';
-        final end = _consumeTripleString(index, quote);
-        if (end == -1) {
-          return '$languageName syntax error: string is not closed.';
-        }
-        index = end;
-        continue;
-      }
-
-      if (current == '\'' || current == '"') {
-        final end = _consumeString(index, current, allowMultiline: false);
-        if (end == -1) {
-          return '$languageName syntax error: string is not closed.';
-        }
-        index = end;
-        continue;
-      }
-
-      if (_isOpenDelimiter(current)) {
-        _stack.add(_Delimiter(current, index));
-        index++;
-        continue;
-      }
-
-      if (_isCloseDelimiter(current)) {
-        if (_stack.isEmpty) {
-          return '$languageName syntax error: unexpected "$current".';
-        }
-
-        final last = _stack.removeLast();
-        if (last.closing != current) {
-          return '$languageName syntax error: expected "${last.closing}" before "$current".';
-        }
-
-        index++;
-        continue;
-      }
-
-      index++;
-    }
-
-    if (_stack.isNotEmpty) {
-      final last = _stack.last;
-      return '$languageName syntax error: missing "${last.closing}".';
-    }
-
-    return null;
-  }
-
-  bool _startsWith(int index, String pattern) {
-    return index + pattern.length <= text.length &&
-        text.substring(index, index + pattern.length) == pattern;
-  }
-
-  int _lineEnd(int index) {
-    final newline = text.indexOf('\n', index);
-    return newline == -1 ? text.length : newline;
-  }
-
-  int _consumeString(int start, String quote, {required bool allowMultiline}) {
-    var index = start + 1;
-    var escaped = false;
-
-    while (index < text.length) {
-      final current = text[index];
-      if (!allowMultiline && current == '\n') {
-        return -1;
-      }
-
-      if (escaped) {
-        escaped = false;
-        index++;
-        continue;
-      }
-
-      if (current == '\\') {
-        escaped = true;
-        index++;
-        continue;
-      }
-
-      if (current == quote) {
-        return index + 1;
-      }
-
-      index++;
-    }
-
-    return -1;
-  }
-
-  int _consumeTripleString(int start, String quote) {
-    var index = start + 3;
-    while (index < text.length) {
-      if (_startsWith(index, quote)) {
-        return index + 3;
-      }
-      index++;
-    }
-
-    return -1;
-  }
-
-  bool _isOpenDelimiter(String char) =>
-      char == '(' || char == '{' || char == '[';
-
-  bool _isCloseDelimiter(String char) =>
-      char == ')' || char == '}' || char == ']';
-}
-
-class _Delimiter {
-  const _Delimiter(this.opening, this.index);
-
-  final String opening;
-  final int index;
-
-  String get closing => switch (opening) {
-    '(' => ')',
-    '{' => '}',
-    '[' => ']',
-    _ => '',
-  };
 }
 
 class _PdfPreviewPane extends StatefulWidget {

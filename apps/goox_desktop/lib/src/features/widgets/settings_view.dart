@@ -43,9 +43,100 @@ class SettingsView extends StatelessWidget {
             ],
           ),
         ),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            initiallyExpanded: true,
+            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            childrenPadding: EdgeInsets.zero,
+            shape: const Border(),
+            collapsedShape: const Border(),
+            title: Text(
+              'Editor', 
+              style: TextStyle(
+                fontSize: 13, 
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              )
+            ),
+            leading: Icon(
+              Icons.edit_note_outlined, 
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            children: [
+              _buildFontSizeOption(state, colorScheme),
+              _buildFontWeightOption(state, colorScheme),
+            ],
+          ),
+        ),
       ],
     );
   }
+
+  Widget _buildFontSizeOption(AppState state, ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Font Size', style: TextStyle(fontSize: 12)),
+              Text(
+                '${state.settings.fontSize.toInt()}px',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: state.settings.fontSize,
+            min: 8,
+            max: 32,
+            divisions: 24,
+            label: state.settings.fontSize.toInt().toString(),
+            onChanged: (value) {
+              state.setEditorSettings(fontSize: value);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFontWeightOption(AppState state, ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Font Weight', style: TextStyle(fontSize: 12)),
+          DropdownButton<FontWeight>(
+            value: state.settings.fontWeight,
+            underline: const SizedBox(),
+            style: TextStyle(fontSize: 12, color: colorScheme.onSurface),
+            items: [
+              DropdownMenuItem(value: FontWeight.w300, child: const Text('Light')),
+              DropdownMenuItem(value: FontWeight.w400, child: const Text('Normal')),
+              DropdownMenuItem(value: FontWeight.w500, child: const Text('Medium')),
+              DropdownMenuItem(value: FontWeight.w700, child: const Text('Bold')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                state.setEditorSettings(fontWeight: value);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildThemeOption(String title, ThemeMode mode, AppState state) {
     return RadioListTile<ThemeMode>(

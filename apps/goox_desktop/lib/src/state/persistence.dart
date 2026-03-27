@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'app_settings.dart';
 import 'package:objectbox/objectbox.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -23,30 +25,21 @@ class RecentFolder {
   });
 }
 
-@Entity()
-class WorkspaceSettings {
-  @Id()
-  int id = 0;
 
-  String? lastFolderPath;
-  String themeMode;
-
-  WorkspaceSettings({
-    this.id = 0,
-    this.lastFolderPath,
-    required this.themeMode,
-  });
-}
 
 class PersistenceService {
   late final Store store;
   late final Box<RecentFolder> recentFolderBox;
-  late final Box<WorkspaceSettings> settingsBox;
+  
+  late final File _settingsFile;
+  AppSettings _cachedSettings = const AppSettings();
 
   Future<void> init() async {
     final docsDir = await getApplicationDocumentsDirectory();
     final dbPath = p.join(docsDir.path, 'goox_desktop', 'objectbox');
-    
+    final settingsPath = p.join(docsDir.path, 'goox_desktop', 'settings.json');
+    _settingsFile = File(settingsPath);
+
     // Ensure the directory exists before opening the store
     final dir = Directory(dbPath);
     if (!dir.existsSync()) {
@@ -55,7 +48,30 @@ class PersistenceService {
     
     store = await openStore(directory: dbPath);
     recentFolderBox = store.box<RecentFolder>();
-    settingsBox = store.box<WorkspaceSettings>();
+
+    // Load settings from JSON
+    if (_settingsFile.existsSync()) {
+      try {
+        final content = _settingsFile.readAsStringSync();
+        _cachedSettings = AppSettings.fromJson(jsonDecode(content));
+      } catch (e) {
+        // Fallback to defaults if file is corrupted
+      }
+    } else {
+      // Create default settings file
+      _saveSettingsSync(_cachedSettings);
+    }
+  }
+
+  AppSettings getSettings() => _cachedSettings;
+
+  void saveSettings(AppSettings settings) {
+    _cachedSettings = settings;
+    _saveSettingsSync(settings);
+  }
+
+  void _saveSettingsSync(AppSettings settings) {
+    _settingsFile.writeAsStringSync(jsonEncode(settings.toJson()));
   }
 
   List<RecentFolder> getRecentFolders({int limit = 100}) {

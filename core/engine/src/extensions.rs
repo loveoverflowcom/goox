@@ -159,11 +159,24 @@ pub fn validate_source_text(language_id: String, text: String) -> Option<String>
         return None;
     }
 
-    match normalized.as_str() {
+    debug_log(format!(
+        "validate_source_text language={} chars={}",
+        normalized,
+        text.chars().count()
+    ));
+
+    let result = match normalized.as_str() {
         "python" => validate_python_source(&text),
         "javascript" | "js" | "typescript" => validate_javascript_source(&text),
         _ => None,
-    }
+    };
+
+    debug_log(format!(
+        "validate_source_text result={} message={}",
+        if result.is_some() { "error" } else { "ok" },
+        result.as_deref().unwrap_or("none")
+    ));
+    result
 }
 
 pub fn registered_extension_commands() -> Vec<String> {

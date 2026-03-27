@@ -4,25 +4,37 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:file_picker/file_picker.dart';
+import 'app_settings.dart';
 import 'persistence.dart';
 
 class AppState extends ChangeNotifier {
   final PersistenceService _persistence;
 
-  ThemeMode _themeMode = ThemeMode.system;
+  AppSettings _settings = const AppSettings();
+  AppSettings get settings => _settings;
 
-  ThemeMode get themeMode => _themeMode;
+  ThemeMode get themeMode => _settings.themeMode;
 
   void setThemeMode(ThemeMode mode) {
-    if (_themeMode == mode) return;
-    _themeMode = mode;
+    if (_settings.themeMode == mode) return;
+    _settings = _settings.copyWith(themeMode: mode);
+    _persistence.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  void setEditorSettings({double? fontSize, FontWeight? fontWeight}) {
+    _settings = _settings.copyWith(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+    );
+    _persistence.saveSettings(_settings);
     notifyListeners();
   }
 
   void toggleTheme() {
-    if (_themeMode == ThemeMode.system) {
+    if (_settings.themeMode == ThemeMode.system) {
       setThemeMode(ThemeMode.light);
-    } else if (_themeMode == ThemeMode.light) {
+    } else if (_settings.themeMode == ThemeMode.light) {
       setThemeMode(ThemeMode.dark);
     } else {
       setThemeMode(ThemeMode.system);
@@ -56,6 +68,7 @@ class AppState extends ChangeNotifier {
   List<RecentFolder> get recentFolders => _recentFolders;
 
   AppState(this._persistence) {
+    _settings = _persistence.getSettings();
     _loadRecentFolders();
   }
 

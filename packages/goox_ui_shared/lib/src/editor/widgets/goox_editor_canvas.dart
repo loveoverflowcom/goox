@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
 
@@ -140,6 +142,7 @@ class GooxEditorCanvas extends StatefulWidget {
     this.onTapDown,
     this.onTextChanged,
     this.onCursorOffsetChanged,
+    this.onSyntaxErrorChanged,
     this.autofocus = false,
   });
 
@@ -149,6 +152,7 @@ class GooxEditorCanvas extends StatefulWidget {
   final void Function(TapDownDetails, BuildContext)? onTapDown;
   final Future<void> Function(GooxEditorTextChange change)? onTextChanged;
   final ValueChanged<int>? onCursorOffsetChanged;
+  final Future<void> Function(String? syntaxError)? onSyntaxErrorChanged;
   final bool autofocus;
 
   @override
@@ -159,6 +163,8 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
   late final GooxCodeController _textController;
   bool _isApplyingExternalValue = false;
   TextEditingValue _lastEditingValue = const TextEditingValue();
+  String? _lastReportedSyntaxError;
+  int _validationNonce = 0;
 
   final ScrollController _textScrollController = ScrollController();
   final ScrollController _lineScrollController = ScrollController();
@@ -205,7 +211,13 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
       final nextValue = _editingValueFromState(widget.state);
       if (_textController.value != nextValue) {
         _applyExternalValue(nextValue);
+        _validateCurrentText();
       }
+    }
+
+    if (oldWidget.state.activeExtension?.languageId !=
+        widget.state.activeExtension?.languageId) {
+      _validateCurrentText();
     }
   }
 
@@ -233,6 +245,49 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
     _isApplyingExternalValue = false;
   }
 
+  Future<void> _validateCurrentText() async {
+    final languageId = widget.state.activeExtension?.languageId
+        ?.trim()
+        .toLowerCase();
+    final callback = widget.onSyntaxErrorChanged;
+    if (languageId == null || languageId.isEmpty || callback == null) {
+      await _emitSyntaxError(null);
+      return;
+    }
+
+    final text = _textController.text;
+    final currentNonce = ++_validationNonce;
+    debugPrint(
+      'GooxCodeController.validate language=$languageId chars=${text.length}',
+    );
+
+    final syntaxError = await GooxEditorSdkBootstrap.validateSourceText(
+      languageId: languageId,
+      text: text,
+    );
+
+    if (!mounted || currentNonce != _validationNonce) {
+      return;
+    }
+
+    debugPrint(
+      'GooxCodeController.result language=$languageId error=${syntaxError ?? 'ok'}',
+    );
+    await _emitSyntaxError(syntaxError);
+  }
+
+  Future<void> _emitSyntaxError(String? syntaxError) async {
+    if (_lastReportedSyntaxError == syntaxError) {
+      return;
+    }
+
+    _lastReportedSyntaxError = syntaxError;
+    final callback = widget.onSyntaxErrorChanged;
+    if (callback != null) {
+      await callback(syntaxError);
+    }
+  }
+
   void _handleTextEditingChanged() {
     if (_isApplyingExternalValue) {
       return;
@@ -248,6 +303,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
         final change = _calculateTextChange(previousValue.text, nextValue.text);
         callback(change);
       }
+      unawaited(_validateCurrentText());
       if (mounted) {
         setState(() {});
       }
