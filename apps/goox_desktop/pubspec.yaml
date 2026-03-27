@@ -18,6 +18,8 @@ dependencies:
     path: ../../packages/goox_editor_sdk
   goox_ui_shared:
     path: ../../packages/goox_ui_shared
+  objectbox: ^5.3.0
+  objectbox_flutter_libs: ^5.3.0
 
 dev_dependencies:
   flutter_test:
@@ -26,6 +28,8 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   goox_flutter_bridge:
     path: ../../platform/flutter_bridge
+  build_runner: ^2.13.1
+  objectbox_generator: ^5.3.0
 
 flutter:
   uses-material-design: true

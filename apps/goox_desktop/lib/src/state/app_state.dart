@@ -4,8 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:file_picker/file_picker.dart';
+import 'persistence.dart';
 
 class AppState extends ChangeNotifier {
+  final PersistenceService _persistence;
+
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
@@ -48,7 +51,18 @@ class AppState extends ChangeNotifier {
   // File watcher
   StreamSubscription<FileSystemEvent>? _directoryWatcher;
 
-  AppState();
+  // --- Recent Folders ---
+  List<RecentFolder> _recentFolders = [];
+  List<RecentFolder> get recentFolders => _recentFolders;
+
+  AppState(this._persistence) {
+    _loadRecentFolders();
+  }
+
+  void _loadRecentFolders() {
+    _recentFolders = _persistence.getRecentFolders();
+    notifyListeners();
+  }
 
   void openDirectory(String path) {
     _rootPath = path;
@@ -60,6 +74,9 @@ class AppState extends ChangeNotifier {
     _activeFile = null;
     _refreshWorkspace();
     _watchDirectory();
+
+    _persistence.addOrUpdateRecentFolder(path);
+    _loadRecentFolders();
   }
 
   Future<void> pickDirectory() async {

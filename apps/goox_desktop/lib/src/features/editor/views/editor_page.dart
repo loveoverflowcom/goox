@@ -352,6 +352,8 @@ class _EditorWelcomeView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final appState = context.watch<AppState>();
+    final recentFolders = appState.recentFolders;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -395,36 +397,65 @@ class _EditorWelcomeView extends StatelessWidget {
                 label: const Text('Open Folder'),
               ),
               const SizedBox(height: 28),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: const [
-                  _ShortcutCard(
-                    title: 'Open Folder',
-                    shortcut: 'Explorer',
-                    description:
-                        'Use the Explorer button or the welcome action to choose a workspace.',
+              if (recentFolders.isNotEmpty) ...[
+                Text(
+                  'Recent Folders',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                  _ShortcutCard(
-                    title: 'Save File',
-                    shortcut: 'Cmd/Ctrl + S',
-                    description:
-                        'Write the current editor contents back to disk.',
-                  ),
-                  _ShortcutCard(
-                    title: 'Undo / Redo',
-                    shortcut: 'Cmd/Ctrl + Z',
-                    description:
-                        'Use Shift with the same shortcut to redo the last change.',
-                  ),
-                  _ShortcutCard(
-                    title: 'Explorer Actions',
-                    shortcut: 'Right Click',
-                    description:
-                        'Rename or delete files and folders directly from the Explorer tree.',
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: recentFolders.map((folder) {
+                    final folderName = path.basename(folder.path);
+                    final folderPath = folder.path;
+                    final isOpen = folderPath == appState.rootPath;
+                    
+                    return InkWell(
+                      onTap: () => appState.openDirectory(folderPath),
+                      borderRadius: BorderRadius.circular(12),
+                      child: _ShortcutCard(
+                        title: folderName,
+                        shortcut: isOpen ? 'Active' : 'Open',
+                        description: folderPath,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ] else ...[
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: const [
+                    _ShortcutCard(
+                      title: 'Open Folder',
+                      shortcut: 'Explorer',
+                      description:
+                          'Use the Explorer button or the welcome action to choose a workspace.',
+                    ),
+                    _ShortcutCard(
+                      title: 'Save File',
+                      shortcut: 'Cmd/Ctrl + S',
+                      description:
+                          'Write the current editor contents back to disk.',
+                    ),
+                    _ShortcutCard(
+                      title: 'Undo / Redo',
+                      shortcut: 'Cmd/Ctrl + Z',
+                      description:
+                          'Use Shift with the same shortcut to redo the last change.',
+                    ),
+                    _ShortcutCard(
+                      title: 'Explorer Actions',
+                      shortcut: 'Right Click',
+                      description:
+                          'Rename or delete files and folders directly from the Explorer tree.',
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

@@ -1,0 +1,68 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:6423670398634948493",
+      "lastPropertyId": "3:3274428090512752550",
+      "name": "RecentFolder",
+      "properties": [
+        {
+          "id": "1:8676042237996314267",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4348060667941950684",
+          "name": "path",
+          "indexId": "1:6568457746231698196",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:3274428090512752550",
+          "name": "lastOpenedAt",
+          "type": 10
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:4607131333001934319",
+      "lastPropertyId": "3:160845104749809634",
+      "name": "WorkspaceSettings",
+      "properties": [
+        {
+          "id": "1:6919006718822668366",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4370965694249021353",
+          "name": "lastFolderPath",
+          "type": 9
+        },
+        {
+          "id": "3:160845104749809634",
+          "name": "themeMode",
+          "type": 9
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "2:4607131333001934319",
+  "lastIndexId": "1:6568457746231698196",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}
