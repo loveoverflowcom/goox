@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
 
-import '../../../state/app_state.dart';
+import '../../state/app_state.dart';
 
 enum _ExplorerContextAction { rename, delete }
 

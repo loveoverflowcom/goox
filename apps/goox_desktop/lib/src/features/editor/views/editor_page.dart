@@ -4,19 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
 import 'package:goox_ui_shared/goox_ui_shared.dart';
+import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
 import '../../../state/app_state.dart';
-import '../../layout/views/goox_layout.dart';
+import '../../widgets/settings_view.dart';
+import '../../widgets/sidebar.dart';
 
-class EditorDemoPage extends StatefulWidget {
-  const EditorDemoPage({super.key});
+class EditorPage extends StatefulWidget {
+  const EditorPage({super.key});
 
   @override
-  State<EditorDemoPage> createState() => _EditorDemoPageState();
+  State<EditorPage> createState() => _EditorPageState();
 }
 
-class _EditorDemoPageState extends State<EditorDemoPage> {
+class _EditorPageState extends State<EditorPage> {
   late final GooxEditorController _controller;
   late final FocusNode _focusNode;
   String? _loadedFilePath;
@@ -110,6 +112,43 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
       valueListenable: _controller.stateListenable,
       builder: (context, state, _) {
         return GooxLayout(
+          tabs: [
+            GooxWidgetTab(
+              id: 'explorer',
+              title: 'Explorer',
+              icon: Icons.copy_rounded,
+              builder: (context) => const ExplorerView(),
+            ),
+            GooxSearchTab(),
+            GooxWidgetTab(
+              id: 'source-control',
+              title: 'Source Control',
+              icon: Icons.account_tree_outlined,
+              builder: (context) => const Center(child: Text('Source Control')),
+            ),
+            GooxWidgetTab(
+              id: 'run-and-debug',
+              title: 'Run and Debug',
+              icon: Icons.play_arrow_outlined,
+              builder: (context) => const Center(child: Text('Run and Debug')),
+            ),
+            GooxWidgetTab(
+              id: 'extensions',
+              title: 'Extensions',
+              icon: Icons.extension_outlined,
+              builder: (context) => const Center(child: Text('Extensions')),
+            ),
+            GooxWidgetTab(
+              id: 'settings',
+              title: 'Settings',
+              icon: Icons.settings_outlined,
+              builder: (context) => const SettingsView(),
+            ),
+          ],
+          panels: [
+            GooxTerminalPanelTab(workingDirectory: appState.rootPath),
+          ],
+          editorHeader: const _EditorTabHeader(),
           editor: hasActiveFile
               ? CallbackShortcuts(
                   bindings: <ShortcutActivator, VoidCallback>{
@@ -257,6 +296,157 @@ class _EditorWelcomeView extends StatelessWidget {
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorTabHeader extends StatelessWidget {
+  const _EditorTabHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final state = context.watch<AppState>();
+    final hasOpenFiles = state.openFiles.isNotEmpty;
+
+    return Container(
+      height: 35,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: hasOpenFiles
+          ? ListView(
+              scrollDirection: Axis.horizontal,
+              children: state.openFiles
+                  .map(
+                    (itemPath) => _TabItem(
+                      title: path.basename(itemPath),
+                      isSelected: itemPath == state.activeFile,
+                      isDirty: state.isFileDirty(itemPath),
+                      onTap: () => state.openFile(itemPath),
+                      onClose: () => state.closeFile(itemPath),
+                    ),
+                  )
+                  .toList(),
+            )
+          : Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.description_outlined,
+                    size: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'No file open',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class _TabItem extends StatelessWidget {
+  const _TabItem({
+    required this.title,
+    required this.isSelected,
+    required this.isDirty,
+    required this.onTap,
+    required this.onClose,
+  });
+
+  final String title;
+  final bool isSelected;
+  final bool isDirty;
+  final VoidCallback onTap;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: isSelected
+          ? colorScheme.surface
+          : colorScheme.surfaceContainerLow,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              right: BorderSide(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.25),
+                width: 0.5,
+              ),
+              top: BorderSide(
+                color: isSelected ? colorScheme.primary : Colors.transparent,
+                width: 1.5,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.description_outlined,
+                size: 14,
+                color: isSelected
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isSelected
+                        ? colorScheme.onSurface
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (isDirty)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                )
+              else
+                InkWell(
+                  onTap: onClose,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

@@ -62,77 +62,74 @@ class _SimpleEditorHomeState extends State<SimpleEditorHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Simple Editor Playground'),
-        actions: [
-          TextButton(
-            onPressed: _controller.seedDocument,
-            child: const Text('Seed'),
-          ),
-          TextButton(
-            onPressed: _controller.loadLargeDocument,
-            child: const Text('Large'),
-          ),
-        ],
-      ),
-      body: ValueListenableBuilder<EditorViewState>(
-        valueListenable: _controller.stateListenable,
-        builder: (context, state, _) {
-          return Column(
-            children: [
-              Expanded(
-                child: CallbackShortcuts(
-                  bindings: <ShortcutActivator, VoidCallback>{
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyZ,
-                      control: true,
-                    ): () {
-                      _controller.undo();
-                    },
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyZ,
-                      meta: true,
-                    ): () {
-                      _controller.undo();
-                    },
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyZ,
-                      control: true,
-                      shift: true,
-                    ): () {
-                      _controller.redo();
-                    },
-                    const SingleActivator(
-                      LogicalKeyboardKey.keyZ,
-                      meta: true,
-                      shift: true,
-                    ): () {
-                      _controller.redo();
-                    },
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: GooxEditorCanvas(
-                      state: state,
-                      focusNode: _focusNode,
-                      autofocus: true,
-                      onTap: _focusNode.requestFocus,
-                      onTextChanged: _handleEditorTextChanged,
-                      onCursorOffsetChanged: _controller.moveCursorToOffset,
-                    ),
-                  ),
-                ),
+    return ValueListenableBuilder<EditorViewState>(
+      valueListenable: _controller.stateListenable,
+      builder: (context, state, _) {
+        return GooxLayout(
+          appBar: AppBar(
+            title: const Text('Simple Editor Playground'),
+            actions: [
+              TextButton(
+                onPressed: _controller.seedDocument,
+                child: const Text('Seed'),
               ),
-              GooxStatusBar(
-                revision: state.revision,
-                line: state.cursor.line,
-                column: state.cursor.column,
+              TextButton(
+                onPressed: _controller.loadLargeDocument,
+                child: const Text('Large'),
               ),
             ],
-          );
-        },
-      ),
+          ),
+          tabs: [
+            GooxSearchTab(),
+          ],
+          editor: CallbackShortcuts(
+            bindings: <ShortcutActivator, VoidCallback>{
+              const SingleActivator(
+                LogicalKeyboardKey.keyZ,
+                control: true,
+              ): () {
+                _controller.undo();
+              },
+              const SingleActivator(
+                LogicalKeyboardKey.keyZ,
+                meta: true,
+              ): () {
+                _controller.undo();
+              },
+              const SingleActivator(
+                LogicalKeyboardKey.keyZ,
+                control: true,
+                shift: true,
+              ): () {
+                _controller.redo();
+              },
+              const SingleActivator(
+                LogicalKeyboardKey.keyZ,
+                meta: true,
+                shift: true,
+              ): () {
+                _controller.redo();
+              },
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: GooxEditorCanvas(
+                state: state,
+                focusNode: _focusNode,
+                autofocus: true,
+                onTap: _focusNode.requestFocus,
+                onTextChanged: _handleEditorTextChanged,
+                onCursorOffsetChanged: _controller.moveCursorToOffset,
+              ),
+            ),
+          ),
+          statusBar: GooxStatusBar(
+            revision: state.revision,
+            line: state.cursor.line,
+            column: state.cursor.column,
+          ),
+        );
+      },
     );
   }
 }

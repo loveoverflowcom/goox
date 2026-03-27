@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../features/editor/views/editor_demo_page.dart';
+import '../features/editor/views/editor_page.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 
@@ -48,7 +48,7 @@ class _GooxDesktopState extends State<GooxDesktop> {
       themeMode: state.themeMode,
       home: _showStartupSplash
           ? const _DesktopStartupSplash()
-          : const EditorDemoPage(),
+          : const EditorPage(),
     );
   }
 }

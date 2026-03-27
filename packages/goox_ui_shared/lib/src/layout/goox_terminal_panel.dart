@@ -5,7 +5,24 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// ── Data Models ──────────────────────────────────────────────────────────────
+import 'goox_layout.dart';
+
+class GooxTerminalPanelTab extends GooxWidgetPanel {
+  GooxTerminalPanelTab({
+    super.id = 'terminal',
+    super.title = 'Terminal',
+    String? workingDirectory,
+  }) : super(
+          icon: Icons.terminal_rounded,
+          shortcuts: const <ShortcutActivator>[
+            SingleActivator(LogicalKeyboardKey.backquote, control: true),
+            SingleActivator(LogicalKeyboardKey.backquote, meta: true),
+          ],
+          builder: (context) => GooxTerminalPanel(
+            workingDirectory: workingDirectory,
+          ),
+        );
+}
 
 class TerminalCell {
   final String char;
@@ -33,19 +50,15 @@ class TerminalScreenState {
   });
 }
 
-// ── ANSI Parser ──────────────────────────────────────────────────────────────
-
 class _AnsiParser {
   final int cols;
   final int rows;
-
   final List<List<TerminalCell>> _grid;
   int _cursorRow = 0;
   int _cursorCol = 0;
   Color? _fgColor;
   Color? _bgColor;
   bool _bold = false;
-
   final StringBuffer _escBuffer = StringBuffer();
   bool _inEscape = false;
   bool _inCsi = false;
@@ -66,7 +79,7 @@ class _AnsiParser {
 
   void process(List<int> bytes) {
     final decoded = utf8.decode(bytes, allowMalformed: true);
-    for (int i = 0; i < decoded.length; i++) {
+    for (var i = 0; i < decoded.length; i++) {
       final ch = decoded[i];
       final code = ch.codeUnitAt(0);
 
@@ -83,9 +96,6 @@ class _AnsiParser {
           if (ch == '[') {
             _inCsi = true;
             _escBuffer.clear();
-          } else if (ch == ']') {
-            // OSC - skip until BEL or ST
-            _inEscape = false;
           } else {
             _inEscape = false;
           }
@@ -109,7 +119,9 @@ class _AnsiParser {
         _cursorCol = 0;
         break;
       case 0x08:
-        if (_cursorCol > 0) _cursorCol--;
+        if (_cursorCol > 0) {
+          _cursorCol--;
+        }
         break;
       case 0x07:
         break;
@@ -121,7 +133,9 @@ class _AnsiParser {
   }
 
   void _putChar(String ch) {
-    if (_cursorRow >= rows || _cursorCol >= cols) return;
+    if (_cursorRow >= rows || _cursorCol >= cols) {
+      return;
+    }
     _grid[_cursorRow][_cursorCol] = TerminalCell(
       char: ch,
       fgColor: _bold && _fgColor == null ? const Color(0xFFFFFFFF) : _fgColor,
@@ -145,10 +159,11 @@ class _AnsiParser {
   }
 
   void _processCsi(String seq) {
-    if (seq.isEmpty) return;
+    if (seq.isEmpty) {
+      return;
+    }
     final action = seq[seq.length - 1];
     final paramStr = seq.substring(0, seq.length - 1);
-    // Handle private mode sequences (starting with ?)
     final cleaned = paramStr.startsWith('?') ? paramStr.substring(1) : paramStr;
     final params = cleaned
         .split(';')
@@ -158,8 +173,8 @@ class _AnsiParser {
     switch (action) {
       case 'H':
       case 'f':
-        final row = (params.isNotEmpty ? params[0] : 1);
-        final col = (params.length > 1 ? params[1] : 1);
+        final row = params.isNotEmpty ? params[0] : 1;
+        final col = params.length > 1 ? params[1] : 1;
         _cursorRow = (row - 1).clamp(0, rows - 1);
         _cursorCol = (col - 1).clamp(0, cols - 1);
         break;
@@ -180,7 +195,6 @@ class _AnsiParser {
             (_cursorCol - (params.isNotEmpty ? params[0] : 1)).clamp(0, cols - 1);
         break;
       case 'G':
-        // Cursor horizontally absolute
         _cursorCol = ((params.isNotEmpty ? params[0] : 1) - 1).clamp(0, cols - 1);
         break;
       case 'J':
@@ -196,7 +210,6 @@ class _AnsiParser {
           _applySgr(params);
         }
         break;
-      // Ignore mode-setting sequences (h/l)
       case 'h':
       case 'l':
         break;
@@ -206,17 +219,17 @@ class _AnsiParser {
   void _eraseInLine(int mode) {
     switch (mode) {
       case 0:
-        for (int c = _cursorCol; c < cols; c++) {
+        for (var c = _cursorCol; c < cols; c++) {
           _grid[_cursorRow][c] = const TerminalCell();
         }
         break;
       case 1:
-        for (int c = 0; c <= _cursorCol && c < cols; c++) {
+        for (var c = 0; c <= _cursorCol && c < cols; c++) {
           _grid[_cursorRow][c] = const TerminalCell();
         }
         break;
       case 2:
-        for (int c = 0; c < cols; c++) {
+        for (var c = 0; c < cols; c++) {
           _grid[_cursorRow][c] = const TerminalCell();
         }
         break;
@@ -227,15 +240,15 @@ class _AnsiParser {
     switch (mode) {
       case 0:
         _eraseInLine(0);
-        for (int r = _cursorRow + 1; r < rows; r++) {
-          for (int c = 0; c < cols; c++) {
+        for (var r = _cursorRow + 1; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
             _grid[r][c] = const TerminalCell();
           }
         }
         break;
       case 1:
-        for (int r = 0; r < _cursorRow; r++) {
-          for (int c = 0; c < cols; c++) {
+        for (var r = 0; r < _cursorRow; r++) {
+          for (var c = 0; c < cols; c++) {
             _grid[r][c] = const TerminalCell();
           }
         }
@@ -243,8 +256,8 @@ class _AnsiParser {
         break;
       case 2:
       case 3:
-        for (int r = 0; r < rows; r++) {
-          for (int c = 0; c < cols; c++) {
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
             _grid[r][c] = const TerminalCell();
           }
         }
@@ -253,7 +266,7 @@ class _AnsiParser {
   }
 
   void _applySgr(List<int> params) {
-    for (int i = 0; i < params.length; i++) {
+    for (var i = 0; i < params.length; i++) {
       final p = params[i];
       if (p == 0) {
         _fgColor = null;
@@ -281,49 +294,31 @@ class _AnsiParser {
 
   static Color _ansiColor(int idx, bool bright) {
     const normal = [
-      Color(0xFF000000), // black
-      Color(0xFFCC0000), // red
-      Color(0xFF00CC00), // green
-      Color(0xFFCCCC00), // yellow
-      Color(0xFF0000CC), // blue
-      Color(0xFFCC00CC), // magenta
-      Color(0xFF00CCCC), // cyan
-      Color(0xFFCCCCCC), // white
+      Color(0xFF000000),
+      Color(0xFFCC0000),
+      Color(0xFF00CC00),
+      Color(0xFFCCCC00),
+      Color(0xFF0000CC),
+      Color(0xFFCC00CC),
+      Color(0xFF00CCCC),
+      Color(0xFFCCCCCC),
     ];
     const brightColors = [
-      Color(0xFF666666), // bright black
-      Color(0xFFFF5555), // bright red
-      Color(0xFF55FF55), // bright green
-      Color(0xFFFFFF55), // bright yellow
-      Color(0xFF5555FF), // bright blue
-      Color(0xFFFF55FF), // bright magenta
-      Color(0xFF55FFFF), // bright cyan
-      Color(0xFFFFFFFF), // bright white
+      Color(0xFF666666),
+      Color(0xFFFF5555),
+      Color(0xFF55FF55),
+      Color(0xFFFFFF55),
+      Color(0xFF5555FF),
+      Color(0xFFFF55FF),
+      Color(0xFF55FFFF),
+      Color(0xFFFFFFFF),
     ];
     final list = bright ? brightColors : normal;
     return list[idx.clamp(0, 7)];
   }
 }
 
-// ── TerminalSession ──────────────────────────────────────────────────────────
-// Uses dart:io Process with an interactive-mode shell invoked via `script`
-// (macOS/Linux) so that the shell emits a prompt immediately.
-
 class TerminalSession {
-  final int cols;
-  final int rows;
-  final String? workingDirectory;
-
-  Process? _process;
-  final _AnsiParser _parser;
-  bool _started = false;
-
-  final _screenController = StreamController<TerminalScreenState>.broadcast();
-  Stream<TerminalScreenState> get screenUpdates => _screenController.stream;
-
-  // Immediately returns an empty (but non-null) grid on first access.
-  TerminalScreenState get currentState => _parser.state;
-
   TerminalSession({
     this.cols = 80,
     this.rows = 24,
@@ -332,8 +327,21 @@ class TerminalSession {
     _start();
   }
 
+  final int cols;
+  final int rows;
+  final String? workingDirectory;
+  Process? _process;
+  final _AnsiParser _parser;
+  bool _started = false;
+  final _screenController = StreamController<TerminalScreenState>.broadcast();
+
+  Stream<TerminalScreenState> get screenUpdates => _screenController.stream;
+  TerminalScreenState get currentState => _parser.state;
+
   Future<void> _start() async {
-    if (_started) return;
+    if (_started) {
+      return;
+    }
     _started = true;
     try {
       final shell = Platform.environment['SHELL'] ?? '/bin/zsh';
@@ -345,9 +353,6 @@ class TerminalSession {
         'LANG': 'en_US.UTF-8',
       };
 
-      // On macOS/Linux, use the `script` utility to force a PTY-like
-      // environment that makes the shell emit a prompt immediately.
-      // `script -q /dev/null <shell>` creates a pseudo-terminal wrapper.
       if (Platform.isMacOS || Platform.isLinux) {
         _process = await Process.start(
           'script',
@@ -357,7 +362,6 @@ class TerminalSession {
           runInShell: false,
         );
       } else {
-        // Windows / fallback
         _process = await Process.start(
           shell,
           ['-i'],
@@ -374,8 +378,8 @@ class TerminalSession {
           _screenController.close();
         }
       });
-    } catch (e) {
-      debugPrint('[Terminal] Failed to start: $e');
+    } catch (error) {
+      debugPrint('[Terminal] Failed to start: $error');
     }
   }
 
@@ -398,21 +402,7 @@ class TerminalSession {
   }
 }
 
-// ── TerminalController ───────────────────────────────────────────────────────
-
 class TerminalController extends ChangeNotifier {
-  final String? workingDirectory;
-  final int cols;
-  final int rows;
-
-  late final TerminalSession _session;
-  StreamSubscription<TerminalScreenState>? _subscription;
-
-  // Starts as the empty grid — never null — so the view renders immediately.
-  TerminalScreenState _state;
-
-  TerminalScreenState get state => _state;
-
   TerminalController({this.workingDirectory, this.cols = 80, this.rows = 24})
       : _state = TerminalScreenState(
           grid: List.generate(
@@ -427,13 +417,21 @@ class TerminalController extends ChangeNotifier {
       rows: rows,
       workingDirectory: workingDirectory,
     );
-    // Immediately read the (empty) initial state from the session.
     _state = _session.currentState;
-    _subscription = _session.screenUpdates.listen((s) {
-      _state = s;
+    _subscription = _session.screenUpdates.listen((nextState) {
+      _state = nextState;
       notifyListeners();
     });
   }
+
+  final String? workingDirectory;
+  final int cols;
+  final int rows;
+  late final TerminalSession _session;
+  StreamSubscription<TerminalScreenState>? _subscription;
+  TerminalScreenState _state;
+
+  TerminalScreenState get state => _state;
 
   void sendInput(String input) => _session.sendInput(input);
 
@@ -445,74 +443,79 @@ class TerminalController extends ChangeNotifier {
   }
 }
 
-// ── TerminalTab Model ─────────────────────────────────────────────────────────
-
-class TerminalTab {
-  final String id;
-  final String shellName;
-  final String? workingDirectory;
-  final TerminalController controller;
-
-  TerminalTab({
+class _TerminalTabModel {
+  _TerminalTabModel({
     required this.id,
     required this.shellName,
     this.workingDirectory,
   }) : controller = TerminalController(workingDirectory: workingDirectory);
 
+  final String id;
+  final String shellName;
+  final String? workingDirectory;
+  final TerminalController controller;
+
   String get label {
-    if (workingDirectory == null) return shellName;
-    final dir = workingDirectory!;
-    final parts = dir.split(Platform.pathSeparator);
-    final baseName = parts.where((p) => p.isNotEmpty).lastOrNull;
-    if (baseName == null || baseName.isEmpty) return shellName;
+    final dir = workingDirectory;
+    if (dir == null || dir.isEmpty) {
+      return shellName;
+    }
+    final parts = dir.split(Platform.pathSeparator).where((part) => part.isNotEmpty);
+    final baseName = parts.isEmpty ? null : parts.last;
+    if (baseName == null || baseName.isEmpty) {
+      return shellName;
+    }
     return '$shellName ($baseName)';
   }
 
   void dispose() => controller.dispose();
 }
 
-// ── TerminalTabsController ────────────────────────────────────────────────────
-
-class TerminalTabsController extends ChangeNotifier {
-  final List<TerminalTab> _tabs = [];
-  int _activeIndex = 0;
-
-  List<TerminalTab> get tabs => List.unmodifiable(_tabs);
-  TerminalTab? get activeTab =>
-      _tabs.isEmpty ? null : _tabs[_activeIndex.clamp(0, _tabs.length - 1)];
-  int get activeIndex => _activeIndex;
-
-  TerminalTabsController({String? initialDirectory}) {
+class _TerminalTabsController extends ChangeNotifier {
+  _TerminalTabsController({String? initialDirectory}) {
     addTab(workingDirectory: initialDirectory);
   }
+
+  final List<_TerminalTabModel> _tabs = <_TerminalTabModel>[];
+  int _activeIndex = 0;
+
+  List<_TerminalTabModel> get tabs => List.unmodifiable(_tabs);
+  int get activeIndex => _activeIndex;
+  _TerminalTabModel? get activeTab =>
+      _tabs.isEmpty ? null : _tabs[_activeIndex.clamp(0, _tabs.length - 1)];
 
   void addTab({String? workingDirectory}) {
     final shell = Platform.environment['SHELL'] ?? '/bin/zsh';
     final shellName = shell.split('/').last;
-    final tab = TerminalTab(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      shellName: shellName,
-      workingDirectory: workingDirectory,
+    _tabs.add(
+      _TerminalTabModel(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        shellName: shellName,
+        workingDirectory: workingDirectory,
+      ),
     );
-    _tabs.add(tab);
     _activeIndex = _tabs.length - 1;
     notifyListeners();
   }
 
   void removeTab(int index) {
-    if (_tabs.isEmpty || index < 0 || index >= _tabs.length) return;
+    if (_tabs.isEmpty || index < 0 || index >= _tabs.length) {
+      return;
+    }
     _tabs[index].dispose();
     _tabs.removeAt(index);
     if (_tabs.isEmpty) {
       addTab();
-    } else {
-      _activeIndex = _activeIndex.clamp(0, _tabs.length - 1);
-      notifyListeners();
+      return;
     }
+    _activeIndex = _activeIndex.clamp(0, _tabs.length - 1);
+    notifyListeners();
   }
 
   void switchTab(int index) {
-    if (index < 0 || index >= _tabs.length) return;
+    if (index < 0 || index >= _tabs.length) {
+      return;
+    }
     _activeIndex = index;
     notifyListeners();
   }
@@ -526,22 +529,19 @@ class TerminalTabsController extends ChangeNotifier {
   }
 }
 
-// ── TerminalView ──────────────────────────────────────────────────────────────
-
 class TerminalView extends StatefulWidget {
-  final TerminalController controller;
-
   const TerminalView({super.key, required this.controller});
+
+  final TerminalController controller;
 
   @override
   State<TerminalView> createState() => _TerminalViewState();
 }
 
 class _TerminalViewState extends State<TerminalView> {
-  final FocusNode _focusNode = FocusNode();
-
   static const double _charW = 8.4;
   static const double _charH = 16.0;
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void dispose() {
@@ -550,7 +550,9 @@ class _TerminalViewState extends State<TerminalView> {
   }
 
   void _onKey(KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return;
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return;
+    }
 
     final key = event.logicalKey;
     String? input;
@@ -590,7 +592,6 @@ class _TerminalViewState extends State<TerminalView> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Theme-aware background: very dark surface in dark mode, slightly off-white in light
     final termBg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
 
     return Focus(
@@ -635,15 +636,7 @@ class _TerminalViewState extends State<TerminalView> {
   }
 }
 
-// ── TerminalPainter ───────────────────────────────────────────────────────────
-
 class _TerminalPainter extends CustomPainter {
-  final TerminalScreenState state;
-  final bool hasFocus;
-  final bool isDark;
-  final double charW;
-  final double charH;
-
   _TerminalPainter({
     required this.state,
     required this.hasFocus,
@@ -652,53 +645,51 @@ class _TerminalPainter extends CustomPainter {
     required this.isDark,
   });
 
+  final TerminalScreenState state;
+  final bool hasFocus;
+  final bool isDark;
+  final double charW;
+  final double charH;
+
   @override
   void paint(Canvas canvas, Size size) {
     final bgPaint = Paint()..style = PaintingStyle.fill;
     final tp = TextPainter(textDirection: TextDirection.ltr);
-
-    // Default text color adapts to theme
     final defaultFg =
         isDark ? const Color(0xFFCCCCCC) : const Color(0xFF1A1A1A);
     final cursorColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
     final cursorTextColor = isDark ? Colors.black : Colors.white;
 
-    for (int r = 0; r < state.grid.length; r++) {
+    for (var r = 0; r < state.grid.length; r++) {
       final row = state.grid[r];
-      for (int c = 0; c < row.length; c++) {
+      for (var c = 0; c < row.length; c++) {
         final cell = row[c];
         final x = c * charW;
         final y = r * charH;
-
-        // Background
         Color? bg = cell.bgColor;
         final isCursor = r == state.cursorRow && c == state.cursorCol;
         if (isCursor) {
-          bg = hasFocus
-              ? cursorColor
-              : cursorColor.withValues(alpha: 0.5);
+          bg = hasFocus ? cursorColor : cursorColor.withValues(alpha: 0.5);
         }
         if (bg != null) {
           bgPaint.color = bg;
           canvas.drawRect(Rect.fromLTWH(x, y, charW, charH), bgPaint);
         }
 
-        // Foreground
         final ch = cell.char;
         if (ch.isNotEmpty && ch != ' ') {
-          Color fg = cell.fgColor ?? defaultFg;
+          var fg = cell.fgColor ?? defaultFg;
           if (isCursor) {
             fg = cursorTextColor;
           }
-
           tp.text = TextSpan(
             text: ch,
             style: TextStyle(
               color: fg,
-              fontSize: 13.0,
+              fontSize: 13,
               fontFamily: 'monospace',
               fontWeight: cell.bold ? FontWeight.bold : FontWeight.normal,
-              height: 1.0,
+              height: 1,
             ),
           );
           tp.layout();
@@ -709,29 +700,31 @@ class _TerminalPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _TerminalPainter old) =>
-      old.state != state || old.hasFocus != hasFocus || old.isDark != isDark;
+  bool shouldRepaint(covariant _TerminalPainter oldDelegate) {
+    return oldDelegate.state != state ||
+        oldDelegate.hasFocus != hasFocus ||
+        oldDelegate.isDark != isDark;
+  }
 }
 
-// ── TerminalPanel (Multi-tab Shell) ──────────────────────────────────────────
+class GooxTerminalPanel extends StatefulWidget {
+  const GooxTerminalPanel({super.key, this.workingDirectory});
 
-class TerminalPanel extends StatefulWidget {
   final String? workingDirectory;
 
-  const TerminalPanel({super.key, this.workingDirectory});
-
   @override
-  State<TerminalPanel> createState() => _TerminalPanelState();
+  State<GooxTerminalPanel> createState() => _GooxTerminalPanelState();
 }
 
-class _TerminalPanelState extends State<TerminalPanel> {
-  late final TerminalTabsController _tabsController;
+class _GooxTerminalPanelState extends State<GooxTerminalPanel> {
+  late final _TerminalTabsController _tabsController;
 
   @override
   void initState() {
     super.initState();
-    _tabsController =
-        TerminalTabsController(initialDirectory: widget.workingDirectory);
+    _tabsController = _TerminalTabsController(
+      initialDirectory: widget.workingDirectory,
+    );
   }
 
   @override
@@ -743,12 +736,6 @@ class _TerminalPanelState extends State<TerminalPanel> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Theme-aware terminal chrome colors
-    final tabBarBg = isDark
-        ? colorScheme.surfaceContainerLow
-        : colorScheme.surfaceContainerLow;
 
     return ListenableBuilder(
       listenable: _tabsController,
@@ -759,11 +746,10 @@ class _TerminalPanelState extends State<TerminalPanel> {
 
         return Column(
           children: [
-            // ── Tab bar ────────────────────────────────────────────
             Container(
               height: 33,
               decoration: BoxDecoration(
-                color: tabBarBg,
+                color: colorScheme.surfaceContainerLow,
                 border: Border(
                   top: BorderSide(
                     color: colorScheme.outlineVariant.withValues(alpha: 0.4),
@@ -777,7 +763,6 @@ class _TerminalPanelState extends State<TerminalPanel> {
               ),
               child: Row(
                 children: [
-                  // Panel label
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
@@ -799,47 +784,40 @@ class _TerminalPanelState extends State<TerminalPanel> {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: tabs.length,
-                      itemBuilder: (context, i) => _TerminalTabChip(
-                        label: tabs[i].label,
-                        isActive: i == activeIndex,
-                        onTap: () => _tabsController.switchTab(i),
+                      itemBuilder: (context, index) => _TerminalTabChip(
+                        label: tabs[index].label,
+                        isActive: index == activeIndex,
+                        onTap: () => _tabsController.switchTab(index),
                         onClose: tabs.length > 1
-                            ? () => _tabsController.removeTab(i)
+                            ? () => _tabsController.removeTab(index)
                             : null,
                       ),
                     ),
                   ),
-                  // Add tab
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: InkWell(
-                      onTap: () => _tabsController.addTab(
-                        workingDirectory: widget.workingDirectory,
-                      ),
-                      child: SizedBox(
-                        width: 32,
-                        height: 33,
-                        child: Icon(
-                          Icons.add_rounded,
-                          size: 16,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                  InkWell(
+                    onTap: () => _tabsController.addTab(
+                      workingDirectory: widget.workingDirectory,
+                    ),
+                    child: SizedBox(
+                      width: 32,
+                      height: 33,
+                      child: Icon(
+                        Icons.add_rounded,
+                        size: 16,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-
-            // ── Terminal content ──────────────────────────────────
             Expanded(
               child: activeTab == null
                   ? const SizedBox.shrink()
                   : IndexedStack(
                       index: activeIndex,
                       children: tabs
-                          .map((tab) =>
-                              TerminalView(controller: tab.controller))
+                          .map((tab) => TerminalView(controller: tab.controller))
                           .toList(),
                     ),
             ),
@@ -850,14 +828,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
   }
 }
 
-// ── Tab chip widget ───────────────────────────────────────────────────────────
-
 class _TerminalTabChip extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-  final VoidCallback? onClose;
-
   const _TerminalTabChip({
     required this.label,
     required this.isActive,
@@ -865,76 +836,70 @@ class _TerminalTabChip extends StatelessWidget {
     this.onClose,
   });
 
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  final VoidCallback? onClose;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          height: 33,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: isActive
-                ? colorScheme.surface
-                : Colors.transparent,
-            border: Border(
-              top: BorderSide(
-                color: isActive
-                    ? colorScheme.primary
-                    : Colors.transparent,
-                width: 1.5,
-              ),
-              right: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                width: 0.5,
-              ),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 33,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: isActive ? colorScheme.surface : Colors.transparent,
+          border: Border(
+            top: BorderSide(
+              color: isActive ? colorScheme.primary : Colors.transparent,
+              width: 1.5,
+            ),
+            right: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+              width: 0.5,
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.terminal_rounded,
-                size: 13,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.terminal_rounded,
+              size: 13,
+              color: isActive
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
                 color: isActive
-                    ? colorScheme.primary
+                    ? colorScheme.onSurface
                     : colorScheme.onSurfaceVariant,
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
               ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isActive
-                      ? colorScheme.onSurface
-                      : colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                  fontWeight:
-                      isActive ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-              if (onClose != null) ...[
-                const SizedBox(width: 8),
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: InkWell(
-                    onTap: onClose,
-                    borderRadius: BorderRadius.circular(4),
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Icon(
-                        Icons.close_rounded,
-                        size: 12,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+            ),
+            if (onClose != null) ...[
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: onClose,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 12,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
