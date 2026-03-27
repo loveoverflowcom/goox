@@ -22,8 +22,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
   goox_flutter_bridge:
     path: ../../platform/flutter_bridge
 
 flutter:
   uses-material-design: true
+  assets:
+    - launch_assets/

@@ -8,11 +8,10 @@ import 'src/state/app_state.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GooxEditorSdkBootstrap.ensureInitialized();
-
   runApp(
     MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => AppState())],
-      child: const MyApp(),
+      child: const GooxDesktop(),
     ),
   );
 }

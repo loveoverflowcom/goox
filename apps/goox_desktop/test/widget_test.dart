@@ -12,11 +12,11 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [ChangeNotifierProvider(create: (_) => AppState())],
-        child: const MyApp(),
+        child: const GooxDesktop(),
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 1000));
 
     expect(find.text('EXPLORER'), findsWidgets);
   });

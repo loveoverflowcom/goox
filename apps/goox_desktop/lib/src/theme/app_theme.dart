@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color _accent = Color(0xFF00ADB5);
+  static const Color _accent = Color(0xFF2C6A84);
 
   static ThemeData get darkTheme {
     final base = ThemeData.dark(useMaterial3: true);
