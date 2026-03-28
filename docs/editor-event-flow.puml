@@ -4,19 +4,24 @@ title Editor Input To Paint Flow
 skinparam shadowing false
 
 actor User
-participant "Flutter Canvas" as UI
-participant "Event Queue" as Queue
+participant "GooxEditorCanvas" as UI
+participant "GooxEditorController" as Controller
+participant "RustEditorCoreClient" as Client
+participant "GooxBridgeClient\n+ FRB" as Bridge
 participant "Rust EditorBuffer" as Core
-participant "Patch Stream" as Stream
-participant "Viewport Painter" as Painter
+participant "State Rebuild" as State
+participant "TextField + Gutter" as Painter
 
 User -> UI : key press / pointer action
-UI -> Queue : normalize editor command
-Queue -> Core : Insert/Delete transaction
+UI -> Controller : normalized edit command
+Controller -> Client : forward action
+Client -> Bridge : applyTransaction / viewport requests
+Bridge -> Core : Insert/Delete transaction
 Core -> Core : apply rope mutation\npush undo entry\nincrement revision
-Core -> Stream : emit Vec<Patch>
-Stream -> UI : patch batch + revision
-UI -> Painter : update visible model
+Core -> Bridge : emit Vec<Patch>
+Bridge -> Client : patch batch + revision
+Client -> State : rebuild EditorViewState
+State -> Painter : update visible model
 Painter -> User : next frame
 
 note over Core

@@ -4,19 +4,22 @@ title Goox System Context
 skinparam componentStyle rectangle
 skinparam shadowing false
 
-component "Flutter UI" as Flutter
-component "flutter_rust_bridge\n(boundary to add next)" as FRB
+component "Flutter UI\n(shell + editor widgets)" as Flutter
+component "Goox Editor SDK\n(controller + adapters)" as SDK
+component "flutter_rust_bridge\n(generated bindings + bootstrap)" as FRB
 component "Rust Core\nEditorBuffer + Revision Clock" as RustCore
 component "Worker Pool\nhighlighting / search / plugins" as Workers
 component "Wasm Plugins" as Plugins
 
-Flutter --> FRB : input events\nviewport requests
+Flutter --> SDK : input events\napp state updates
+SDK --> FRB : ordered commands\nviewport requests
 FRB --> RustCore : ordered commands
 RustCore --> FRB : patch batches\nviewport snapshots
 RustCore --> Workers : async jobs
 Workers --> Plugins : sandboxed execution
 Plugins --> RustCore : validated edit proposals
-FRB --> Flutter : render deltas
+FRB --> SDK : bridge responses
+SDK --> Flutter : render-ready state
 
 note right of RustCore
 Single source of truth
