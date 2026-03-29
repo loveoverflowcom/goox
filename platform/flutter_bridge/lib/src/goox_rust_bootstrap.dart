@@ -10,6 +10,9 @@ import 'raw_bridge/frb_generated.dart';
 
 final class GooxRustBootstrap {
   static bool _initialized = false;
+  static String? _nativeLibraryPath;
+
+  static String? get nativeLibraryPath => _nativeLibraryPath;
 
   static Future<void> ensureInitialized({String? workspaceRoot}) async {
     if (_initialized) {
@@ -26,6 +29,7 @@ final class GooxRustBootstrap {
         forceRebuild: kDebugMode,
       );
       if (dylibPath != null) {
+        _nativeLibraryPath = dylibPath;
         externalLibrary = ExternalLibrary.open(dylibPath);
       }
     }
