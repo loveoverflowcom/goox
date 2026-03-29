@@ -203,6 +203,7 @@ That is not a bug in the architecture. It is the natural state of a staged rewri
 - [system-context.puml](./system-context.puml)
 - [editor-event-flow.puml](./editor-event-flow.puml)
 - [buffer-ownership.puml](./buffer-ownership.puml)
+- [terminal-architecture.md](./terminal-architecture.md)
 
 ## 10. Good Extension Points
 

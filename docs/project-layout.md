@@ -71,7 +71,7 @@ This is the Rust editor core.
 
 - `src/lib.rs` defines the buffer, transactions, revisions, viewport snapshots, and undo/redo behavior.
 - `src/extensions.rs` handles extension discovery and wasm plugin activation.
-- `src/terminal.rs` owns terminal-related behavior.
+- `src/terminal.rs` owns a Rust-side terminal session model that is currently not the live UI path.
 - `src/api.rs` is the bridge surface exported to Flutter.
 
 Use this folder when you want to change:
@@ -140,6 +140,7 @@ The docs folder contains the architecture explanation and diagrams.
 - `architecture.md` explains the end-to-end system.
 - `project-layout.md` explains the folder map.
 - `restructure_plan.md` explains the next refactor phases.
+- `terminal-architecture.md` explains the terminal subsystem.
 - `system-context.puml`, `editor-event-flow.puml`, and `buffer-ownership.puml` show the system visually.
 
 ## Where To Edit Common Features
