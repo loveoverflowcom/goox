@@ -38,9 +38,9 @@ class SettingsView extends StatelessWidget {
               color: colorScheme.onSurfaceVariant,
             ),
             children: [
-              _buildThemeOption('System', ThemeMode.system, state),
-              _buildThemeOption('Light', ThemeMode.light, state),
-              _buildThemeOption('Dark', ThemeMode.dark, state),
+              _buildThemeOption(context, 'System', ThemeMode.system, state),
+              _buildThemeOption(context, 'Light', ThemeMode.light, state),
+              _buildThemeOption(context, 'Dark', ThemeMode.dark, state),
             ],
           ),
         ),
@@ -138,7 +138,8 @@ class SettingsView extends StatelessWidget {
     );
   }
 
-  Widget _buildThemeOption(String title, ThemeMode mode, AppState state) {
+  Widget _buildThemeOption(BuildContext context, String title, ThemeMode mode, AppState state) {
+    final colorScheme = Theme.of(context).colorScheme;
     return RadioListTile<ThemeMode>(
       dense: true,
       visualDensity: VisualDensity.compact,
@@ -149,7 +150,7 @@ class SettingsView extends StatelessWidget {
       ),
       value: mode,
       groupValue: state.themeMode,
-      activeColor: Colors.blueAccent,
+      activeColor: colorScheme.primary,
       onChanged: (m) => state.setThemeMode(m!),
     );
   }

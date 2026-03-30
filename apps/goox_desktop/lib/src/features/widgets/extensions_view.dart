@@ -15,10 +15,10 @@ class ExtensionsView extends StatefulWidget {
   const ExtensionsView({super.key});
 
   @override
-  State<ExtensionsView> createState() => _ExtensionsViewState();
+  State<ExtensionsView> createState() => ExtensionsViewState();
 }
 
-class _ExtensionsViewState extends State<ExtensionsView> {
+class ExtensionsViewState extends State<ExtensionsView> {
   List<_ManagedExtension> _extensions = const [];
   bool _loadingExtensions = true;
   String? _statusMessage;
@@ -30,11 +30,11 @@ class _ExtensionsViewState extends State<ExtensionsView> {
     final workspaceRoot = context.watch<AppState>().rootPath;
     if (workspaceRoot != _lastWorkspaceRoot) {
       _lastWorkspaceRoot = workspaceRoot;
-      unawaited(_reloadExtensions());
+      unawaited(reloadExtensions());
     }
   }
 
-  Future<void> _reloadExtensions() async {
+  Future<void> reloadExtensions() async {
     if (!mounted) {
       return;
     }
@@ -66,7 +66,7 @@ class _ExtensionsViewState extends State<ExtensionsView> {
     }
   }
 
-  Future<void> _importExtension() async {
+  Future<void> importExtension() async {
     final workspaceRoot = context.read<AppState>().rootPath;
     if (workspaceRoot == null || workspaceRoot.trim().isEmpty) {
       setState(() {
@@ -100,7 +100,7 @@ class _ExtensionsViewState extends State<ExtensionsView> {
       await GooxEditorSdkBootstrap.refreshWorkspaceExtensions(
         workspaceRoot: workspaceRoot,
       );
-      await _reloadExtensions();
+      await reloadExtensions();
       if (!mounted) {
         return;
       }
@@ -137,7 +137,7 @@ class _ExtensionsViewState extends State<ExtensionsView> {
           workspaceRoot: workspaceRoot,
         );
       }
-      await _reloadExtensions();
+      await reloadExtensions();
     } catch (error) {
       if (!mounted) {
         return;
@@ -290,41 +290,11 @@ class _ExtensionsViewState extends State<ExtensionsView> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
     final colorScheme = Theme.of(context).colorScheme;
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  state.rootPath == null
-                      ? 'Open a workspace to import extensions'
-                      : 'Import extension folders and toggle installed entries',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: state.rootPath == null ? null : _importExtension,
-                icon: const Icon(Icons.upload_outlined, size: 16),
-                label: const Text('Import'),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: _reloadExtensions,
-                icon: const Icon(Icons.refresh_outlined, size: 16),
-                label: const Text('Refresh'),
-              ),
-            ],
-          ),
-        ),
         if (_statusMessage != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),

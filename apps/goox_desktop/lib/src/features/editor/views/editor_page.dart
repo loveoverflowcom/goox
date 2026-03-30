@@ -24,6 +24,7 @@ class _EditorPageState extends State<EditorPage> {
   late final GooxEditorController _controller;
   late final FocusNode _focusNode;
   String? _loadedFilePath;
+  final _extensionsKey = GlobalKey<ExtensionsViewState>();
 
   @override
   void initState() {
@@ -175,7 +176,8 @@ class _EditorPageState extends State<EditorPage> {
               id: 'extensions',
               title: 'Extensions',
               icon: Icons.extension_outlined,
-              builder: (context) => const ExtensionsView(),
+              builder: (context) => ExtensionsView(key: _extensionsKey),
+              trailing: (context) => _ExtensionsTrailing(extensionsKey: _extensionsKey),
             ),
             GooxWidgetTab(
               id: 'settings',
@@ -691,8 +693,9 @@ class _TabItem extends StatelessWidget {
         position & const Size(40, 40),
         Offset.zero & overlay.size,
       ),
-      color: colorScheme.surfaceContainerHigh,
+      color: colorScheme.surface,
       elevation: 4,
+      popUpAnimationStyle: AnimationStyle(duration: Duration.zero),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
@@ -703,18 +706,18 @@ class _TabItem extends StatelessWidget {
         PopupMenuItem(
           height: 32,
           onTap: onClose,
-          child: Text('Close', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+          child: Text('Close', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
         ),
         PopupMenuItem(
           height: 32,
           onTap: onCloseOthers,
-          child: Text('Close Others', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+          child: Text('Close Others', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
         ),
         const PopupMenuDivider(height: 1),
         PopupMenuItem(
           height: 32,
           onTap: onCloseAll,
-          child: Text('Close All', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+          child: Text('Close All', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
         ),
       ],
     );
@@ -863,6 +866,55 @@ class _ShortcutCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ExtensionsTrailing extends StatelessWidget {
+  const _ExtensionsTrailing({required this.extensionsKey});
+
+  final GlobalKey<ExtensionsViewState> extensionsKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final rootPath = context.watch<AppState>().rootPath;
+
+    return SizedBox(
+      width: 32,
+      height: 32,
+      child: PopupMenuButton<String>(
+        padding: EdgeInsets.zero,
+        icon: Icon(Icons.more_horiz, size: 16, color: colorScheme.onSurfaceVariant),
+        tooltip: 'More actions',
+        popUpAnimationStyle: AnimationStyle(duration: Duration.zero),
+        color: colorScheme.surface,
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        onSelected: (value) {
+          if (value == 'import') {
+            extensionsKey.currentState?.importExtension();
+          } else if (value == 'refresh') {
+            extensionsKey.currentState?.reloadExtensions();
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            height: 32,
+            enabled: rootPath != null,
+            value: 'import',
+            child: Text('Import Extension', style: TextStyle(fontSize: 13, color: rootPath != null ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.4))),
+          ),
+          PopupMenuItem(
+            height: 32,
+            value: 'refresh',
+            child: Text('Refresh', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+          ),
+        ],
       ),
     );
   }

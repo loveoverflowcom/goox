@@ -107,7 +107,7 @@ class ExplorerView extends StatelessWidget {
       context,
       title: 'New File',
       label: 'File name',
-      initialValue: 'new_file.txt',
+      initialValue: '',
     );
     if (name == null) {
       return;

@@ -17,6 +17,7 @@ class GooxWidgetTab implements GooxTab {
     required this.icon,
     required this.builder,
     this.alignment = GooxTabAlignment.top,
+    this.trailing,
   });
 
   @override
@@ -32,6 +33,9 @@ class GooxWidgetTab implements GooxTab {
 
   @override
   final GooxTabAlignment alignment;
+
+  /// Optional widget shown in the sidebar header trailing area.
+  final WidgetBuilder? trailing;
 
   @override
   Widget build(BuildContext context) => builder(context);
@@ -215,6 +219,7 @@ class _GooxLayoutState extends State<GooxLayout> {
                     _GooxSidebar(
                       title: activeTab.title,
                       width: _sidebarWidth,
+                      trailing: activeTab is GooxWidgetTab ? activeTab.trailing?.call(context) : null,
                       child: activeTab.build(context),
                     ),
                     MouseRegion(
@@ -406,11 +411,13 @@ class _GooxSidebar extends StatelessWidget {
     required this.title,
     required this.width,
     required this.child,
+    this.trailing,
   });
 
   final String title;
   final double width;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -433,15 +440,21 @@ class _GooxSidebar extends StatelessWidget {
           children: [
             Container(
               height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                title.toUpperCase(),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              padding: const EdgeInsets.only(left: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title.toUpperCase(),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (trailing != null) trailing!,
+                ],
               ),
             ),
             Expanded(child: child),
