@@ -1,8 +1,0 @@
-/Users/manhblue/Documents/personal/open_source/goox/dummy_extensions/pdf-viewer/target/release/deps/unicode_ident-49d8a11981cce2f0.d: /Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-ident-1.0.24/src/lib.rs /Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-ident-1.0.24/src/tables.rs
-
-/Users/manhblue/Documents/personal/open_source/goox/dummy_extensions/pdf-viewer/target/release/deps/libunicode_ident-49d8a11981cce2f0.rlib: /Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-ident-1.0.24/src/lib.rs /Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-ident-1.0.24/src/tables.rs
-
-/Users/manhblue/Documents/personal/open_source/goox/dummy_extensions/pdf-viewer/target/release/deps/libunicode_ident-49d8a11981cce2f0.rmeta: /Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-ident-1.0.24/src/lib.rs /Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-ident-1.0.24/src/tables.rs
-
-/Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-ident-1.0.24/src/lib.rs:
-/Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-ident-1.0.24/src/tables.rs:
