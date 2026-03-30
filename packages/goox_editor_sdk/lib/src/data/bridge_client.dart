@@ -6,6 +6,9 @@ typedef BridgeBufferPatchBatch = bridge.BufferPatchBatch;
 typedef BridgeBufferSnapshot = bridge.BufferSnapshot;
 typedef BridgeBufferTransaction = bridge.BufferTransaction;
 typedef BridgeCursorPos = bridge.CursorPos;
+typedef BridgeLanguageServerDiagnostic = bridge.LanguageServerDiagnostic;
+typedef BridgeLanguageServerDiagnosticRange = bridge.LanguageServerDiagnosticRange;
+typedef BridgeLanguageServerSnapshot = bridge.LanguageServerSnapshot;
 typedef BridgeViewportLine = bridge.ViewportLine;
 typedef BridgeViewportRequest = bridge.ViewportRequest;
 typedef BridgeViewportSnapshot = bridge.ViewportSnapshot;
@@ -33,4 +36,23 @@ class GooxBridgeClient {
 
   Future<BridgeBufferPatchBatch> deleteLine({required BigInt charIndex}) =>
       bridge.deleteLine(charIndex: charIndex);
+
+  Future<bool> syncLanguageServer({
+    String? workspaceRoot,
+    String? filePath,
+    String? languageId,
+    String? lspExecutable,
+    required String text,
+  }) => bridge.syncLanguageServer(
+    workspaceRoot: workspaceRoot,
+    filePath: filePath,
+    languageId: languageId,
+    lspExecutable: lspExecutable,
+    text: text,
+  );
+
+  Future<BridgeLanguageServerSnapshot> pollLanguageServer() =>
+      bridge.pollLanguageServer();
+
+  Future<void> shutdownLanguageServer() => bridge.shutdownLanguageServer();
 }

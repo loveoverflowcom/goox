@@ -253,8 +253,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
     final languageId = widget.state.activeExtension?.languageId
         ?.trim()
         .toLowerCase();
-    final callback = widget.onSyntaxErrorChanged;
-    if (languageId == null || languageId.isEmpty || callback == null) {
+    if (languageId == null || languageId.isEmpty) {
       await _emitSyntaxError(null);
       return;
     }

@@ -18,7 +18,15 @@ class GooxEditorController {
   Future<void> setActiveExtension(ActiveExtensionInfo? extension) =>
       _coreClient.setActiveExtension(extension);
 
-  Future<void> loadDocument(String text) => _coreClient.loadDocument(text);
+  Future<void> loadDocument(
+    String text, {
+    String? filePath,
+    String? workspaceRoot,
+  }) => _coreClient.loadDocument(
+    text,
+    filePath: filePath,
+    workspaceRoot: workspaceRoot,
+  );
 
   Future<String> getDocumentText() => _coreClient.getDocumentText();
 

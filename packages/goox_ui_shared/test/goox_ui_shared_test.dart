@@ -6,7 +6,15 @@ void main() {
   testWidgets('renders shared status bar', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(body: GooxStatusBar(revision: 3, line: 7, column: 12)),
+        home: Scaffold(
+          body: GooxStatusBar(
+            revision: 3,
+            line: 7,
+            column: 12,
+            lspStatus: 'ready',
+            diagnosticCount: 0,
+          ),
+        ),
       ),
     );
 

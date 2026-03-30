@@ -15,6 +15,7 @@ pub struct ExtensionMeta {
     pub filetypes: Vec<String>,
     pub language_id: Option<String>,
     pub lsp_executable: Option<String>,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -60,12 +61,14 @@ impl ExtensionRegistry {
 
     fn merge_scanned(&mut self, scanned: Vec<ExtensionMeta>) {
         for extension in scanned {
-            self.extensions_by_name
-                .insert(extension.name.clone(), extension.clone());
+            if extension.enabled {
+                self.extensions_by_name
+                    .insert(extension.name.clone(), extension.clone());
 
-            for filetype in &extension.filetypes {
-                self.filetype_index
-                    .insert(normalize_filetype(filetype), extension.name.clone());
+                for filetype in &extension.filetypes {
+                    self.filetype_index
+                        .insert(normalize_filetype(filetype), extension.name.clone());
+                }
             }
         }
     }
@@ -114,7 +117,7 @@ pub fn refresh_workspace_extensions(workspace_root: String) -> usize {
 }
 
 pub fn activate_extension_for_file(workspace_root: String, file_path: String) -> bool {
-    let workspace_root = normalize_workspace_root(&workspace_root);
+    let workspace_root = resolve_workspace_root(&workspace_root, Path::new(&file_path));
     let Some(filetype) = filetype_for_path(Path::new(&file_path)) else {
         return false;
     };
@@ -135,7 +138,7 @@ pub fn activate_extension_for_file(workspace_root: String, file_path: String) ->
 }
 
 pub fn extension_for_file(workspace_root: String, file_path: String) -> Option<ExtensionInfo> {
-    let workspace_root = normalize_workspace_root(&workspace_root);
+    let workspace_root = resolve_workspace_root(&workspace_root, Path::new(&file_path));
     let filetype = filetype_for_path(Path::new(&file_path))?;
     let registry = ExtensionRegistry::build(workspace_root.as_deref());
     {
@@ -393,6 +396,7 @@ fn read_extension_config(path: &Path, scope: ExtensionScope) -> Option<Extension
         lsp_executable: parsed
             .lsp_executable
             .filter(|lsp_executable| !lsp_executable.trim().is_empty()),
+        enabled: is_extension_enabled(path),
     };
 
     match scope {
@@ -409,9 +413,34 @@ fn normalize_workspace_root(workspace_root: &str) -> Option<PathBuf> {
     Some(PathBuf::from(trimmed))
 }
 
+fn resolve_workspace_root(workspace_root: &str, file_path: &Path) -> Option<PathBuf> {
+    normalize_workspace_root(workspace_root)
+        .or_else(|| discover_workspace_root_from_file(file_path))
+}
+
+fn discover_workspace_root_from_file(file_path: &Path) -> Option<PathBuf> {
+    let absolute = if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        std::env::current_dir().ok()?.join(file_path)
+    };
+
+    for ancestor in absolute.ancestors() {
+        if ancestor.join(".goox/extensions").is_dir() {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+
+    None
+}
+
 fn global_extensions_dir() -> Option<PathBuf> {
     let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
     Some(PathBuf::from(home).join(".goox/extensions"))
+}
+
+fn is_extension_enabled(path: &Path) -> bool {
+    !path.join(".goox.disabled").exists()
 }
 
 fn normalize_filetype(filetype: &str) -> String {

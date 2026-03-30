@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:goox_flutter_bridge/goox_flutter_bridge.dart' as raw_bridge;
 
@@ -17,7 +19,11 @@ class RustEditorCoreClient implements EditorCoreClient {
   final GooxEditorRepository _repository;
   final ValueNotifier<EditorViewState> _state;
   final List<String> _eventLog = [];
+
   ActiveExtensionInfo? _activeExtension;
+  String? _workspaceRoot;
+  String? _currentFilePath;
+  Timer? _lspPollTimer;
 
   int _cursorOffset = 0;
   int _firstVisibleLine = 0;
@@ -37,6 +43,8 @@ class RustEditorCoreClient implements EditorCoreClient {
         'Performance-heavy tasks like text manipulation and viewport calculation happen in Rust.\n'
         'The UI remains smooth while handling large documents.\n';
     await _repository.seedDocument(text: seedText);
+    _workspaceRoot = null;
+    _currentFilePath = null;
     _cursorOffset = seedText.length;
     _firstVisibleLine = 0;
     _recordEvent('Rust core seeded');
@@ -46,6 +54,12 @@ class RustEditorCoreClient implements EditorCoreClient {
   @override
   Future<void> setActiveExtension(ActiveExtensionInfo? extension) async {
     _activeExtension = extension;
+    _updateLanguageServerPolling();
+    if (_currentFilePath == null) {
+      _state.value = _state.value.copyWith(activeExtension: extension);
+      return;
+    }
+
     await _publish(lastCommand: 'set active extension');
   }
 
@@ -57,6 +71,8 @@ class RustEditorCoreClient implements EditorCoreClient {
     }
 
     await _repository.seedDocument(text: buffer.toString());
+    _workspaceRoot = null;
+    _currentFilePath = null;
     _cursorOffset = buffer.length;
     _firstVisibleLine = 0;
     _recordEvent('Rust core loaded 1000 lines');
@@ -64,11 +80,18 @@ class RustEditorCoreClient implements EditorCoreClient {
   }
 
   @override
-  Future<void> loadDocument(String text) async {
+  Future<void> loadDocument(
+    String text, {
+    String? filePath,
+    String? workspaceRoot,
+  }) async {
     await _repository.seedDocument(text: text);
+    _currentFilePath = filePath;
+    _workspaceRoot = workspaceRoot;
     _cursorOffset = 0;
     _firstVisibleLine = 0;
     _recordEvent('Rust core loaded document');
+    _updateLanguageServerPolling();
     await _publish(lastCommand: 'load document');
   }
 
@@ -409,6 +432,9 @@ class RustEditorCoreClient implements EditorCoreClient {
     final cursor = await _getCursorPosition();
     final documentText = await getDocumentText();
 
+    await _syncLanguageServer(documentText);
+    final lspSnapshot = await _refreshLanguageServerSnapshot();
+
     _state.value = EditorViewState(
       revision: snapshot.revision.toInt(),
       totalChars: snapshot.charCount.toInt(),
@@ -431,6 +457,10 @@ class RustEditorCoreClient implements EditorCoreClient {
       hasRedo: true,
       lastCommand: lastCommand,
       activeExtension: _activeExtension,
+      lspStatus: lspSnapshot.status,
+      lspDiagnostics: lspSnapshot.diagnostics
+          .map(_diagnosticFromBridge)
+          .toList(growable: false),
     );
   }
 
@@ -448,6 +478,92 @@ class RustEditorCoreClient implements EditorCoreClient {
         EditorPatch.delete(start: start.toInt(), end: end.toInt()),
   );
 
+  LspDiagnostic _diagnosticFromBridge(
+    raw_bridge.LanguageServerDiagnostic diagnostic,
+  ) {
+    return LspDiagnostic(
+      message: diagnostic.message,
+      startLine: diagnostic.range.startLine,
+      startColumn: diagnostic.range.startCharacter,
+      endLine: diagnostic.range.endLine,
+      endColumn: diagnostic.range.endCharacter,
+      severity: diagnostic.severity,
+      source: diagnostic.source,
+    );
+  }
+
+  bool get _canUseLanguageServer {
+    final extension = _activeExtension;
+    return _currentFilePath != null &&
+        extension != null &&
+        (extension.lspExecutable?.trim().isNotEmpty ?? false);
+  }
+
+  void _updateLanguageServerPolling() {
+    final shouldPoll = _canUseLanguageServer;
+    if (shouldPoll && _lspPollTimer == null) {
+      _lspPollTimer = Timer.periodic(
+        const Duration(milliseconds: 500),
+        (_) => unawaited(_refreshLanguageServerSnapshot(applyState: true)),
+      );
+      return;
+    }
+
+    if (!shouldPoll) {
+      _lspPollTimer?.cancel();
+      _lspPollTimer = null;
+    }
+  }
+
+  Future<void> _syncLanguageServer(String text) async {
+    final extension = _activeExtension;
+    final shouldSync = _canUseLanguageServer;
+
+    if (!shouldSync) {
+      return;
+    }
+
+    try {
+      await _repository.syncLanguageServer(
+        workspaceRoot: _workspaceRoot,
+        filePath: _currentFilePath,
+        languageId: extension?.languageId,
+        lspExecutable: extension?.lspExecutable,
+        text: text,
+      );
+    } catch (error) {
+      _recordEvent('LSP sync failed: $error');
+    }
+
+    _updateLanguageServerPolling();
+  }
+
+  Future<raw_bridge.LanguageServerSnapshot> _refreshLanguageServerSnapshot({
+    bool applyState = false,
+  }) async {
+    final snapshot = await _repository.pollLanguageServer();
+    if (applyState) {
+      _applyLanguageServerSnapshot(snapshot);
+    }
+    return snapshot;
+  }
+
+  void _applyLanguageServerSnapshot(
+    raw_bridge.LanguageServerSnapshot snapshot,
+  ) {
+    final diagnostics = snapshot.diagnostics
+        .map(_diagnosticFromBridge)
+        .toList(growable: false);
+    _state.value = _state.value.copyWith(
+      lspStatus: snapshot.status,
+      lspDiagnostics: diagnostics,
+    );
+  }
+
   @override
-  void dispose() => _state.dispose();
+  void dispose() {
+    _lspPollTimer?.cancel();
+    unawaited(_repository.shutdownLanguageServer());
+    _state.dispose();
+  }
 }

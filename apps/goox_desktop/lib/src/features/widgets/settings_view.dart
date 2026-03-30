@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../state/app_state.dart';
 
 class SettingsView extends StatelessWidget {
@@ -11,28 +12,28 @@ class SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            initiallyExpanded: true,
+            initiallyExpanded: false,
             tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             childrenPadding: EdgeInsets.zero,
             shape: const Border(),
             collapsedShape: const Border(),
             title: Text(
-              'Theme', 
+              'Theme',
               style: TextStyle(
-                fontSize: 13, 
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: colorScheme.onSurface,
-              )
+              ),
             ),
             leading: Icon(
-              Icons.color_lens_outlined, 
+              Icons.color_lens_outlined,
               size: 18,
               color: colorScheme.onSurfaceVariant,
             ),
@@ -46,21 +47,21 @@ class SettingsView extends StatelessWidget {
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            initiallyExpanded: true,
+            initiallyExpanded: false,
             tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             childrenPadding: EdgeInsets.zero,
             shape: const Border(),
             collapsedShape: const Border(),
             title: Text(
-              'Editor', 
+              'Editor',
               style: TextStyle(
-                fontSize: 13, 
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: colorScheme.onSurface,
-              )
+              ),
             ),
             leading: Icon(
-              Icons.edit_note_outlined, 
+              Icons.edit_note_outlined,
               size: 18,
               color: colorScheme.onSurfaceVariant,
             ),
@@ -120,11 +121,11 @@ class SettingsView extends StatelessWidget {
             value: state.settings.fontWeight,
             underline: const SizedBox(),
             style: TextStyle(fontSize: 12, color: colorScheme.onSurface),
-            items: [
-              DropdownMenuItem(value: FontWeight.w300, child: const Text('Light')),
-              DropdownMenuItem(value: FontWeight.w400, child: const Text('Normal')),
-              DropdownMenuItem(value: FontWeight.w500, child: const Text('Medium')),
-              DropdownMenuItem(value: FontWeight.w700, child: const Text('Bold')),
+            items: const [
+              DropdownMenuItem(value: FontWeight.w300, child: Text('Light')),
+              DropdownMenuItem(value: FontWeight.w400, child: Text('Normal')),
+              DropdownMenuItem(value: FontWeight.w500, child: Text('Medium')),
+              DropdownMenuItem(value: FontWeight.w700, child: Text('Bold')),
             ],
             onChanged: (value) {
               if (value != null) {
@@ -137,14 +138,13 @@ class SettingsView extends StatelessWidget {
     );
   }
 
-
   Widget _buildThemeOption(String title, ThemeMode mode, AppState state) {
     return RadioListTile<ThemeMode>(
       dense: true,
       visualDensity: VisualDensity.compact,
       contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
       title: Text(
-        title, 
+        title,
         style: const TextStyle(fontSize: 12),
       ),
       value: mode,

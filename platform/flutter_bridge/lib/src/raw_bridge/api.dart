@@ -6,7 +6,9 @@
 import 'extensions.dart';
 import 'frb_generated.dart';
 import 'lib.dart';
+import 'lsp.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'terminal.dart';
 
 Future<void> seedDocument({required String text}) =>
     RustLib.instance.api.crateApiSeedDocument(text: text);
@@ -62,6 +64,54 @@ Future<String?> validateSourceText({
 
 Future<List<String>> registeredExtensionCommands() =>
     RustLib.instance.api.crateApiRegisteredExtensionCommands();
+
+Future<bool> syncLanguageServer({
+  String? workspaceRoot,
+  String? filePath,
+  String? languageId,
+  String? lspExecutable,
+  required String text,
+}) => RustLib.instance.api.crateApiSyncLanguageServer(
+  workspaceRoot: workspaceRoot,
+  filePath: filePath,
+  languageId: languageId,
+  lspExecutable: lspExecutable,
+  text: text,
+);
+
+Future<LanguageServerSnapshot> pollLanguageServer() =>
+    RustLib.instance.api.crateApiPollLanguageServer();
+
+Future<void> shutdownLanguageServer() =>
+    RustLib.instance.api.crateApiShutdownLanguageServer();
+
+Future<BigInt> createTerminal({
+  required int rows,
+  required int cols,
+  String? workingDirectory,
+}) => RustLib.instance.api.crateApiCreateTerminal(
+  rows: rows,
+  cols: cols,
+  workingDirectory: workingDirectory,
+);
+
+Future<void> sendTerminalInput({
+  required BigInt id,
+  required List<int> bytes,
+}) => RustLib.instance.api.crateApiSendTerminalInput(id: id, bytes: bytes);
+
+Future<TerminalScreenSnapshot> pollTerminalScreen({required BigInt id}) =>
+    RustLib.instance.api.crateApiPollTerminalScreen(id: id);
+
+Future<void> resizeTerminal({
+  required BigInt id,
+  required int rows,
+  required int cols,
+}) =>
+    RustLib.instance.api.crateApiResizeTerminal(id: id, rows: rows, cols: cols);
+
+Future<void> disposeTerminal({required BigInt id}) =>
+    RustLib.instance.api.crateApiDisposeTerminal(id: id);
 
 class CursorPos {
   final BigInt line;

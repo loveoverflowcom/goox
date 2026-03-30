@@ -9,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
 import '../../../state/app_state.dart';
+import '../../widgets/extensions_view.dart';
 import '../../widgets/settings_view.dart';
 import '../../widgets/sidebar.dart';
 
@@ -55,13 +56,13 @@ class _EditorPageState extends State<EditorPage> {
       );
 
       final file = File(path);
+      final isPdf = path.toLowerCase().endsWith('.pdf');
+
       final extension = await GooxEditorSdkBootstrap.resolveExtensionForFile(
         workspaceRoot: workspaceRoot,
         filePath: path,
       );
       await _controller.setActiveExtension(extension);
-      await _logLanguageServerStatus(extension);
-      final isPdf = path.toLowerCase().endsWith('.pdf');
 
       if (isPdf && extension?.hasWasmEntry == true) {
         await GooxEditorSdkBootstrap.activateExtensionForFile(
@@ -76,9 +77,17 @@ class _EditorPageState extends State<EditorPage> {
 
       if (file.existsSync()) {
         final text = await file.readAsString();
-        await _controller.loadDocument(text);
+        await _controller.loadDocument(
+          text,
+          filePath: path,
+          workspaceRoot: workspaceRoot,
+        );
       } else {
-        await _controller.loadDocument('');
+        await _controller.loadDocument(
+          '',
+          filePath: path,
+          workspaceRoot: workspaceRoot,
+        );
       }
 
       if (mounted) {
@@ -86,26 +95,6 @@ class _EditorPageState extends State<EditorPage> {
       }
     } catch (error) {
       await _controller.loadDocument('Error loading file: $error');
-    }
-  }
-
-  Future<void> _logLanguageServerStatus(ActiveExtensionInfo? extension) async {
-    final executable = extension?.lspExecutable?.trim();
-    if (executable == null || executable.isEmpty) {
-      debugPrint('Goox LSP: no language server configured for this file.');
-      return;
-    }
-
-    try {
-      final command = Platform.isWindows ? 'where' : 'which';
-      final result = await Process.run(command, [executable]);
-      final found = result.exitCode == 0;
-      debugPrint(
-        'Goox LSP: $executable ${found ? "found" : "missing"}'
-        '${found ? " -> ${result.stdout}" : ""}',
-      );
-    } catch (error) {
-      debugPrint('Goox LSP: failed to check $executable: $error');
     }
   }
 
@@ -140,35 +129,6 @@ class _EditorPageState extends State<EditorPage> {
       change.replacement,
     );
     _markDirty();
-  }
-
-  Future<void> _handleSyntaxErrorChanged(String? syntaxError) async {
-    if (!mounted) {
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) {
-      debugPrint('Syntax feedback: $syntaxError');
-      return;
-    }
-
-    if (syntaxError == null) {
-      debugPrint('Syntax feedback cleared');
-      messenger.hideCurrentSnackBar();
-      return;
-    }
-
-    debugPrint('Syntax feedback: $syntaxError');
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(syntaxError),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
   }
 
   @override
@@ -215,7 +175,7 @@ class _EditorPageState extends State<EditorPage> {
               id: 'extensions',
               title: 'Extensions',
               icon: Icons.extension_outlined,
-              builder: (context) => const Center(child: Text('Extensions')),
+              builder: (context) => const ExtensionsView(),
             ),
             GooxWidgetTab(
               id: 'settings',
@@ -229,72 +189,82 @@ class _EditorPageState extends State<EditorPage> {
           editorHeader: const _EditorTabHeader(),
           editor: hasActiveFile
               ? isPdf
-                    ? _PdfPreviewPane(
+                    ? _ExtensionPreviewPane(
                         key: ValueKey(activeFile),
                         filePath: activeFile,
+                        activeExtension: state.activeExtension,
                       )
-                    : CallbackShortcuts(
-                        bindings: <ShortcutActivator, VoidCallback>{
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyS,
-                            control: true,
-                          ): () {
-                            _saveCurrentFile();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyS,
-                            meta: true,
-                          ): () {
-                            _saveCurrentFile();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            control: true,
-                          ): () {
-                            _controller.undo();
-                            _markDirty();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            meta: true,
-                          ): () {
-                            _controller.undo();
-                            _markDirty();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            control: true,
-                            shift: true,
-                          ): () {
-                            _controller.redo();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            meta: true,
-                            shift: true,
-                          ): () {
-                            _controller.redo();
-                          },
-                        },
-                        child: GooxEditorCanvas(
-                          state: state,
-                          focusNode: _focusNode,
-                          autofocus: true,
-                          onTap: _focusNode.requestFocus,
-                          onTextChanged: _handleEditorTextChanged,
-                          onCursorOffsetChanged: _controller.moveCursorToOffset,
-                          onSyntaxErrorChanged: _handleSyntaxErrorChanged,
-                          fontSize: appState.settings.fontSize,
-                          fontWeight: appState.settings.fontWeight,
-                        ),
+                    : Column(
+                        children: [
+                          _LspDiagnosticsBanner(state: state),
+                          Expanded(
+                            child: CallbackShortcuts(
+                              bindings: <ShortcutActivator, VoidCallback>{
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyS,
+                                  control: true,
+                                ): () {
+                                  _saveCurrentFile();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyS,
+                                  meta: true,
+                                ): () {
+                                  _saveCurrentFile();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  control: true,
+                                ): () {
+                                  _controller.undo();
+                                  _markDirty();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  meta: true,
+                                ): () {
+                                  _controller.undo();
+                                  _markDirty();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  control: true,
+                                  shift: true,
+                                ): () {
+                                  _controller.redo();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  meta: true,
+                                  shift: true,
+                                ): () {
+                                  _controller.redo();
+                                },
+                              },
+                              child: GooxEditorCanvas(
+                                state: state,
+                                focusNode: _focusNode,
+                                autofocus: true,
+                                onTap: _focusNode.requestFocus,
+                                onTextChanged: _handleEditorTextChanged,
+                                onCursorOffsetChanged:
+                                    _controller.moveCursorToOffset,
+                                fontSize: appState.settings.fontSize,
+                                fontWeight: appState.settings.fontWeight,
+                              ),
+                            ),
+                          ),
+                        ],
                       )
               : _EditorWelcomeView(onOpenFolder: appState.pickDirectory),
-          statusBar: isPdf
+              statusBar: isPdf
               ? _PdfStatusBar(filePath: pdfFilePath)
               : GooxStatusBar(
                   revision: state.revision,
                   line: state.cursor.line,
                   column: state.cursor.column,
+                  lspStatus: state.lspStatus,
+                  diagnosticCount: state.lspDiagnostics.length,
                 ),
         );
       },
@@ -302,16 +272,21 @@ class _EditorPageState extends State<EditorPage> {
   }
 }
 
-class _PdfPreviewPane extends StatefulWidget {
-  const _PdfPreviewPane({super.key, required this.filePath});
+class _ExtensionPreviewPane extends StatefulWidget {
+  const _ExtensionPreviewPane({
+    super.key,
+    required this.filePath,
+    required this.activeExtension,
+  });
 
   final String filePath;
+  final ActiveExtensionInfo? activeExtension;
 
   @override
-  State<_PdfPreviewPane> createState() => _PdfPreviewPaneState();
+  State<_ExtensionPreviewPane> createState() => _ExtensionPreviewPaneState();
 }
 
-class _PdfPreviewPaneState extends State<_PdfPreviewPane> {
+class _ExtensionPreviewPaneState extends State<_ExtensionPreviewPane> {
   late final PdfControllerPinch _controller;
 
   @override
@@ -330,6 +305,15 @@ class _PdfPreviewPaneState extends State<_PdfPreviewPane> {
 
   @override
   Widget build(BuildContext context) {
+    final extension = widget.activeExtension;
+    if (extension == null || !extension.hasWasmEntry) {
+      return Center(
+        child: Text(
+          'Extension not available for ${path.basename(widget.filePath)}',
+        ),
+      );
+    }
+
     final theme = Theme.of(context);
 
     return DecoratedBox(
@@ -612,6 +596,57 @@ class _EditorTabHeader extends StatelessWidget {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _LspDiagnosticsBanner extends StatelessWidget {
+  const _LspDiagnosticsBanner({required this.state});
+
+  final EditorViewState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final diagnostics = state.lspDiagnostics;
+    final shouldShowStatus =
+        state.lspStatus != 'ready' || diagnostics.isNotEmpty;
+    if (!shouldShowStatus) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final diagnostic = diagnostics.isNotEmpty ? diagnostics.first : null;
+    final message = diagnostic != null
+        ? '${diagnostic.location}: ${diagnostic.message}'
+        : 'LSP ${state.lspStatus}';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer.withValues(alpha: 0.92),
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, size: 16, color: colorScheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

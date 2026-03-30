@@ -20,7 +20,11 @@ abstract interface class EditorCoreClient {
   Future<void> replaceTextRange(int start, int end, String replacement);
   Future<void> undo();
   Future<void> redo();
-  Future<void> loadDocument(String text);
+  Future<void> loadDocument(
+    String text, {
+    String? filePath,
+    String? workspaceRoot,
+  });
   Future<String> getDocumentText();
   void dispose();
 }

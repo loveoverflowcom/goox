@@ -6,11 +6,15 @@ class GooxStatusBar extends StatelessWidget {
     required this.revision,
     required this.line,
     required this.column,
+    required this.lspStatus,
+    required this.diagnosticCount,
   });
 
   final int revision;
   final int line;
   final int column;
+  final String lspStatus;
+  final int diagnosticCount;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +41,15 @@ class GooxStatusBar extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             'Ln $line, Col $column',
+            style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
+          ),
+          const Spacer(),
+          Icon(Icons.code_rounded, size: 12, color: colorScheme.onPrimary),
+          const SizedBox(width: 4),
+          Text(
+            diagnosticCount > 0
+                ? 'LSP $diagnosticCount'
+                : 'LSP $lspStatus',
             style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
           ),
         ],

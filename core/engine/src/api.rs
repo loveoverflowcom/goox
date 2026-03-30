@@ -87,6 +87,30 @@ pub fn registered_extension_commands() -> Vec<String> {
     crate::extensions::registered_extension_commands()
 }
 
+pub fn sync_language_server(
+    workspace_root: Option<String>,
+    file_path: Option<String>,
+    language_id: Option<String>,
+    lsp_executable: Option<String>,
+    text: String,
+) -> bool {
+    crate::lsp::sync_language_server(
+        workspace_root,
+        file_path,
+        language_id,
+        lsp_executable,
+        text,
+    )
+}
+
+pub fn poll_language_server() -> crate::lsp::LanguageServerSnapshot {
+    crate::lsp::poll_language_server()
+}
+
+pub fn shutdown_language_server() {
+    crate::lsp::shutdown_language_server();
+}
+
 pub type TerminalId = crate::terminal::TerminalId;
 
 pub fn create_terminal(

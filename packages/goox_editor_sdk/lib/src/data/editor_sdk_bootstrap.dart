@@ -48,6 +48,26 @@ final class GooxEditorSdkBootstrap {
   }) =>
       GooxRustBootstrap.validateSourceText(languageId: languageId, text: text);
 
+  static Future<bool> syncLanguageServer({
+    String? workspaceRoot,
+    String? filePath,
+    String? languageId,
+    String? lspExecutable,
+    required String text,
+  }) => GooxRustBootstrap.syncLanguageServer(
+    workspaceRoot: workspaceRoot,
+    filePath: filePath,
+    languageId: languageId,
+    lspExecutable: lspExecutable,
+    text: text,
+  );
+
+  static Future<LanguageServerSnapshot> pollLanguageServer() =>
+      GooxRustBootstrap.pollLanguageServer();
+
+  static Future<void> shutdownLanguageServer() =>
+      GooxRustBootstrap.shutdownLanguageServer();
+
   static void initMock({required RustLibApi api}) =>
       GooxRustBootstrap.initMock(api: api);
 }

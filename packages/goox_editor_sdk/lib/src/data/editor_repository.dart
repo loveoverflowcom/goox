@@ -28,4 +28,24 @@ class GooxEditorRepository {
 
   Future<BridgeBufferPatchBatch> deleteLine({required BigInt charIndex}) =>
       _bridgeClient.deleteLine(charIndex: charIndex);
+
+  Future<bool> syncLanguageServer({
+    String? workspaceRoot,
+    String? filePath,
+    String? languageId,
+    String? lspExecutable,
+    required String text,
+  }) => _bridgeClient.syncLanguageServer(
+    workspaceRoot: workspaceRoot,
+    filePath: filePath,
+    languageId: languageId,
+    lspExecutable: lspExecutable,
+    text: text,
+  );
+
+  Future<BridgeLanguageServerSnapshot> pollLanguageServer() =>
+      _bridgeClient.pollLanguageServer();
+
+  Future<void> shutdownLanguageServer() =>
+      _bridgeClient.shutdownLanguageServer();
 }

@@ -67,6 +67,30 @@ class ActiveExtensionInfo {
 }
 
 @immutable
+class LspDiagnostic {
+  const LspDiagnostic({
+    required this.message,
+    required this.startLine,
+    required this.startColumn,
+    required this.endLine,
+    required this.endColumn,
+    this.severity,
+    this.source,
+  });
+
+  final String message;
+  final int startLine;
+  final int startColumn;
+  final int endLine;
+  final int endColumn;
+  final int? severity;
+  final String? source;
+
+  String get location =>
+      'L${startLine + 1}:${startColumn + 1}-L${endLine + 1}:${endColumn + 1}';
+}
+
+@immutable
 class EditorViewState {
   const EditorViewState({
     required this.revision,
@@ -83,7 +107,47 @@ class EditorViewState {
     required this.hasRedo,
     required this.lastCommand,
     required this.activeExtension,
+    required this.lspStatus,
+    required this.lspDiagnostics,
   });
+
+  EditorViewState copyWith({
+    int? revision,
+    int? totalChars,
+    int? totalLines,
+    String? documentText,
+    int? firstVisibleLine,
+    List<ViewportLine>? visibleLines,
+    int? cursorOffset,
+    CursorPosition? cursor,
+    List<EditorPatch>? lastPatches,
+    List<String>? eventLog,
+    bool? hasUndo,
+    bool? hasRedo,
+    String? lastCommand,
+    ActiveExtensionInfo? activeExtension,
+    String? lspStatus,
+    List<LspDiagnostic>? lspDiagnostics,
+  }) {
+    return EditorViewState(
+      revision: revision ?? this.revision,
+      totalChars: totalChars ?? this.totalChars,
+      totalLines: totalLines ?? this.totalLines,
+      documentText: documentText ?? this.documentText,
+      firstVisibleLine: firstVisibleLine ?? this.firstVisibleLine,
+      visibleLines: visibleLines ?? this.visibleLines,
+      cursorOffset: cursorOffset ?? this.cursorOffset,
+      cursor: cursor ?? this.cursor,
+      lastPatches: lastPatches ?? this.lastPatches,
+      eventLog: eventLog ?? this.eventLog,
+      hasUndo: hasUndo ?? this.hasUndo,
+      hasRedo: hasRedo ?? this.hasRedo,
+      lastCommand: lastCommand ?? this.lastCommand,
+      activeExtension: activeExtension ?? this.activeExtension,
+      lspStatus: lspStatus ?? this.lspStatus,
+      lspDiagnostics: lspDiagnostics ?? this.lspDiagnostics,
+    );
+  }
 
   factory EditorViewState.empty() => const EditorViewState(
     revision: 0,
@@ -100,6 +164,8 @@ class EditorViewState {
     hasRedo: false,
     lastCommand: 'idle',
     activeExtension: null,
+    lspStatus: 'inactive',
+    lspDiagnostics: [],
   );
 
   final int revision;
@@ -116,4 +182,6 @@ class EditorViewState {
   final bool hasRedo;
   final String lastCommand;
   final ActiveExtensionInfo? activeExtension;
+  final String lspStatus;
+  final List<LspDiagnostic> lspDiagnostics;
 }

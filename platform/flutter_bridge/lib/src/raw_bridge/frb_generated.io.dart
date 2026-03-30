@@ -10,7 +10,9 @@ import 'dart:ffi' as ffi;
 import 'extensions.dart';
 import 'frb_generated.dart';
 import 'lib.dart';
+import 'lsp.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
+import 'terminal.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -31,6 +33,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ExtensionInfo dco_decode_box_autoadd_extension_info(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
   ViewportRequest dco_decode_box_autoadd_viewport_request(dynamic raw);
@@ -57,13 +62,40 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtensionInfo dco_decode_extension_info(dynamic raw);
 
   @protected
+  LanguageServerDiagnostic dco_decode_language_server_diagnostic(dynamic raw);
+
+  @protected
+  LanguageServerDiagnosticRange dco_decode_language_server_diagnostic_range(
+    dynamic raw,
+  );
+
+  @protected
+  LanguageServerSnapshot dco_decode_language_server_snapshot(dynamic raw);
+
+  @protected
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
   List<BufferOperation> dco_decode_list_buffer_operation(dynamic raw);
 
   @protected
+  List<LanguageServerDiagnostic> dco_decode_list_language_server_diagnostic(
+    dynamic raw,
+  );
+
+  @protected
+  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<TerminalCellSnapshot> dco_decode_list_terminal_cell_snapshot(
+    dynamic raw,
+  );
+
+  @protected
+  List<TerminalRowSnapshot> dco_decode_list_terminal_row_snapshot(dynamic raw);
 
   @protected
   List<ViewportLine> dco_decode_list_viewport_line(dynamic raw);
@@ -73,6 +105,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ExtensionInfo? dco_decode_opt_box_autoadd_extension_info(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  TerminalCellSnapshot dco_decode_terminal_cell_snapshot(dynamic raw);
+
+  @protected
+  TerminalError dco_decode_terminal_error(dynamic raw);
+
+  @protected
+  TerminalRowSnapshot dco_decode_terminal_row_snapshot(dynamic raw);
+
+  @protected
+  TerminalScreenSnapshot dco_decode_terminal_screen_snapshot(dynamic raw);
+
+  @protected
+  int dco_decode_u_16(dynamic raw);
+
+  @protected
+  int dco_decode_u_32(dynamic raw);
 
   @protected
   BigInt dco_decode_u_64(dynamic raw);
@@ -112,6 +165,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
   ViewportRequest sse_decode_box_autoadd_viewport_request(
     SseDeserializer deserializer,
   );
@@ -138,6 +194,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtensionInfo sse_decode_extension_info(SseDeserializer deserializer);
 
   @protected
+  LanguageServerDiagnostic sse_decode_language_server_diagnostic(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerDiagnosticRange sse_decode_language_server_diagnostic_range(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerSnapshot sse_decode_language_server_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
@@ -146,7 +217,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<LanguageServerDiagnostic> sse_decode_list_language_server_diagnostic(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<TerminalCellSnapshot> sse_decode_list_terminal_cell_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<TerminalRowSnapshot> sse_decode_list_terminal_row_snapshot(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<ViewportLine> sse_decode_list_viewport_line(
@@ -160,6 +249,33 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtensionInfo? sse_decode_opt_box_autoadd_extension_info(
     SseDeserializer deserializer,
   );
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  TerminalCellSnapshot sse_decode_terminal_cell_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  TerminalError sse_decode_terminal_error(SseDeserializer deserializer);
+
+  @protected
+  TerminalRowSnapshot sse_decode_terminal_row_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  TerminalScreenSnapshot sse_decode_terminal_screen_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
 
   @protected
   BigInt sse_decode_u_64(SseDeserializer deserializer);
@@ -204,6 +320,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_viewport_request(
     ViewportRequest self,
     SseSerializer serializer,
@@ -243,6 +362,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_extension_info(ExtensionInfo self, SseSerializer serializer);
 
   @protected
+  void sse_encode_language_server_diagnostic(
+    LanguageServerDiagnostic self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_diagnostic_range(
+    LanguageServerDiagnosticRange self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_snapshot(
+    LanguageServerSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
@@ -252,8 +389,29 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_language_server_diagnostic(
+    List<LanguageServerDiagnostic> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_terminal_cell_snapshot(
+    List<TerminalCellSnapshot> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_terminal_row_snapshot(
+    List<TerminalRowSnapshot> self,
     SseSerializer serializer,
   );
 
@@ -271,6 +429,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     ExtensionInfo? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_terminal_cell_snapshot(
+    TerminalCellSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_terminal_error(TerminalError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_terminal_row_snapshot(
+    TerminalRowSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_terminal_screen_snapshot(
+    TerminalScreenSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer);

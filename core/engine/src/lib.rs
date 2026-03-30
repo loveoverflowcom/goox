@@ -3,6 +3,7 @@ use ropey::Rope;
 use std::ops::Range;
 pub mod api;
 pub mod extensions;
+pub mod lsp;
 pub mod terminal;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

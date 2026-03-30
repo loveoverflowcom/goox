@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import 'raw_bridge/api.dart' as bridge_api;
 import 'raw_bridge/extensions.dart' as bridge_types;
 import 'raw_bridge/frb_generated.dart';
+import 'raw_bridge/lsp.dart' as bridge_lsp;
 
 final class GooxRustBootstrap {
   static bool _initialized = false;
@@ -90,6 +91,42 @@ final class GooxRustBootstrap {
     }
 
     return bridge_api.validateSourceText(languageId: languageId, text: text);
+  }
+
+  static Future<bool> syncLanguageServer({
+    String? workspaceRoot,
+    String? filePath,
+    String? languageId,
+    String? lspExecutable,
+    required String text,
+  }) async {
+    if (!_initialized) {
+      await ensureInitialized(workspaceRoot: workspaceRoot);
+    }
+
+    return bridge_api.syncLanguageServer(
+      workspaceRoot: workspaceRoot,
+      filePath: filePath,
+      languageId: languageId,
+      lspExecutable: lspExecutable,
+      text: text,
+    );
+  }
+
+  static Future<bridge_lsp.LanguageServerSnapshot> pollLanguageServer() async {
+    if (!_initialized) {
+      await ensureInitialized();
+    }
+
+    return bridge_api.pollLanguageServer();
+  }
+
+  static Future<void> shutdownLanguageServer() async {
+    if (!_initialized) {
+      return;
+    }
+
+    await bridge_api.shutdownLanguageServer();
   }
 
   static Future<String?> _resolveOrBuildLibraryPath({

@@ -127,6 +127,8 @@ class _SimpleEditorHomeState extends State<SimpleEditorHome> {
             revision: state.revision,
             line: state.cursor.line,
             column: state.cursor.column,
+            lspStatus: 'inactive',
+            diagnosticCount: 0,
           ),
         );
       },
