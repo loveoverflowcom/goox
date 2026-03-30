@@ -86,3 +86,38 @@ pub fn validate_source_text(language_id: String, text: String) -> Option<String>
 pub fn registered_extension_commands() -> Vec<String> {
     crate::extensions::registered_extension_commands()
 }
+
+pub type TerminalId = crate::terminal::TerminalId;
+
+pub fn create_terminal(
+    rows: u16,
+    cols: u16,
+    working_directory: Option<String>,
+) -> Result<TerminalId, crate::terminal::TerminalError> {
+    crate::terminal::create_terminal(rows, cols, working_directory)
+}
+
+pub fn send_terminal_input(
+    id: TerminalId,
+    bytes: Vec<u8>,
+) -> Result<(), crate::terminal::TerminalError> {
+    crate::terminal::send_input(id, bytes)
+}
+
+pub fn poll_terminal_screen(
+    id: TerminalId,
+) -> Result<crate::terminal::TerminalScreenSnapshot, crate::terminal::TerminalError> {
+    crate::terminal::poll_screen(id)
+}
+
+pub fn resize_terminal(
+    id: TerminalId,
+    rows: u16,
+    cols: u16,
+) -> Result<(), crate::terminal::TerminalError> {
+    crate::terminal::resize_terminal(id, rows, cols)
+}
+
+pub fn dispose_terminal(id: TerminalId) {
+    crate::terminal::dispose_terminal(id);
+}

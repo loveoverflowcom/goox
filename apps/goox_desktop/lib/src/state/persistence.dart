@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'app_settings.dart';
-import 'package:objectbox/objectbox.dart';
+// ignore: depend_on_referenced_packages
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 // The generator will create objectbox.g.dart in the lib directory.

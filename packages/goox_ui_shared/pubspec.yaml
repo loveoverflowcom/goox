@@ -12,6 +12,9 @@ dependencies:
     sdk: flutter
   goox_editor_sdk:
     path: ../goox_editor_sdk
+  goox_flutter_bridge:
+    path: ../../platform/flutter_bridge
+  ffi: ^2.1.4
 
 dev_dependencies:
   flutter_test:
