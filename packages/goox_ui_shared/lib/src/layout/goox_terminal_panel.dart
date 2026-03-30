@@ -115,14 +115,15 @@ class TerminalSelection {
 
 class TerminalController extends ChangeNotifier {
   TerminalController({this.workingDirectory, this.cols = 80, this.rows = 24})
-      : _state = TerminalScreenState.empty(rows: rows, cols: cols) {
+    : _state = TerminalScreenState.empty(rows: rows, cols: cols) {
     _bootstrap();
   }
 
   final String? workingDirectory;
   final int cols;
   final int rows;
-  final Future<RustTerminalBridge> _bridgeFuture = RustTerminalBridge.instance();
+  final Future<RustTerminalBridge> _bridgeFuture =
+      RustTerminalBridge.instance();
   final List<String> _pendingInput = <String>[];
   TerminalScreenState _state;
   TerminalSelection? _selection;
@@ -253,9 +254,7 @@ class TerminalController extends ChangeNotifier {
 
   TerminalScreenState _stateFromSnapshot(RustTerminalScreenSnapshot snapshot) {
     final grid = snapshot.grid
-        .map(
-          (row) => row.cells.map(_cellFromSnapshot).toList(growable: false),
-        )
+        .map((row) => row.cells.map(_cellFromSnapshot).toList(growable: false))
         .toList(growable: false);
 
     return TerminalScreenState(
@@ -504,9 +503,15 @@ class _TerminalViewState extends State<TerminalView> {
 
     final isCtrl = HardwareKeyboard.instance.isControlPressed;
     final isMeta = HardwareKeyboard.instance.isMetaPressed;
+    final isShift = HardwareKeyboard.instance.isShiftPressed;
     final copyShortcut = Platform.isMacOS
         ? (isMeta && key == LogicalKeyboardKey.keyC)
-        : (isCtrl && key == LogicalKeyboardKey.keyC);
+        : (isCtrl && isShift && key == LogicalKeyboardKey.keyC);
+
+    // Ctrl+C should always behave like a terminal interrupt, even on macOS.
+    if (isCtrl && key == LogicalKeyboardKey.keyC) {
+      input = '\x03';
+    }
 
     if (copyShortcut) {
       final text = widget.controller.getSelectedText();
@@ -514,10 +519,6 @@ class _TerminalViewState extends State<TerminalView> {
         Clipboard.setData(ClipboardData(text: text));
         widget.controller.setSelection(null);
         return;
-      }
-      // On non-macOS, Ctrl+C with no selection should send SIGINT (\x03)
-      if (!Platform.isMacOS && isCtrl && key == LogicalKeyboardKey.keyC) {
-        input = '\x03';
       }
     }
 
