@@ -62,6 +62,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtensionInfo dco_decode_extension_info(dynamic raw);
 
   @protected
+  int dco_decode_i_32(dynamic raw);
+
+  @protected
   LanguageServerDiagnostic dco_decode_language_server_diagnostic(dynamic raw);
 
   @protected
@@ -194,6 +197,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtensionInfo sse_decode_extension_info(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
   LanguageServerDiagnostic sse_decode_language_server_diagnostic(
     SseDeserializer deserializer,
   );
@@ -299,9 +305,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ViewportSnapshot sse_decode_viewport_snapshot(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
@@ -360,6 +363,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_extension_info(ExtensionInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_language_server_diagnostic(
@@ -486,9 +492,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     ViewportSnapshot self,
     SseSerializer serializer,
   );
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

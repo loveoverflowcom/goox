@@ -15,6 +15,7 @@ pub struct ExtensionMeta {
     pub filetypes: Vec<String>,
     pub language_id: Option<String>,
     pub lsp_executable: Option<String>,
+    pub rendering: bool,
     pub enabled: bool,
 }
 
@@ -26,6 +27,7 @@ pub struct ExtensionInfo {
     pub filetypes: Vec<String>,
     pub language_id: Option<String>,
     pub lsp_executable: Option<String>,
+    pub rendering: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,7 +46,7 @@ impl ExtensionRegistry {
     fn build(workspace_root: Option<&Path>) -> Self {
         let mut registry = Self::default();
 
-        if let Some(global_root) = global_extensions_dir() {
+        for global_root in global_extensions_dirs() {
             registry.merge_scanned(scan_extensions_dir(&global_root, ExtensionScope::Global));
         }
 
@@ -90,6 +92,8 @@ struct ExtensionConfig {
     language_id: Option<String>,
     #[serde(default)]
     lsp_executable: Option<String>,
+    #[serde(default)]
+    rendering: bool,
 }
 
 #[derive(Debug, Default)]
@@ -104,6 +108,10 @@ struct ExtensionRuntime {
 static ENGINE: LazyLock<Engine> = LazyLock::new(Engine::default);
 static RUNTIME: LazyLock<Mutex<ExtensionRuntime>> =
     LazyLock::new(|| Mutex::new(ExtensionRuntime::default()));
+
+pub(crate) fn wasm_engine() -> &'static Engine {
+    &ENGINE
+}
 
 pub fn refresh_workspace_extensions(workspace_root: String) -> usize {
     let workspace_root = normalize_workspace_root(&workspace_root);
@@ -396,6 +404,7 @@ fn read_extension_config(path: &Path, scope: ExtensionScope) -> Option<Extension
         lsp_executable: parsed
             .lsp_executable
             .filter(|lsp_executable| !lsp_executable.trim().is_empty()),
+        rendering: parsed.rendering,
         enabled: is_extension_enabled(path),
     };
 
@@ -434,9 +443,16 @@ fn discover_workspace_root_from_file(file_path: &Path) -> Option<PathBuf> {
     None
 }
 
-fn global_extensions_dir() -> Option<PathBuf> {
-    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
-    Some(PathBuf::from(home).join(".goox/extensions"))
+fn global_extensions_dirs() -> Vec<PathBuf> {
+    // Single canonical location matching Flutter's getApplicationSupportDirectory():
+    //   macOS:   ~/Library/Application Support/dev.goox.goox/extensions
+    //   Windows: %APPDATA%\dev.goox.goox\extensions
+    //   Linux:   ~/.local/share/dev.goox.goox/extensions
+    if let Some(data_dir) = dirs::data_dir() {
+        vec![data_dir.join("dev.goox.goox").join("extensions")]
+    } else {
+        vec![]
+    }
 }
 
 fn is_extension_enabled(path: &Path) -> bool {
@@ -699,6 +715,7 @@ impl From<&ExtensionMeta> for ExtensionInfo {
             filetypes: value.filetypes.clone(),
             language_id: value.language_id.clone(),
             lsp_executable: value.lsp_executable.clone(),
+            rendering: value.rendering,
         }
     }
 }

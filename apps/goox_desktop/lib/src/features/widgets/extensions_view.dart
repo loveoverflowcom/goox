@@ -5,9 +5,11 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart' show getApplicationSupportDirectory;
 import 'package:provider/provider.dart';
 
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../state/app_state.dart';
 
@@ -35,9 +37,7 @@ class ExtensionsViewState extends State<ExtensionsView> {
   }
 
   Future<void> reloadExtensions() async {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _loadingExtensions = true;
@@ -45,19 +45,14 @@ class ExtensionsViewState extends State<ExtensionsView> {
     });
 
     try {
-      final workspaceRoot = context.read<AppState>().rootPath;
-      final extensions = await _scanExtensions(workspaceRoot);
-      if (!mounted) {
-        return;
-      }
+      final extensions = await _scanExtensions();
+      if (!mounted) return;
       setState(() {
         _extensions = extensions;
         _loadingExtensions = false;
       });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _extensions = const [];
         _loadingExtensions = false;
@@ -67,28 +62,21 @@ class ExtensionsViewState extends State<ExtensionsView> {
   }
 
   Future<void> importExtension() async {
-    final workspaceRoot = context.read<AppState>().rootPath;
-    if (workspaceRoot == null || workspaceRoot.trim().isEmpty) {
-      setState(() {
-        _statusMessage = 'Open a workspace before importing an extension.';
-      });
-      return;
-    }
-
     final sourcePath = await FilePicker.platform.getDirectoryPath(
       dialogTitle: 'Import Extension',
     );
-    if (sourcePath == null) {
-      return;
-    }
+    if (sourcePath == null) return;
 
     try {
       final validated = await _validateExtensionDirectory(Directory(sourcePath));
-      final targetRoot = Directory(p.join(workspaceRoot, '.goox', 'extensions'));
-      await targetRoot.create(recursive: true);
-      final targetDir = Directory(p.join(targetRoot.path, validated.name));
+      final globalDir = await _ensureGlobalExtensionsDirectory();
+      final targetDir = Directory(p.join(globalDir.path, validated.name));
       if (targetDir.existsSync()) {
-        throw FileSystemException('Extension already exists', targetDir.path);
+        if (!mounted) return;
+        setState(() {
+          _statusMessage = 'An extension named "${validated.name}" already exists.';
+        });
+        return;
       }
 
       await _copyDirectory(Directory(sourcePath), targetDir);
@@ -97,20 +85,21 @@ class ExtensionsViewState extends State<ExtensionsView> {
         await disabledMarker.delete();
       }
 
-      await GooxEditorSdkBootstrap.refreshWorkspaceExtensions(
-        workspaceRoot: workspaceRoot,
-      );
-      await reloadExtensions();
-      if (!mounted) {
-        return;
+      // Capture workspaceRoot before await
+      if (!mounted) return;
+      final workspaceRoot = context.read<AppState>().rootPath;
+      if (workspaceRoot != null && workspaceRoot.trim().isNotEmpty) {
+        await GooxEditorSdkBootstrap.refreshWorkspaceExtensions(
+          workspaceRoot: workspaceRoot,
+        );
       }
+      await reloadExtensions();
+      if (!mounted) return;
       setState(() {
         _statusMessage = 'Imported ${validated.name}.';
       });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _statusMessage = 'Import failed: $error';
       });
@@ -122,6 +111,7 @@ class ExtensionsViewState extends State<ExtensionsView> {
     bool enabled,
   ) async {
     final marker = File(p.join(extension.path, '.goox.disabled'));
+    // Capture workspaceRoot before any await
     final workspaceRoot = context.read<AppState>().rootPath;
     try {
       if (enabled) {
@@ -139,100 +129,127 @@ class ExtensionsViewState extends State<ExtensionsView> {
       }
       await reloadExtensions();
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _statusMessage = 'Failed to update ${extension.name}: $error';
+      });
+      await reloadExtensions();
+    }
+  }
+
+  Future<void> _deleteExtension(_ManagedExtension extension) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Extension'),
+        content: Text(
+          'Permanently delete "${extension.name}"? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await Directory(extension.path).delete(recursive: true);
+      await reloadExtensions();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Failed to delete ${extension.name}: $error';
       });
     }
   }
 
-  Future<List<_ManagedExtension>> _scanExtensions(String? workspaceRoot) async {
-    final globalExtensionsDirectory = _globalExtensionsDirectory();
-    final roots = <_ExtensionRoot>[
-      if (workspaceRoot != null && workspaceRoot.trim().isNotEmpty)
-        _ExtensionRoot(
-          scope: 'workspace',
-          directory: Directory(p.join(workspaceRoot, '.goox', 'extensions')),
-        ),
-      if (globalExtensionsDirectory != null)
-        _ExtensionRoot(scope: 'global', directory: globalExtensionsDirectory),
-    ];
-
+  Future<List<_ManagedExtension>> _scanExtensions() async {
+    final globalDir = await _ensureGlobalExtensionsDirectory();
     final extensions = <_ManagedExtension>[];
-    for (final root in roots) {
-      if (!root.directory.existsSync()) {
-        continue;
-      }
 
-      for (final entry in root.directory.listSync()) {
-        if (entry is! Directory) {
-          continue;
-        }
+    for (final entry in globalDir.listSync()) {
+      if (entry is! Directory) continue;
 
-        final config = await _readExtensionConfig(entry);
-        if (config == null) {
-          continue;
-        }
+      final config = await _readExtensionConfig(entry);
+      if (config == null) continue;
 
-        extensions.add(
-          config.copyWith(
-            scope: root.scope,
-            enabled: !File(p.join(entry.path, '.goox.disabled')).existsSync(),
-          ),
-        );
-      }
+      extensions.add(
+        config.copyWith(
+          enabled: !File(p.join(entry.path, '.goox.disabled')).existsSync(),
+        ),
+      );
     }
 
-    extensions.sort((left, right) {
-      final scopeCompare = left.scope.compareTo(right.scope);
-      if (scopeCompare != 0) {
-        return scopeCompare;
-      }
-      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
-    });
+    extensions.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
 
     return extensions;
   }
 
   Future<_ManagedExtension?> _readExtensionConfig(Directory directory) async {
     final configFile = File(p.join(directory.path, 'config.json'));
-    if (!configFile.existsSync()) {
-      return null;
-    }
+    if (!configFile.existsSync()) return null;
 
     final raw = jsonDecode(await configFile.readAsString());
-    if (raw is! Map<String, dynamic>) {
-      return null;
-    }
+    if (raw is! Map<String, dynamic>) return null;
 
     final name = _asTrimmedString(raw['name']);
     final filetypes = _asStringList(raw['filetypes']);
-    if (name == null || filetypes.isEmpty) {
-      return null;
-    }
+    if (name == null || filetypes.isEmpty) return null;
 
     final entry = _asTrimmedString(raw['entry']);
     final languageId = _asTrimmedString(raw['language_id']);
     final lspExecutable = _asTrimmedString(raw['lsp_executable']);
+    final logoPath = _resolveLogoPath(directory.path, raw['logo']);
 
     return _ManagedExtension(
       name: name,
       path: directory.path,
-      scope: '',
       enabled: true,
       entry: entry,
       filetypes: filetypes,
       languageId: languageId,
       lspExecutable: lspExecutable,
+      logoPath: logoPath,
     );
   }
 
-  Future<_ManagedExtension> _validateExtensionDirectory(Directory directory) async {
+  /// Resolves and validates the logo path from config.
+  /// Returns null if absent, invalid, or file doesn't exist.
+  String? _resolveLogoPath(String extensionDir, dynamic rawLogo) {
+    final logo = _asTrimmedString(rawLogo);
+    if (logo == null) return null;
+
+    // Reject absolute paths and path traversal
+    if (p.isAbsolute(logo) || logo.contains('..')) return null;
+
+    // Only allow supported extensions
+    final ext = p.extension(logo).toLowerCase();
+    if (!{'.svg', '.png', '.jpg', '.jpeg'}.contains(ext)) return null;
+
+    final resolved = p.join(extensionDir, logo);
+    if (!File(resolved).existsSync()) return null;
+
+    return resolved;
+  }
+
+  Future<_ManagedExtension> _validateExtensionDirectory(
+    Directory directory,
+  ) async {
     final config = await _readExtensionConfig(directory);
     if (config == null) {
-      throw const FormatException('config.json is missing or invalid');
+      throw const FormatException(
+        'config.json is missing or invalid (requires "name" and "filetypes")',
+      );
     }
 
     if (config.entry != null) {
@@ -245,19 +262,27 @@ class ExtensionsViewState extends State<ExtensionsView> {
     return config;
   }
 
-  Directory? _globalExtensionsDirectory() {
-    final home =
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-    if (home == null || home.trim().isEmpty) {
-      return null;
+  /// Returns the global extensions directory, creating it if needed.
+  /// Canonical path via getApplicationSupportDirectory():
+  ///   macOS:   ~/Library/Application Support/dev.goox.goox/extensions
+  ///   Windows: %APPDATA%\dev.goox.goox\extensions
+  ///   Linux:   ~/.local/share/dev.goox.goox/extensions
+  /// This is the single source of truth — matches Rust's global_extensions_dirs().
+  Future<Directory> _ensureGlobalExtensionsDirectory() async {
+    final appSupport = await getApplicationSupportDirectory();
+    final dir = Directory(p.join(appSupport.path, 'extensions'));
+    if (!dir.existsSync()) {
+      await dir.create(recursive: true);
     }
-
-    return Directory(p.join(home, '.goox', 'extensions'));
+    return dir;
   }
 
   Future<void> _copyDirectory(Directory source, Directory target) async {
     await target.create(recursive: true);
-    for (final entity in source.listSync(recursive: false, followLinks: false)) {
+    for (final entity in source.listSync(
+      recursive: false,
+      followLinks: false,
+    )) {
       final relative = p.basename(entity.path);
       final destination = p.join(target.path, relative);
       if (entity is Directory) {
@@ -269,18 +294,13 @@ class ExtensionsViewState extends State<ExtensionsView> {
   }
 
   String? _asTrimmedString(dynamic value) {
-    if (value is! String) {
-      return null;
-    }
+    if (value is! String) return null;
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
   }
 
   List<String> _asStringList(dynamic value) {
-    if (value is! List) {
-      return const [];
-    }
-
+    if (value is! List) return const [];
     return value
         .whereType<String>()
         .map((item) => item.trim())
@@ -316,7 +336,7 @@ class ExtensionsViewState extends State<ExtensionsView> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'No extension folders found.',
+              'No extensions installed.',
               style: TextStyle(
                 fontSize: 12,
                 color: colorScheme.onSurfaceVariant,
@@ -325,30 +345,11 @@ class ExtensionsViewState extends State<ExtensionsView> {
           )
         else
           ..._extensions.map(
-            (extension) => SwitchListTile(
-              dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              value: extension.enabled,
-              onChanged: (value) => unawaited(_toggleExtension(extension, value)),
-              title: Text(
-                extension.name,
-                style: const TextStyle(fontSize: 12),
-              ),
-              subtitle: Text(
-                [
-                  extension.scope,
-                  extension.enabled ? 'enabled' : 'disabled',
-                  extension.filetypes.join(', '),
-                  if (extension.languageId != null)
-                    'language=${extension.languageId}',
-                  if (extension.lspExecutable != null)
-                    'lsp=${extension.lspExecutable}',
-                ].join(' · '),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+            (extension) => _ExtensionTile(
+              extension: extension,
+              onToggle: (value) =>
+                  unawaited(_toggleExtension(extension, value)),
+              onDelete: () => unawaited(_deleteExtension(extension)),
             ),
           ),
       ],
@@ -356,53 +357,178 @@ class ExtensionsViewState extends State<ExtensionsView> {
   }
 }
 
-class _ExtensionRoot {
-  const _ExtensionRoot({required this.scope, required this.directory});
+// ---------------------------------------------------------------------------
+// Extension tile widget
+// ---------------------------------------------------------------------------
 
-  final String scope;
-  final Directory directory;
+class _ExtensionTile extends StatelessWidget {
+  const _ExtensionTile({
+    required this.extension,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  final _ManagedExtension extension;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Row(
+        children: [
+          _ExtensionLogo(logoPath: extension.logoPath),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  extension.name,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                Text(
+                  [
+                    extension.enabled ? 'enabled' : 'disabled',
+                    extension.filetypes.join(', '),
+                    if (extension.languageId != null)
+                      'language=${extension.languageId}',
+                    if (extension.lspExecutable != null)
+                      'lsp=${extension.lspExecutable}',
+                  ].join(' · '),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: extension.enabled,
+            onChanged: onToggle,
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            tooltip: 'Delete extension',
+            onPressed: onDelete,
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Logo widget — renders image or placeholder
+// ---------------------------------------------------------------------------
+
+class _ExtensionLogo extends StatelessWidget {
+  const _ExtensionLogo({this.logoPath});
+
+  final String? logoPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (logoPath != null) {
+      final ext = p.extension(logoPath!).toLowerCase();
+      if (ext == '.svg') {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SvgPicture.file(
+            File(logoPath!),
+            width: 32,
+            height: 32,
+            fit: BoxFit.cover,
+            placeholderBuilder: (_) => _placeholder(colorScheme),
+          ),
+        );
+      }
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.file(
+          File(logoPath!),
+          width: 32,
+          height: 32,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _placeholder(colorScheme),
+        ),
+      );
+    }
+
+    return _placeholder(colorScheme);
+  }
+
+  Widget _placeholder(ColorScheme colorScheme) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Icon(
+        Icons.extension_outlined,
+        size: 18,
+        color: colorScheme.onSurfaceVariant,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Data models
+// ---------------------------------------------------------------------------
 
 class _ManagedExtension {
   const _ManagedExtension({
     required this.name,
     required this.path,
-    required this.scope,
     required this.enabled,
     required this.filetypes,
     this.entry,
     this.languageId,
     this.lspExecutable,
+    this.logoPath,
   });
 
   final String name;
   final String path;
-  final String scope;
   final bool enabled;
   final String? entry;
   final List<String> filetypes;
   final String? languageId;
   final String? lspExecutable;
+  final String? logoPath;
 
   _ManagedExtension copyWith({
     String? name,
     String? path,
-    String? scope,
     bool? enabled,
     String? entry,
     List<String>? filetypes,
     String? languageId,
     String? lspExecutable,
+    String? logoPath,
   }) {
     return _ManagedExtension(
       name: name ?? this.name,
       path: path ?? this.path,
-      scope: scope ?? this.scope,
       enabled: enabled ?? this.enabled,
       entry: entry ?? this.entry,
       filetypes: filetypes ?? this.filetypes,
       languageId: languageId ?? this.languageId,
       lspExecutable: lspExecutable ?? this.lspExecutable,
+      logoPath: logoPath ?? this.logoPath,
     );
   }
 }

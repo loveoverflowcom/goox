@@ -1,0 +1,18 @@
+[workspace]
+
+[package]
+name = "pdf-viewer"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+lopdf = "0.40"
+
+[profile.release]
+panic = "abort"
+strip = true
+opt-level = "z"

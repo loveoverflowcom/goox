@@ -1,0 +1,7 @@
+{
+  "name": "pdf-viewer",
+  "entry": "plugin.wasm",
+  "filetypes": ["pdf"],
+  "rendering": true,
+  "logo": "logo.svg"
+}

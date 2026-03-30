@@ -54,6 +54,32 @@ Future<ExtensionInfo?> extensionForFile({
   filePath: filePath,
 );
 
+Future<int> erpOpenSession({
+  required String workspaceRoot,
+  required String filePath,
+}) => RustLib.instance.api.crateApiErpOpenSession(
+  workspaceRoot: workspaceRoot,
+  filePath: filePath,
+);
+
+Future<int> erpGetPageCount({required int sessionId}) =>
+    RustLib.instance.api.crateApiErpGetPageCount(sessionId: sessionId);
+
+Future<Uint8List> erpRenderPage({
+  required int sessionId,
+  required int pageIndex,
+  required int width,
+  required int height,
+}) => RustLib.instance.api.crateApiErpRenderPage(
+  sessionId: sessionId,
+  pageIndex: pageIndex,
+  width: width,
+  height: height,
+);
+
+Future<void> erpCloseSession({required int sessionId}) =>
+    RustLib.instance.api.crateApiErpCloseSession(sessionId: sessionId);
+
 Future<String?> validateSourceText({
   required String languageId,
   required String text,

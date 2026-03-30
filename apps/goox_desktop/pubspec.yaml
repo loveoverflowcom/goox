@@ -13,13 +13,16 @@ dependencies:
   google_fonts: ^8.0.2
   path: ^1.9.1
   file_picker: ^10.3.10
-  pdfx: ^2.9.2
   goox_editor_sdk:
     path: ../../packages/goox_editor_sdk
   goox_ui_shared:
     path: ../../packages/goox_ui_shared
+  path_provider: ^2.1.5
+  flutter_svg: ^2.2.4
+  desktop_drop: ^0.4.4
   objectbox: ^5.3.0
   objectbox_flutter_libs: ^5.3.0
+  cross_file: ^0.3.5+2
 
 dev_dependencies:
   flutter_test:

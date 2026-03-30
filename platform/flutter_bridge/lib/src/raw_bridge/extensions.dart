@@ -13,6 +13,7 @@ class ExtensionInfo {
   final List<String> filetypes;
   final String? languageId;
   final String? lspExecutable;
+  final bool rendering;
 
   const ExtensionInfo({
     required this.name,
@@ -21,6 +22,7 @@ class ExtensionInfo {
     required this.filetypes,
     this.languageId,
     this.lspExecutable,
+    required this.rendering,
   });
 
   @override
@@ -30,7 +32,8 @@ class ExtensionInfo {
       entry.hashCode ^
       filetypes.hashCode ^
       languageId.hashCode ^
-      lspExecutable.hashCode;
+      lspExecutable.hashCode ^
+      rendering.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -42,5 +45,6 @@ class ExtensionInfo {
           entry == other.entry &&
           filetypes == other.filetypes &&
           languageId == other.languageId &&
-          lspExecutable == other.lspExecutable;
+          lspExecutable == other.lspExecutable &&
+          rendering == other.rendering;
 }

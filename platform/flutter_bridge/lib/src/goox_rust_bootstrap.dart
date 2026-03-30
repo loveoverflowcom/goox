@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:path/path.dart' as path;
 
+import 'erp_session_manager.dart';
 import 'raw_bridge/api.dart' as bridge_api;
 import 'raw_bridge/extensions.dart' as bridge_types;
 import 'raw_bridge/frb_generated.dart';
@@ -81,6 +82,38 @@ final class GooxRustBootstrap {
       filePath: filePath,
     );
   }
+
+  static Future<int> erpOpenSession({
+    required String workspaceRoot,
+    required String filePath,
+  }) async {
+    if (!_initialized) {
+      await ensureInitialized(workspaceRoot: workspaceRoot);
+    }
+
+    return ErpSessionManager.instance.openSession(
+      workspaceRoot: workspaceRoot,
+      filePath: filePath,
+    );
+  }
+
+  static Future<int> erpGetPageCount({required int sessionId}) async =>
+      ErpSessionManager.instance.getPageCount(sessionId);
+
+  static Future<Uint8List> erpRenderPage({
+    required int sessionId,
+    required int pageIndex,
+    required int width,
+    required int height,
+  }) async => ErpSessionManager.instance.renderPage(
+    sessionId: sessionId,
+    pageIndex: pageIndex,
+    width: width,
+    height: height,
+  );
+
+  static Future<void> erpCloseSession({required int sessionId}) async =>
+      ErpSessionManager.instance.closeSession(sessionId);
 
   static Future<String?> validateSourceText({
     required String languageId,

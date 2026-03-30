@@ -1,0 +1,7 @@
+{
+  "name": "javascript",
+  "filetypes": ["js", "mjs", "cjs", "jsx", "ts", "tsx"],
+  "language_id": "javascript",
+  "lsp_executable": "typescript-language-server",
+  "logo": "logo.svg"
+}

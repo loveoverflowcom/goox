@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:cross_file/cross_file.dart' show XFile;
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -99,8 +101,15 @@ class _SidebarHeader extends StatelessWidget {
   }
 }
 
-class ExplorerView extends StatelessWidget {
+class ExplorerView extends StatefulWidget {
   const ExplorerView({super.key});
+
+  @override
+  State<ExplorerView> createState() => _ExplorerViewState();
+}
+
+class _ExplorerViewState extends State<ExplorerView> {
+  bool _isDraggingOver = false;
 
   Future<void> _promptCreateFile(BuildContext context, String parentDir) async {
     final name = await _showNameDialog(
@@ -177,6 +186,47 @@ class ExplorerView extends StatelessWidget {
     );
   }
 
+  Future<void> _handleDrop(
+    BuildContext context,
+    List<XFile> files,
+    String targetDir,
+  ) async {
+    for (final xfile in files) {
+      final src = xfile.path;
+      final dest = p.join(targetDir, p.basename(src));
+      try {
+        if (FileSystemEntity.isDirectorySync(src)) {
+          await _copyDirectory(Directory(src), Directory(dest));
+        } else {
+          await File(src).copy(dest);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to copy ${p.basename(src)}: $e')),
+          );
+        }
+      }
+    }
+    if (context.mounted) {
+      context.read<AppState>().openDirectory(
+        context.read<AppState>().rootPath!,
+      );
+    }
+  }
+
+  Future<void> _copyDirectory(Directory src, Directory dest) async {
+    await dest.create(recursive: true);
+    for (final entity in src.listSync(recursive: false, followLinks: false)) {
+      final target = p.join(dest.path, p.basename(entity.path));
+      if (entity is Directory) {
+        await _copyDirectory(entity, Directory(target));
+      } else if (entity is File) {
+        await entity.copy(target);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
@@ -199,41 +249,58 @@ class ExplorerView extends StatelessWidget {
         }
 
         final rootName = p.basename(state.rootPath!).toUpperCase();
+        final colorScheme = Theme.of(context).colorScheme;
 
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            // Unselect file when clicking empty space
-            state.unselectFile();
+        return DropTarget(
+          onDragEntered: (_) => setState(() => _isDraggingOver = true),
+          onDragExited: (_) => setState(() => _isDraggingOver = false),
+          onDragDone: (details) async {
+            setState(() => _isDraggingOver = false);
+            await _handleDrop(context, details.files, state.rootPath!);
           },
-          onSecondaryTapDown: (details) => _showExplorerContextMenu(
-            context,
-            details.globalPosition,
-            state.rootPath!,
-            isDirectory: true,
-            onNewFile: () => _promptCreateFile(context, state.rootPath!),
-            onNewFolder: () => _promptCreateFolder(context, state.rootPath!),
-            // Root rename/delete might not be desired or handled differently
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ExplorerSection(
-                  title: rootName,
-                  isExpanded: state.isFolderExpanded(state.rootPath!),
-                  path: state.rootPath!,
-                  onToggle: () => state.toggleFolder(state.rootPath!),
-                  onCreateFile: () =>
-                      _promptCreateFile(context, state.rootPath!),
-                  onCreateFolder: () =>
-                      _promptCreateFolder(context, state.rootPath!),
-                  children: state.files
-                      .map((e) => _buildTree(e, context, state, 1))
-                      .toList(),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            decoration: _isDraggingOver
+                ? BoxDecoration(
+                    border: Border.all(
+                      color: colorScheme.primary.withValues(alpha: 0.6),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  )
+                : null,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: state.unselectFile,
+              onSecondaryTapDown: (details) => _showExplorerContextMenu(
+                context,
+                details.globalPosition,
+                state.rootPath!,
+                isDirectory: true,
+                onNewFile: () => _promptCreateFile(context, state.rootPath!),
+                onNewFolder: () =>
+                    _promptCreateFolder(context, state.rootPath!),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ExplorerSection(
+                      title: rootName,
+                      isExpanded: state.isFolderExpanded(state.rootPath!),
+                      path: state.rootPath!,
+                      onToggle: () => state.toggleFolder(state.rootPath!),
+                      onCreateFile: () =>
+                          _promptCreateFile(context, state.rootPath!),
+                      onCreateFolder: () =>
+                          _promptCreateFolder(context, state.rootPath!),
+                      children: state.files
+                          .map((e) => _buildTree(e, context, state, 1))
+                          .toList(),
+                    ),
+                  ],
                 ),
-                // OUTLINE removed (Task 2)
-              ],
+              ),
             ),
           ),
         );
@@ -571,7 +638,7 @@ class _FileItemState extends State<_FileItem> {
   bool _isHovered = false;
 
   Future<void> _showContextMenu(TapDownDetails details) async {
-    await ExplorerView._showExplorerContextMenu(
+    await _ExplorerViewState._showExplorerContextMenu(
       context,
       details.globalPosition,
       widget.path,

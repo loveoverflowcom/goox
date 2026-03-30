@@ -44,14 +44,14 @@ class GooxStatusBar extends StatelessWidget {
             style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
           ),
           const Spacer(),
-          Icon(Icons.code_rounded, size: 12, color: colorScheme.onPrimary),
-          const SizedBox(width: 4),
-          Text(
-            diagnosticCount > 0
-                ? 'LSP $diagnosticCount'
-                : 'LSP $lspStatus',
-            style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
-          ),
+          if (lspStatus != 'inactive') ...[
+            Icon(Icons.code_rounded, size: 12, color: colorScheme.onPrimary),
+            const SizedBox(width: 4),
+            Text(
+              diagnosticCount > 0 ? 'LSP $diagnosticCount' : 'LSP $lspStatus',
+              style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
+            ),
+          ],
         ],
       ),
     );

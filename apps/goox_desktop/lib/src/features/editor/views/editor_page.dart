@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
 import 'package:goox_ui_shared/goox_ui_shared.dart';
-import 'package:pdfx/pdfx.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
@@ -24,7 +24,30 @@ class _EditorPageState extends State<EditorPage> {
   late final GooxEditorController _controller;
   late final FocusNode _focusNode;
   String? _loadedFilePath;
+  bool _isUnsupportedFile = false;
+  String? _unsupportedMessage;
+  int? _erpSessionId;
+  int _erpPageCount = 0;
+  bool _erpLoading = false;
   final _extensionsKey = GlobalKey<ExtensionsViewState>();
+  static const Set<String> _binaryFileExtensions = {
+    'pdf',
+    'png',
+    'jpg',
+    'jpeg',
+    'gif',
+    'webp',
+    'bmp',
+    'ico',
+    'zip',
+    'gz',
+    'tar',
+    'mp3',
+    'mp4',
+    'mov',
+    'avi',
+    'mkv',
+  };
 
   @override
   void initState() {
@@ -43,59 +66,133 @@ class _EditorPageState extends State<EditorPage> {
     }
   }
 
-  Future<void> _loadFile(String? path) async {
-    if (path == null) {
+  Future<void> _loadFile(String? filePath) async {
+    if (filePath == null) {
+      await _closeErpSession();
       await _controller.setActiveExtension(null);
       await _controller.loadDocument('');
+      if (mounted) setState(() { _isUnsupportedFile = false; _unsupportedMessage = null; });
       return;
     }
 
     try {
+      // Capture context-dependent values before any await
       final workspaceRoot = context.read<AppState>().rootPath ?? '';
+
       await GooxEditorSdkBootstrap.ensureInitialized(
         workspaceRoot: workspaceRoot,
       );
 
-      final file = File(path);
-      final isPdf = path.toLowerCase().endsWith('.pdf');
-
       final extension = await GooxEditorSdkBootstrap.resolveExtensionForFile(
         workspaceRoot: workspaceRoot,
-        filePath: path,
+        filePath: filePath,
       );
       await _controller.setActiveExtension(extension);
+      final isBinaryFile = _isBinaryFile(filePath);
 
-      if (isPdf && extension?.hasWasmEntry == true) {
-        await GooxEditorSdkBootstrap.activateExtensionForFile(
-          workspaceRoot: workspaceRoot,
-          filePath: path,
-        );
+      if (extension?.hasErpCapability == true) {
+        await _closeErpSession();
         if (mounted) {
-          context.read<AppState>().markFileDirty(path, false);
+          setState(() {
+            _erpLoading = true;
+            _erpPageCount = 0;
+            _isUnsupportedFile = false;
+            _unsupportedMessage = null;
+          });
+        }
+
+        try {
+          final sessionId = await GooxEditorSdkBootstrap.erpOpenSession(
+            workspaceRoot: workspaceRoot,
+            filePath: filePath,
+          );
+          final pageCount = await GooxEditorSdkBootstrap.erpGetPageCount(
+            sessionId: sessionId,
+          );
+          if (!mounted) return;
+          setState(() {
+            _erpSessionId = sessionId;
+            _erpPageCount = pageCount;
+            _erpLoading = false;
+            _isUnsupportedFile = false;
+            _unsupportedMessage = null;
+          });
+          context.read<AppState>().markFileDirty(filePath, false);
+          return;
+        } catch (error) {
+          if (!mounted) return;
+          setState(() {
+            _erpSessionId = null;
+            _erpPageCount = 0;
+            _erpLoading = false;
+            _isUnsupportedFile = true;
+            _unsupportedMessage =
+                'Failed to open ${path.basename(filePath)}: $error';
+          });
+          context.read<AppState>().markFileDirty(filePath, false);
+          return;
+        }
+      } else {
+        await _closeErpSession();
+      }
+
+      if (isBinaryFile) {
+        final message = extension == null
+            ? 'No compatible extension found to open ${path.basename(filePath)}.'
+            : 'The ${extension.name} extension cannot open ${path.basename(filePath)} because it does not provide ERP rendering.';
+        if (mounted) {
+          setState(() { _isUnsupportedFile = true; _unsupportedMessage = message; });
+          context.read<AppState>().markFileDirty(filePath, false);
         }
         return;
       }
 
-      if (file.existsSync()) {
-        final text = await file.readAsString();
-        await _controller.loadDocument(
-          text,
-          filePath: path,
-          workspaceRoot: workspaceRoot,
-        );
-      } else {
-        await _controller.loadDocument(
-          '',
-          filePath: path,
-          workspaceRoot: workspaceRoot,
-        );
-      }
+      if (mounted) setState(() { _isUnsupportedFile = false; _unsupportedMessage = null; });
+
+      final file = File(filePath);
+      final text = file.existsSync() ? await file.readAsString() : '';
+      await _controller.loadDocument(
+        text,
+        filePath: filePath,
+        workspaceRoot: workspaceRoot,
+      );
 
       if (mounted) {
-        context.read<AppState>().markFileDirty(path, false);
+        context.read<AppState>().markFileDirty(filePath, false);
+      }
+    } on FileSystemException catch (_) {
+      await _closeErpSession();
+      if (mounted) {
+        setState(() {
+          _isUnsupportedFile = true;
+          _unsupportedMessage =
+              'This file cannot be opened as plain text. Install or enable a compatible extension for ${path.basename(filePath)}.';
+        });
       }
     } catch (error) {
-      await _controller.loadDocument('Error loading file: $error');
+      await _closeErpSession();
+      if (mounted) {
+        setState(() {
+          _isUnsupportedFile = true;
+          _unsupportedMessage =
+              'Failed to open ${path.basename(filePath)}. Please try again or check the extension configuration.';
+        });
+      }
+    }
+  }
+
+  bool _isBinaryFile(String filePath) {
+    final ext = path.extension(filePath).toLowerCase().replaceFirst('.', '');
+    return _binaryFileExtensions.contains(ext);
+  }
+
+  Future<void> _closeErpSession() async {
+    final sessionId = _erpSessionId;
+    _erpSessionId = null;
+    _erpPageCount = 0;
+    _erpLoading = false;
+    if (sessionId != null) {
+      await GooxEditorSdkBootstrap.erpCloseSession(sessionId: sessionId);
     }
   }
 
@@ -135,6 +232,7 @@ class _EditorPageState extends State<EditorPage> {
   @override
   void dispose() {
     _focusNode.dispose();
+    unawaited(_closeErpSession());
     _controller.dispose();
     super.dispose();
   }
@@ -144,9 +242,6 @@ class _EditorPageState extends State<EditorPage> {
     final appState = context.watch<AppState>();
     final activeFile = appState.activeFile;
     final hasActiveFile = activeFile != null;
-    final isPdf =
-        activeFile != null && activeFile.toLowerCase().endsWith('.pdf');
-    final pdfFilePath = activeFile ?? '';
 
     return ValueListenableBuilder<EditorViewState>(
       valueListenable: _controller.stateListenable,
@@ -190,199 +285,96 @@ class _EditorPageState extends State<EditorPage> {
           panels: [GooxTerminalPanelTab(workingDirectory: appState.rootPath)],
           editorHeader: const _EditorTabHeader(),
           editor: hasActiveFile
-              ? isPdf
-                    ? _ExtensionPreviewPane(
-                        key: ValueKey(activeFile),
-                        filePath: activeFile,
-                        activeExtension: state.activeExtension,
-                      )
-                    : Column(
-                        children: [
-                          _LspDiagnosticsBanner(state: state),
-                          Expanded(
-                            child: CallbackShortcuts(
-                              bindings: <ShortcutActivator, VoidCallback>{
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyS,
-                                  control: true,
-                                ): () {
-                                  _saveCurrentFile();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyS,
-                                  meta: true,
-                                ): () {
-                                  _saveCurrentFile();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyZ,
-                                  control: true,
-                                ): () {
-                                  _controller.undo();
-                                  _markDirty();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyZ,
-                                  meta: true,
-                                ): () {
-                                  _controller.undo();
-                                  _markDirty();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyZ,
-                                  control: true,
-                                  shift: true,
-                                ): () {
-                                  _controller.redo();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyZ,
-                                  meta: true,
-                                  shift: true,
-                                ): () {
-                                  _controller.redo();
-                                },
-                              },
-                              child: GooxEditorCanvas(
-                                state: state,
-                                focusNode: _focusNode,
-                                autofocus: true,
-                                onTap: _focusNode.requestFocus,
-                                onTextChanged: _handleEditorTextChanged,
-                                onCursorOffsetChanged:
-                                    _controller.moveCursorToOffset,
-                                fontSize: appState.settings.fontSize,
-                                fontWeight: appState.settings.fontWeight,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
+              ? Column(
+                  children: [
+                    _LspDiagnosticsBanner(state: state),
+                    Expanded(
+                      child: _erpLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _erpSessionId != null
+                          ? GooxPluginCanvas(
+                              sessionId: _erpSessionId!,
+                              pageCount: _erpPageCount,
+                              onRenderPage: (pageIndex, width, height) =>
+                                  GooxEditorSdkBootstrap.erpRenderPage(
+                                    sessionId: _erpSessionId!,
+                                    pageIndex: pageIndex,
+                                    width: width,
+                                    height: height,
+                                  ),
+                            )
+                          : _isUnsupportedFile
+                          ? _UnsupportedFileView(
+                              message: _unsupportedMessage ?? '',
+                            )
+                          : CallbackShortcuts(
+                        bindings: <ShortcutActivator, VoidCallback>{
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyS,
+                            control: true,
+                          ): () {
+                            _saveCurrentFile();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyS,
+                            meta: true,
+                          ): () {
+                            _saveCurrentFile();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyZ,
+                            control: true,
+                          ): () {
+                            _controller.undo();
+                            _markDirty();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyZ,
+                            meta: true,
+                          ): () {
+                            _controller.undo();
+                            _markDirty();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyZ,
+                            control: true,
+                            shift: true,
+                          ): () {
+                            _controller.redo();
+                          },
+                          const SingleActivator(
+                            LogicalKeyboardKey.keyZ,
+                            meta: true,
+                            shift: true,
+                          ): () {
+                            _controller.redo();
+                          },
+                        },
+                        child: GooxEditorCanvas(
+                          state: state,
+                          focusNode: _focusNode,
+                          autofocus: true,
+                          onTap: _focusNode.requestFocus,
+                          onTextChanged: _handleEditorTextChanged,
+                          onCursorOffsetChanged:
+                              _controller.moveCursorToOffset,
+                          fontSize: appState.settings.fontSize,
+                          fontWeight: appState.settings.fontWeight,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
               : _EditorWelcomeView(onOpenFolder: appState.pickDirectory),
-              statusBar: isPdf
-              ? _PdfStatusBar(filePath: pdfFilePath)
-              : GooxStatusBar(
-                  revision: state.revision,
-                  line: state.cursor.line,
-                  column: state.cursor.column,
-                  lspStatus: state.lspStatus,
-                  diagnosticCount: state.lspDiagnostics.length,
-                ),
+          statusBar: GooxStatusBar(
+            revision: state.revision,
+            line: state.cursor.line,
+            column: state.cursor.column,
+            lspStatus: state.lspStatus,
+            diagnosticCount: state.lspDiagnostics.length,
+          ),
         );
       },
-    );
-  }
-}
-
-class _ExtensionPreviewPane extends StatefulWidget {
-  const _ExtensionPreviewPane({
-    super.key,
-    required this.filePath,
-    required this.activeExtension,
-  });
-
-  final String filePath;
-  final ActiveExtensionInfo? activeExtension;
-
-  @override
-  State<_ExtensionPreviewPane> createState() => _ExtensionPreviewPaneState();
-}
-
-class _ExtensionPreviewPaneState extends State<_ExtensionPreviewPane> {
-  late final PdfControllerPinch _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = PdfControllerPinch(
-      document: PdfDocument.openFile(widget.filePath),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final extension = widget.activeExtension;
-    if (extension == null || !extension.hasWasmEntry) {
-      return Center(
-        child: Text(
-          'Extension not available for ${path.basename(widget.filePath)}',
-        ),
-      );
-    }
-
-    final theme = Theme.of(context);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
-        ),
-      ),
-      child: PdfViewPinch(
-        controller: _controller,
-        builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
-          options: const DefaultBuilderOptions(),
-          documentLoaderBuilder: (_) => Center(
-            child: CircularProgressIndicator(color: theme.colorScheme.primary),
-          ),
-          pageLoaderBuilder: (_) => Center(
-            child: CircularProgressIndicator(color: theme.colorScheme.primary),
-          ),
-          errorBuilder: (_, error) => Center(
-            child: Text(
-              'Failed to load PDF: $error',
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PdfStatusBar extends StatelessWidget {
-  const _PdfStatusBar({required this.filePath});
-
-  final String filePath;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      color: colorScheme.primary,
-      child: Row(
-        children: [
-          Icon(
-            Icons.picture_as_pdf_outlined,
-            size: 12,
-            color: colorScheme.onPrimary,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              path.basename(filePath),
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'PDF view',
-            style: TextStyle(color: colorScheme.onPrimary, fontSize: 11),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -619,9 +611,9 @@ class _LspDiagnosticsBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final diagnostics = state.lspDiagnostics;
-    final shouldShowStatus =
-        state.lspStatus != 'ready' || diagnostics.isNotEmpty;
-    if (!shouldShowStatus) {
+    final shouldShowBanner =
+        diagnostics.isNotEmpty || state.lspStatus == 'error';
+    if (!shouldShowBanner) {
       return const SizedBox.shrink();
     }
 
@@ -915,6 +907,42 @@ class _ExtensionsTrailing extends StatelessWidget {
             child: Text('Refresh', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UnsupportedFileView extends StatelessWidget {
+  const _UnsupportedFileView({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.sentiment_dissatisfied_outlined,
+              size: 56,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

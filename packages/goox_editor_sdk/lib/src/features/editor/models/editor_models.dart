@@ -46,22 +46,30 @@ class ActiveExtensionInfo {
     required this.name,
     required this.path,
     required this.filetypes,
+    required this.rendering,
     this.entry,
     this.languageId,
     this.lspExecutable,
   });
 
   factory ActiveExtensionInfo.empty() =>
-      const ActiveExtensionInfo(name: '', path: '', filetypes: []);
+      const ActiveExtensionInfo(
+        name: '',
+        path: '',
+        filetypes: [],
+        rendering: false,
+      );
 
   final String name;
   final String path;
   final String? entry;
   final List<String> filetypes;
+  final bool rendering;
   final String? languageId;
   final String? lspExecutable;
 
   bool get hasWasmEntry => entry != null && entry!.trim().isNotEmpty;
+  bool get hasErpCapability => rendering && hasWasmEntry;
 
   bool get isEmpty => name.isEmpty;
 }

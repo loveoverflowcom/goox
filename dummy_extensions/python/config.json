@@ -1,0 +1,7 @@
+{
+  "name": "python",
+  "filetypes": ["py", "pyw"],
+  "language_id": "python",
+  "lsp_executable": "pyright-langserver",
+  "logo": "logo.svg"
+}

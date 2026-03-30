@@ -1,0 +1,1 @@
+/Users/manhblue/Documents/personal/open_source/goox/dummy_extensions/pdf-viewer/target/wasm32-unknown-unknown/release/pdf_viewer.wasm: /Users/manhblue/Documents/personal/open_source/goox/dummy_extensions/pdf-viewer/src/lib.rs

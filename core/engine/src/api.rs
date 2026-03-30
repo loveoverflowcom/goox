@@ -79,6 +79,27 @@ pub fn extension_for_file(
     crate::extensions::extension_for_file(workspace_root, file_path)
 }
 
+pub fn erp_open_session(workspace_root: String, file_path: String) -> Result<u32, String> {
+    crate::erp::open_session(workspace_root, file_path)
+}
+
+pub fn erp_get_page_count(session_id: u32) -> Result<i32, String> {
+    crate::erp::get_page_count(session_id)
+}
+
+pub fn erp_render_page(
+    session_id: u32,
+    page_index: i32,
+    width: i32,
+    height: i32,
+) -> Result<Vec<u8>, String> {
+    crate::erp::render_page(session_id, page_index, width, height)
+}
+
+pub fn erp_close_session(session_id: u32) -> Result<(), String> {
+    crate::erp::close_session(session_id)
+}
+
 pub fn validate_source_text(language_id: String, text: String) -> Option<String> {
     crate::extensions::validate_source_text(language_id, text)
 }

@@ -55,8 +55,15 @@ class RustEditorCoreClient implements EditorCoreClient {
   Future<void> setActiveExtension(ActiveExtensionInfo? extension) async {
     _activeExtension = extension;
     _updateLanguageServerPolling();
+
+    // Clear stale diagnostics when the active extension changes.
+    _state.value = _state.value.copyWith(
+      lspStatus: 'inactive',
+      lspDiagnostics: [],
+      activeExtension: extension,
+    );
+
     if (_currentFilePath == null) {
-      _state.value = _state.value.copyWith(activeExtension: extension);
       return;
     }
 
@@ -91,6 +98,13 @@ class RustEditorCoreClient implements EditorCoreClient {
     _cursorOffset = 0;
     _firstVisibleLine = 0;
     _recordEvent('Rust core loaded document');
+
+    // Clear stale diagnostics immediately so they don't bleed into the new file.
+    _state.value = _state.value.copyWith(
+      lspStatus: 'inactive',
+      lspDiagnostics: [],
+    );
+
     _updateLanguageServerPolling();
     await _publish(lastCommand: 'load document');
   }
