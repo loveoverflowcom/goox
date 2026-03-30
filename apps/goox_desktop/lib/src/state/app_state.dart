@@ -206,6 +206,32 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void closeAllFiles() {
+    _openFiles.clear();
+    _activeFile = null;
+    _dirtyFiles.clear();
+    notifyListeners();
+  }
+
+  void closeOthers(String path) {
+    if (_openFiles.contains(path)) {
+      _openFiles.clear();
+      _openFiles.add(path);
+      _activeFile = path;
+      _dirtyFiles.removeWhere((file) => file != path);
+      notifyListeners();
+    }
+  }
+
+  void reorderFile(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = _openFiles.removeAt(oldIndex);
+    _openFiles.insert(newIndex, item);
+    notifyListeners();
+  }
+
   void switchTab(String path) {
     if (_openFiles.contains(path)) {
       _activeFile = path;

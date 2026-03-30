@@ -563,16 +563,25 @@ class _EditorTabHeader extends StatelessWidget {
         ),
       ),
       child: hasOpenFiles
-          ? ListView(
+          ? ReorderableListView(
               scrollDirection: Axis.horizontal,
+              buildDefaultDragHandles: false,
+              onReorder: state.reorderFile,
               children: state.openFiles
                   .map(
-                    (itemPath) => _TabItem(
-                      title: path.basename(itemPath),
-                      isSelected: itemPath == state.activeFile,
-                      isDirty: state.isFileDirty(itemPath),
-                      onTap: () => state.openFile(itemPath),
-                      onClose: () => state.closeFile(itemPath),
+                    (itemPath) => ReorderableDragStartListener(
+                      key: ValueKey(itemPath),
+                      index: state.openFiles.indexOf(itemPath),
+                      child: _TabItem(
+                        itemPath: itemPath,
+                        title: path.basename(itemPath),
+                        isSelected: itemPath == state.activeFile,
+                        isDirty: state.isFileDirty(itemPath),
+                        onTap: () => state.openFile(itemPath),
+                        onClose: () => state.closeFile(itemPath),
+                        onCloseAll: () => state.closeAllFiles(),
+                        onCloseOthers: () => state.closeOthers(itemPath),
+                      ),
                     ),
                   )
                   .toList(),
@@ -653,18 +662,63 @@ class _LspDiagnosticsBanner extends StatelessWidget {
 
 class _TabItem extends StatelessWidget {
   const _TabItem({
+    required this.itemPath,
     required this.title,
     required this.isSelected,
     required this.isDirty,
     required this.onTap,
     required this.onClose,
+    required this.onCloseAll,
+    required this.onCloseOthers,
   });
 
+  final String itemPath;
   final String title;
   final bool isSelected;
   final bool isDirty;
   final VoidCallback onTap;
   final VoidCallback onClose;
+  final VoidCallback onCloseAll;
+  final VoidCallback onCloseOthers;
+
+  void _showContextMenu(BuildContext context, Offset position) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        position & const Size(40, 40),
+        Offset.zero & overlay.size,
+      ),
+      color: colorScheme.surfaceContainerHigh,
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      items: [
+        PopupMenuItem(
+          height: 32,
+          onTap: onClose,
+          child: Text('Close', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+        ),
+        PopupMenuItem(
+          height: 32,
+          onTap: onCloseOthers,
+          child: Text('Close Others', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+        ),
+        const PopupMenuDivider(height: 1),
+        PopupMenuItem(
+          height: 32,
+          onTap: onCloseAll,
+          child: Text('Close All', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -672,69 +726,72 @@ class _TabItem extends StatelessWidget {
 
     return Material(
       color: isSelected ? colorScheme.surface : colorScheme.surfaceContainerLow,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minWidth: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border(
-              right: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.25),
-                width: 0.5,
-              ),
-              top: BorderSide(
-                color: isSelected ? colorScheme.primary : Colors.transparent,
-                width: 1.5,
-              ),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.description_outlined,
-                size: 14,
-                color: isSelected
-                    ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: isSelected
-                        ? colorScheme.onSurface
-                        : colorScheme.onSurfaceVariant,
-                  ),
+      child: GestureDetector(
+        onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 140),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.25),
+                  width: 0.5,
+                ),
+                top: BorderSide(
+                  color: isSelected ? colorScheme.primary : Colors.transparent,
+                  width: 1.5,
                 ),
               ),
-              const SizedBox(width: 8),
-              if (isDirty)
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                )
-              else
-                InkWell(
-                  onTap: onClose,
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 14,
-                      color: colorScheme.onSurfaceVariant,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.description_outlined,
+                  size: 14,
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: isSelected
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
-            ],
+                const SizedBox(width: 8),
+                if (isDirty)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  )
+                else
+                  InkWell(
+                    onTap: onClose,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 14,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
