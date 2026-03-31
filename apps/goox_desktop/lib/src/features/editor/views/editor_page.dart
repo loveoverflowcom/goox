@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import '../../../state/app_state.dart';
 import '../../widgets/extensions_view.dart';
+import '../widgets/image_viewer_shell.dart';
 import '../../widgets/settings_view.dart';
 import '../../widgets/sidebar.dart';
 
@@ -28,26 +29,10 @@ class _EditorPageState extends State<EditorPage> {
   String? _unsupportedMessage;
   int? _erpSessionId;
   int _erpPageCount = 0;
+  String? _erpMetadataJson;
+  List<ExtensionEvent> _erpEvents = const [];
   bool _erpLoading = false;
   final _extensionsKey = GlobalKey<ExtensionsViewState>();
-  static const Set<String> _binaryFileExtensions = {
-    'pdf',
-    'png',
-    'jpg',
-    'jpeg',
-    'gif',
-    'webp',
-    'bmp',
-    'ico',
-    'zip',
-    'gz',
-    'tar',
-    'mp3',
-    'mp4',
-    'mov',
-    'avi',
-    'mkv',
-  };
 
   @override
   void initState() {
@@ -71,7 +56,12 @@ class _EditorPageState extends State<EditorPage> {
       await _closeErpSession();
       await _controller.setActiveExtension(null);
       await _controller.loadDocument('');
-      if (mounted) setState(() { _isUnsupportedFile = false; _unsupportedMessage = null; });
+      if (mounted) {
+        setState(() {
+          _isUnsupportedFile = false;
+          _unsupportedMessage = null;
+        });
+      }
       return;
     }
 
@@ -88,14 +78,15 @@ class _EditorPageState extends State<EditorPage> {
         filePath: filePath,
       );
       await _controller.setActiveExtension(extension);
-      final isBinaryFile = _isBinaryFile(filePath);
 
-      if (extension?.hasErpCapability == true) {
+      if (extension?.hasWebViewCapability == true ||
+          extension?.hasErpCapability == true) {
         await _closeErpSession();
         if (mounted) {
           setState(() {
             _erpLoading = true;
             _erpPageCount = 0;
+            _erpMetadataJson = null;
             _isUnsupportedFile = false;
             _unsupportedMessage = null;
           });
@@ -109,10 +100,15 @@ class _EditorPageState extends State<EditorPage> {
           final pageCount = await GooxEditorSdkBootstrap.erpGetPageCount(
             sessionId: sessionId,
           );
+          final metadataJson = await GooxEditorSdkBootstrap.erpGetMetadata(
+            sessionId: sessionId,
+          );
+          await _syncExtensionEvents(sessionId);
           if (!mounted) return;
           setState(() {
             _erpSessionId = sessionId;
             _erpPageCount = pageCount;
+            _erpMetadataJson = metadataJson;
             _erpLoading = false;
             _isUnsupportedFile = false;
             _unsupportedMessage = null;
@@ -124,6 +120,7 @@ class _EditorPageState extends State<EditorPage> {
           setState(() {
             _erpSessionId = null;
             _erpPageCount = 0;
+            _erpMetadataJson = null;
             _erpLoading = false;
             _isUnsupportedFile = true;
             _unsupportedMessage =
@@ -136,18 +133,12 @@ class _EditorPageState extends State<EditorPage> {
         await _closeErpSession();
       }
 
-      if (isBinaryFile) {
-        final message = extension == null
-            ? 'No compatible extension found to open ${path.basename(filePath)}.'
-            : 'The ${extension.name} extension cannot open ${path.basename(filePath)} because it does not provide ERP rendering.';
-        if (mounted) {
-          setState(() { _isUnsupportedFile = true; _unsupportedMessage = message; });
-          context.read<AppState>().markFileDirty(filePath, false);
-        }
-        return;
+      if (mounted) {
+        setState(() {
+          _isUnsupportedFile = false;
+          _unsupportedMessage = null;
+        });
       }
-
-      if (mounted) setState(() { _isUnsupportedFile = false; _unsupportedMessage = null; });
 
       final file = File(filePath);
       final text = file.existsSync() ? await file.readAsString() : '';
@@ -181,18 +172,35 @@ class _EditorPageState extends State<EditorPage> {
     }
   }
 
-  bool _isBinaryFile(String filePath) {
-    final ext = path.extension(filePath).toLowerCase().replaceFirst('.', '');
-    return _binaryFileExtensions.contains(ext);
-  }
-
   Future<void> _closeErpSession() async {
     final sessionId = _erpSessionId;
     _erpSessionId = null;
     _erpPageCount = 0;
+    _erpMetadataJson = null;
+    _erpEvents = const [];
     _erpLoading = false;
     if (sessionId != null) {
       await GooxEditorSdkBootstrap.erpCloseSession(sessionId: sessionId);
+    }
+  }
+
+  Future<void> _syncExtensionEvents(int sessionId) async {
+    try {
+      final events = await GooxEditorSdkBootstrap.erpDrainEvents(
+        sessionId: sessionId,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        final merged = <ExtensionEvent>[..._erpEvents, ...events];
+        if (merged.length > 24) {
+          merged.removeRange(0, merged.length - 24);
+        }
+        _erpEvents = List.unmodifiable(merged);
+      });
+    } catch (error) {
+      debugPrint('Failed to drain extension events: $error');
     }
   }
 
@@ -246,6 +254,12 @@ class _EditorPageState extends State<EditorPage> {
     return ValueListenableBuilder<EditorViewState>(
       valueListenable: _controller.stateListenable,
       builder: (context, state, _) {
+        final erpSessionId = _erpSessionId;
+        final activeExtension = state.activeExtension;
+        final webEntryPath =
+            activeExtension != null && activeExtension.webEntry != null
+            ? path.join(activeExtension.path, activeExtension.webEntry!)
+            : null;
         return GooxLayout(
           tabs: [
             GooxWidgetTab(
@@ -272,7 +286,8 @@ class _EditorPageState extends State<EditorPage> {
               title: 'Extensions',
               icon: Icons.extension_outlined,
               builder: (context) => ExtensionsView(key: _extensionsKey),
-              trailing: (context) => _ExtensionsTrailing(extensionsKey: _extensionsKey),
+              trailing: (context) =>
+                  _ExtensionsTrailing(extensionsKey: _extensionsKey),
             ),
             GooxWidgetTab(
               id: 'settings',
@@ -291,77 +306,117 @@ class _EditorPageState extends State<EditorPage> {
                     Expanded(
                       child: _erpLoading
                           ? const Center(child: CircularProgressIndicator())
-                          : _erpSessionId != null
-                          ? GooxPluginCanvas(
-                              sessionId: _erpSessionId!,
-                              pageCount: _erpPageCount,
-                              onRenderPage: (pageIndex, width, height) =>
-                                  GooxEditorSdkBootstrap.erpRenderPage(
-                                    sessionId: _erpSessionId!,
-                                    pageIndex: pageIndex,
-                                    width: width,
-                                    height: height,
+                          : erpSessionId != null
+                          ? Column(
+                              children: [
+                                if (_erpEvents.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      12,
+                                      12,
+                                      8,
+                                    ),
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: _erpEvents
+                                            .map(
+                                              (event) => Chip(
+                                                label: Text(
+                                                  '${event.source}:${event.topic}',
+                                                ),
+                                              ),
+                                            )
+                                            .toList(growable: false),
+                                      ),
+                                    ),
                                   ),
+                                Expanded(
+                                  child: GooxRenderWebViewShell(
+                                    sessionId: erpSessionId,
+                                    pageCount: _erpPageCount,
+                                    metadataJson: _erpMetadataJson,
+                                    documentName: path.basename(activeFile),
+                                    webEntryPath: webEntryPath,
+                                    onRenderPage: (pageIndex, width, height) async {
+                                      final pixels =
+                                          await GooxEditorSdkBootstrap.erpRenderPage(
+                                            sessionId: erpSessionId,
+                                            pageIndex: pageIndex,
+                                            width: width,
+                                            height: height,
+                                          );
+                                      unawaited(
+                                        _syncExtensionEvents(erpSessionId),
+                                      );
+                                      return pixels;
+                                    },
+                                  ),
+                                ),
+                              ],
                             )
                           : _isUnsupportedFile
                           ? _UnsupportedFileView(
                               message: _unsupportedMessage ?? '',
                             )
                           : CallbackShortcuts(
-                        bindings: <ShortcutActivator, VoidCallback>{
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyS,
-                            control: true,
-                          ): () {
-                            _saveCurrentFile();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyS,
-                            meta: true,
-                          ): () {
-                            _saveCurrentFile();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            control: true,
-                          ): () {
-                            _controller.undo();
-                            _markDirty();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            meta: true,
-                          ): () {
-                            _controller.undo();
-                            _markDirty();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            control: true,
-                            shift: true,
-                          ): () {
-                            _controller.redo();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            meta: true,
-                            shift: true,
-                          ): () {
-                            _controller.redo();
-                          },
-                        },
-                        child: GooxEditorCanvas(
-                          state: state,
-                          focusNode: _focusNode,
-                          autofocus: true,
-                          onTap: _focusNode.requestFocus,
-                          onTextChanged: _handleEditorTextChanged,
-                          onCursorOffsetChanged:
-                              _controller.moveCursorToOffset,
-                          fontSize: appState.settings.fontSize,
-                          fontWeight: appState.settings.fontWeight,
-                        ),
-                      ),
+                              bindings: <ShortcutActivator, VoidCallback>{
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyS,
+                                  control: true,
+                                ): () {
+                                  _saveCurrentFile();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyS,
+                                  meta: true,
+                                ): () {
+                                  _saveCurrentFile();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  control: true,
+                                ): () {
+                                  _controller.undo();
+                                  _markDirty();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  meta: true,
+                                ): () {
+                                  _controller.undo();
+                                  _markDirty();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  control: true,
+                                  shift: true,
+                                ): () {
+                                  _controller.redo();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  meta: true,
+                                  shift: true,
+                                ): () {
+                                  _controller.redo();
+                                },
+                              },
+                              child: GooxEditorCanvas(
+                                state: state,
+                                focusNode: _focusNode,
+                                autofocus: true,
+                                onTap: _focusNode.requestFocus,
+                                onTextChanged: _handleEditorTextChanged,
+                                onCursorOffsetChanged:
+                                    _controller.moveCursorToOffset,
+                                fontSize: appState.settings.fontSize,
+                                fontWeight: appState.settings.fontWeight,
+                              ),
+                            ),
                     ),
                   ],
                 )
@@ -630,12 +685,18 @@ class _LspDiagnosticsBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.errorContainer.withValues(alpha: 0.92),
         border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
         ),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline_rounded, size: 16, color: colorScheme.onErrorContainer),
+          Icon(
+            Icons.error_outline_rounded,
+            size: 16,
+            color: colorScheme.onErrorContainer,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -677,7 +738,8 @@ class _TabItem extends StatelessWidget {
 
   void _showContextMenu(BuildContext context, Offset position) {
     final colorScheme = Theme.of(context).colorScheme;
-    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
 
     showMenu<String>(
       context: context,
@@ -698,18 +760,36 @@ class _TabItem extends StatelessWidget {
         PopupMenuItem(
           height: 32,
           onTap: onClose,
-          child: Text('Close', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
+          child: Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface.withValues(alpha: 0.9),
+            ),
+          ),
         ),
         PopupMenuItem(
           height: 32,
           onTap: onCloseOthers,
-          child: Text('Close Others', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
+          child: Text(
+            'Close Others',
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface.withValues(alpha: 0.9),
+            ),
+          ),
         ),
         const PopupMenuDivider(height: 1),
         PopupMenuItem(
           height: 32,
           onTap: onCloseAll,
-          child: Text('Close All', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
+          child: Text(
+            'Close All',
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface.withValues(alpha: 0.9),
+            ),
+          ),
         ),
       ],
     );
@@ -722,7 +802,8 @@ class _TabItem extends StatelessWidget {
     return Material(
       color: isSelected ? colorScheme.surface : colorScheme.surfaceContainerLow,
       child: GestureDetector(
-        onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
+        onSecondaryTapDown: (details) =>
+            _showContextMenu(context, details.globalPosition),
         child: InkWell(
           onTap: onTap,
           child: Container(
@@ -878,14 +959,20 @@ class _ExtensionsTrailing extends StatelessWidget {
       height: 32,
       child: PopupMenuButton<String>(
         padding: EdgeInsets.zero,
-        icon: Icon(Icons.more_horiz, size: 16, color: colorScheme.onSurfaceVariant),
+        icon: Icon(
+          Icons.more_horiz,
+          size: 16,
+          color: colorScheme.onSurfaceVariant,
+        ),
         tooltip: 'More actions',
         popUpAnimationStyle: AnimationStyle(duration: Duration.zero),
         color: colorScheme.surface,
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
         onSelected: (value) {
           if (value == 'import') {
@@ -899,12 +986,23 @@ class _ExtensionsTrailing extends StatelessWidget {
             height: 32,
             enabled: rootPath != null,
             value: 'import',
-            child: Text('Import Extension', style: TextStyle(fontSize: 13, color: rootPath != null ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.4))),
+            child: Text(
+              'Import Extension',
+              style: TextStyle(
+                fontSize: 13,
+                color: rootPath != null
+                    ? colorScheme.onSurface
+                    : colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
+            ),
           ),
           PopupMenuItem(
             height: 32,
             value: 'refresh',
-            child: Text('Refresh', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+            child: Text(
+              'Refresh',
+              style: TextStyle(fontSize: 13, color: colorScheme.onSurface),
+            ),
           ),
         ],
       ),

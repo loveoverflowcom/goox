@@ -1,0 +1,14 @@
+name: image_viewer_extension
+description: Goox sample image viewer extension built with Flutter.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

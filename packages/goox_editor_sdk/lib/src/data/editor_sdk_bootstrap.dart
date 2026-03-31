@@ -38,10 +38,14 @@ final class GooxEditorSdkBootstrap {
       name: extension.name,
       path: extension.path,
       entry: extension.entry,
+      webEntry: extension.webEntry,
       filetypes: extension.filetypes,
       languageId: extension.languageId,
       lspExecutable: extension.lspExecutable,
       rendering: extension.rendering,
+      uiMode: extension.uiMode,
+      protocol: extension.protocol,
+      capabilities: extension.capabilities,
     );
   }
 
@@ -56,20 +60,59 @@ final class GooxEditorSdkBootstrap {
   static Future<int> erpGetPageCount({required int sessionId}) =>
       GooxRustBootstrap.erpGetPageCount(sessionId: sessionId);
 
+  static Future<ArtifactDescriptor> erpRenderPageFrame({
+    required int sessionId,
+    required int pageIndex,
+    required int width,
+    required int height,
+  }) async {
+    final json = await GooxRustBootstrap.erpRenderPageFrame(
+      sessionId: sessionId,
+      pageIndex: pageIndex,
+      width: width,
+      height: height,
+    );
+    return ArtifactDescriptor.fromJsonString(json);
+  }
+
   static Future<Uint8List> erpRenderPage({
     required int sessionId,
     required int pageIndex,
     required int width,
     required int height,
-  }) => GooxRustBootstrap.erpRenderPage(
-    sessionId: sessionId,
-    pageIndex: pageIndex,
-    width: width,
-    height: height,
-  );
+  }) async {
+    final frame = await erpRenderPageFrame(
+      sessionId: sessionId,
+      pageIndex: pageIndex,
+      width: width,
+      height: height,
+    );
+    return GooxRustBootstrap.erpReadArtifact(
+      sessionId: sessionId,
+      artifactId: frame.artifactId,
+    );
+  }
 
   static Future<void> erpCloseSession({required int sessionId}) =>
       GooxRustBootstrap.erpCloseSession(sessionId: sessionId);
+
+  static Future<String?> erpGetMetadata({required int sessionId}) =>
+      GooxRustBootstrap.erpGetMetadata(sessionId: sessionId);
+
+  static Future<Uint8List> erpReadArtifact({
+    required int sessionId,
+    required int artifactId,
+  }) => GooxRustBootstrap.erpReadArtifact(
+    sessionId: sessionId,
+    artifactId: artifactId,
+  );
+
+  static Future<List<ExtensionEvent>> erpDrainEvents({
+    required int sessionId,
+  }) async {
+    final events = await GooxRustBootstrap.erpDrainEvents(sessionId: sessionId);
+    return events.map(ExtensionEvent.fromJsonString).toList(growable: false);
+  }
 
   static Future<String?> validateSourceText({
     required String languageId,

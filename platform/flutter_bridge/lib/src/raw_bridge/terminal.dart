@@ -8,125 +8,106 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'terminal.freezed.dart';
 
-class TerminalCellSnapshot {
-  final String ch;
-  final int? fg;
-  final int? bg;
-  final bool bold;
+            
 
-  const TerminalCellSnapshot({
-    required this.ch,
-    this.fg,
-    this.bg,
-    required this.bold,
-  });
+            
 
-  @override
-  int get hashCode => ch.hashCode ^ fg.hashCode ^ bg.hashCode ^ bold.hashCode;
+            class TerminalCellSnapshot  {
+                final String ch;
+final int? fg;
+final int? bg;
+final bool bold;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TerminalCellSnapshot &&
-          runtimeType == other.runtimeType &&
-          ch == other.ch &&
-          fg == other.fg &&
-          bg == other.bg &&
-          bold == other.bold;
-}
+                const TerminalCellSnapshot({required this.ch ,this.fg ,this.bg ,required this.bold ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => ch.hashCode^fg.hashCode^bg.hashCode^bold.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is TerminalCellSnapshot &&
+                runtimeType == other.runtimeType
+                && ch == other.ch&& fg == other.fg&& bg == other.bg&& bold == other.bold;
+        
+            }
 
 @freezed
-sealed class TerminalError with _$TerminalError implements FrbException {
-  const TerminalError._();
+                sealed class TerminalError with _$TerminalError implements FrbException {
+                    const TerminalError._();
 
-  const factory TerminalError.sessionNotFound(BigInt field0) =
-      TerminalError_SessionNotFound;
-  const factory TerminalError.sessionExited(BigInt field0) =
-      TerminalError_SessionExited;
-  const factory TerminalError.inputChannelClosed(BigInt field0) =
-      TerminalError_InputChannelClosed;
-  const factory TerminalError.spawnFailed(String field0) =
-      TerminalError_SpawnFailed;
-  const factory TerminalError.ptyError(String field0) = TerminalError_PtyError;
-  const factory TerminalError.serialization(String field0) =
-      TerminalError_Serialization;
-}
+                     const factory TerminalError.sessionNotFound(  BigInt field0,) = TerminalError_SessionNotFound;
+ const factory TerminalError.sessionExited(  BigInt field0,) = TerminalError_SessionExited;
+ const factory TerminalError.inputChannelClosed(  BigInt field0,) = TerminalError_InputChannelClosed;
+ const factory TerminalError.spawnFailed(  String field0,) = TerminalError_SpawnFailed;
+ const factory TerminalError.ptyError(  String field0,) = TerminalError_PtyError;
+ const factory TerminalError.serialization(  String field0,) = TerminalError_Serialization;
 
-class TerminalRowSnapshot {
-  final List<TerminalCellSnapshot> cells;
+                    
 
-  const TerminalRowSnapshot({required this.cells});
+                    
+                }
 
-  @override
-  int get hashCode => cells.hashCode;
+class TerminalRowSnapshot  {
+                final List<TerminalCellSnapshot> cells;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TerminalRowSnapshot &&
-          runtimeType == other.runtimeType &&
-          cells == other.cells;
-}
+                const TerminalRowSnapshot({required this.cells ,});
 
-class TerminalScreenSnapshot {
-  final BigInt terminalId;
-  final BigInt generation;
-  final BigInt rows;
-  final BigInt cols;
-  final BigInt cursorX;
-  final BigInt cursorY;
-  final bool isAlternateScreen;
-  final bool cursorVisible;
-  final bool exited;
-  final int? exitCode;
-  final String? exitMessage;
-  final List<TerminalRowSnapshot> grid;
+                
+                
 
-  const TerminalScreenSnapshot({
-    required this.terminalId,
-    required this.generation,
-    required this.rows,
-    required this.cols,
-    required this.cursorX,
-    required this.cursorY,
-    required this.isAlternateScreen,
-    required this.cursorVisible,
-    required this.exited,
-    this.exitCode,
-    this.exitMessage,
-    required this.grid,
-  });
+                
+        @override
+        int get hashCode => cells.hashCode;
+        
 
-  @override
-  int get hashCode =>
-      terminalId.hashCode ^
-      generation.hashCode ^
-      rows.hashCode ^
-      cols.hashCode ^
-      cursorX.hashCode ^
-      cursorY.hashCode ^
-      isAlternateScreen.hashCode ^
-      cursorVisible.hashCode ^
-      exited.hashCode ^
-      exitCode.hashCode ^
-      exitMessage.hashCode ^
-      grid.hashCode;
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is TerminalRowSnapshot &&
+                runtimeType == other.runtimeType
+                && cells == other.cells;
+        
+            }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TerminalScreenSnapshot &&
-          runtimeType == other.runtimeType &&
-          terminalId == other.terminalId &&
-          generation == other.generation &&
-          rows == other.rows &&
-          cols == other.cols &&
-          cursorX == other.cursorX &&
-          cursorY == other.cursorY &&
-          isAlternateScreen == other.isAlternateScreen &&
-          cursorVisible == other.cursorVisible &&
-          exited == other.exited &&
-          exitCode == other.exitCode &&
-          exitMessage == other.exitMessage &&
-          grid == other.grid;
-}
+class TerminalScreenSnapshot  {
+                final BigInt terminalId;
+final BigInt generation;
+final BigInt rows;
+final BigInt cols;
+final BigInt cursorX;
+final BigInt cursorY;
+final bool isAlternateScreen;
+final bool cursorVisible;
+final bool exited;
+final int? exitCode;
+final String? exitMessage;
+final List<TerminalRowSnapshot> grid;
+
+                const TerminalScreenSnapshot({required this.terminalId ,required this.generation ,required this.rows ,required this.cols ,required this.cursorX ,required this.cursorY ,required this.isAlternateScreen ,required this.cursorVisible ,required this.exited ,this.exitCode ,this.exitMessage ,required this.grid ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => terminalId.hashCode^generation.hashCode^rows.hashCode^cols.hashCode^cursorX.hashCode^cursorY.hashCode^isAlternateScreen.hashCode^cursorVisible.hashCode^exited.hashCode^exitCode.hashCode^exitMessage.hashCode^grid.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is TerminalScreenSnapshot &&
+                runtimeType == other.runtimeType
+                && terminalId == other.terminalId&& generation == other.generation&& rows == other.rows&& cols == other.cols&& cursorX == other.cursorX&& cursorY == other.cursorY&& isAlternateScreen == other.isAlternateScreen&& cursorVisible == other.cursorVisible&& exited == other.exited&& exitCode == other.exitCode&& exitMessage == other.exitMessage&& grid == other.grid;
+        
+            }
+            

@@ -1,0 +1,21 @@
+{
+  "roots": [
+    "dunebox_protocol"
+  ],
+  "packages": [
+    {
+      "name": "dunebox_protocol",
+      "version": "0.1.0",
+      "dependencies": [
+        "meta"
+      ],
+      "devDependencies": []
+    },
+    {
+      "name": "meta",
+      "version": "1.18.2",
+      "dependencies": []
+    }
+  ],
+  "configVersion": 1
+}

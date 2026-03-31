@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  atomic_webview
   desktop_drop
   objectbox_flutter_libs
 )

@@ -1,4 +1,6 @@
-use goox_core::api::{create_terminal, dispose_terminal, poll_terminal_screen, send_terminal_input};
+use goox_core::api::{
+    create_terminal, dispose_terminal, poll_terminal_screen, send_terminal_input,
+};
 use std::thread;
 use std::time::Duration;
 
@@ -24,7 +26,13 @@ fn main() {
                 let line: String = row
                     .cells
                     .into_iter()
-                    .map(|cell| if cell.ch == " " { ' ' } else { cell.ch.chars().next().unwrap_or(' ') })
+                    .map(|cell| {
+                        if cell.ch == " " {
+                            ' '
+                        } else {
+                            cell.ch.chars().next().unwrap_or(' ')
+                        }
+                    })
                     .collect();
                 println!("{line}");
             }

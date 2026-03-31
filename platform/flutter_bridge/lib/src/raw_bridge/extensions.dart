@@ -10,18 +10,26 @@ class ExtensionInfo {
   final String name;
   final String path;
   final String? entry;
+  final String? webEntry;
   final List<String> filetypes;
   final String? languageId;
   final String? lspExecutable;
+  final String uiMode;
+  final String protocol;
+  final List<String> capabilities;
   final bool rendering;
 
   const ExtensionInfo({
     required this.name,
     required this.path,
     this.entry,
+    this.webEntry,
     required this.filetypes,
     this.languageId,
     this.lspExecutable,
+    required this.uiMode,
+    required this.protocol,
+    required this.capabilities,
     required this.rendering,
   });
 
@@ -30,9 +38,13 @@ class ExtensionInfo {
       name.hashCode ^
       path.hashCode ^
       entry.hashCode ^
+      webEntry.hashCode ^
       filetypes.hashCode ^
       languageId.hashCode ^
       lspExecutable.hashCode ^
+      uiMode.hashCode ^
+      protocol.hashCode ^
+      capabilities.hashCode ^
       rendering.hashCode;
 
   @override
@@ -43,8 +55,12 @@ class ExtensionInfo {
           name == other.name &&
           path == other.path &&
           entry == other.entry &&
+          webEntry == other.webEntry &&
           filetypes == other.filetypes &&
           languageId == other.languageId &&
           lspExecutable == other.lspExecutable &&
+          uiMode == other.uiMode &&
+          protocol == other.protocol &&
+          capabilities == other.capabilities &&
           rendering == other.rendering;
 }

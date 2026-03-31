@@ -4,7 +4,9 @@ use std::ops::Range;
 pub mod api;
 pub mod erp;
 pub mod extensions;
+pub mod image_renderer;
 pub mod lsp;
+pub mod pdf_renderer;
 pub mod terminal;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -75,8 +75,8 @@ impl LanguageServerConfig {
         lsp_executable: Option<String>,
     ) -> Option<Self> {
         let file_path = normalize_optional_path(file_path)?;
-        let language_id = normalize_optional_string(language_id)
-            .or_else(|| infer_language_id(&file_path))?;
+        let language_id =
+            normalize_optional_string(language_id).or_else(|| infer_language_id(&file_path))?;
         let executable = normalize_optional_string(lsp_executable)?;
         let workspace_root = normalize_optional_path(workspace_root);
 
@@ -317,11 +317,7 @@ impl LanguageServerSession {
         let child = Arc::new(Mutex::new(child));
 
         spawn_writer_thread(stdin, request_rx, Arc::clone(&state));
-        spawn_reader_thread(
-            stdout,
-            Arc::clone(&pending_requests),
-            Arc::clone(&state),
-        );
+        spawn_reader_thread(stdout, Arc::clone(&pending_requests), Arc::clone(&state));
 
         let session = Self {
             config,
@@ -576,7 +572,8 @@ fn spawn_reader_thread(
                     let (state_mutex, condvar) = &*state;
                     let mut state = state_mutex.lock().unwrap();
                     state.snapshot.status = "error".to_string();
-                    state.snapshot.last_error = Some(format!("language server read error: {error}"));
+                    state.snapshot.last_error =
+                        Some(format!("language server read error: {error}"));
                     condvar.notify_all();
                     break;
                 }
@@ -657,9 +654,7 @@ fn parse_diagnostics(params: &Value) -> Option<Vec<LanguageServerDiagnostic>> {
 }
 
 fn try_parse_message(buffer: &[u8]) -> Option<(Value, usize)> {
-    let header_end = buffer
-        .windows(4)
-        .position(|window| window == b"\r\n\r\n")?;
+    let header_end = buffer.windows(4).position(|window| window == b"\r\n\r\n")?;
     let headers = std::str::from_utf8(&buffer[..header_end]).ok()?;
     let content_length = headers.lines().find_map(|line| {
         let (name, value) = line.split_once(':')?;
@@ -715,7 +710,10 @@ fn normalize_optional_path(value: Option<String>) -> Option<PathBuf> {
 }
 
 fn infer_language_id(path: &Path) -> Option<String> {
-    let extension = path.extension().and_then(|ext| ext.to_str())?.to_lowercase();
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())?
+        .to_lowercase();
     let inferred = match extension.as_str() {
         "js" | "mjs" | "cjs" => "javascript",
         "ts" | "tsx" => "typescript",
@@ -740,5 +738,7 @@ fn file_uri(path: &Path) -> Option<String> {
         std::env::current_dir().ok()?.join(path)
     };
 
-    Url::from_file_path(&absolute).ok().map(|url| url.to_string())
+    Url::from_file_path(&absolute)
+        .ok()
+        .map(|url| url.to_string())
 }

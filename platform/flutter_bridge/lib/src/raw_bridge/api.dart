@@ -65,6 +65,18 @@ Future<int> erpOpenSession({
 Future<int> erpGetPageCount({required int sessionId}) =>
     RustLib.instance.api.crateApiErpGetPageCount(sessionId: sessionId);
 
+Future<String> erpRenderPageArtifact({
+  required int sessionId,
+  required int pageIndex,
+  required int width,
+  required int height,
+}) => RustLib.instance.api.crateApiErpRenderPageArtifact(
+  sessionId: sessionId,
+  pageIndex: pageIndex,
+  width: width,
+  height: height,
+);
+
 Future<Uint8List> erpRenderPage({
   required int sessionId,
   required int pageIndex,
@@ -77,8 +89,22 @@ Future<Uint8List> erpRenderPage({
   height: height,
 );
 
+Future<Uint8List> erpReadArtifact({
+  required int sessionId,
+  required BigInt artifactId,
+}) => RustLib.instance.api.crateApiErpReadArtifact(
+  sessionId: sessionId,
+  artifactId: artifactId,
+);
+
 Future<void> erpCloseSession({required int sessionId}) =>
     RustLib.instance.api.crateApiErpCloseSession(sessionId: sessionId);
+
+Future<String?> erpGetMetadata({required int sessionId}) =>
+    RustLib.instance.api.crateApiErpGetMetadata(sessionId: sessionId);
+
+Future<List<String>> erpDrainEvents({required int sessionId}) =>
+    RustLib.instance.api.crateApiErpDrainEvents(sessionId: sessionId);
 
 Future<String?> validateSourceText({
   required String languageId,

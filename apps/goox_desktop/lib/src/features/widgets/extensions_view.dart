@@ -5,7 +5,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart' show getApplicationSupportDirectory;
+import 'package:path_provider/path_provider.dart'
+    show getApplicationSupportDirectory;
 import 'package:provider/provider.dart';
 
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
@@ -68,13 +69,16 @@ class ExtensionsViewState extends State<ExtensionsView> {
     if (sourcePath == null) return;
 
     try {
-      final validated = await _validateExtensionDirectory(Directory(sourcePath));
+      final validated = await _validateExtensionDirectory(
+        Directory(sourcePath),
+      );
       final globalDir = await _ensureGlobalExtensionsDirectory();
       final targetDir = Directory(p.join(globalDir.path, validated.name));
       if (targetDir.existsSync()) {
         if (!mounted) return;
         setState(() {
-          _statusMessage = 'An extension named "${validated.name}" already exists.';
+          _statusMessage =
+              'An extension named "${validated.name}" already exists.';
         });
         return;
       }
@@ -207,8 +211,12 @@ class ExtensionsViewState extends State<ExtensionsView> {
     if (name == null || filetypes.isEmpty) return null;
 
     final entry = _asTrimmedString(raw['entry']);
+    final webEntry = _asTrimmedString(raw['web_entry']);
     final languageId = _asTrimmedString(raw['language_id']);
     final lspExecutable = _asTrimmedString(raw['lsp_executable']);
+    final uiMode = _asTrimmedString(raw['ui_mode']);
+    final protocol = _asTrimmedString(raw['protocol']) ?? 'erp/1';
+    final capabilities = _asStringList(raw['capabilities']);
     final logoPath = _resolveLogoPath(directory.path, raw['logo']);
 
     return _ManagedExtension(
@@ -216,9 +224,13 @@ class ExtensionsViewState extends State<ExtensionsView> {
       path: directory.path,
       enabled: true,
       entry: entry,
+      webEntry: webEntry,
       filetypes: filetypes,
       languageId: languageId,
       lspExecutable: lspExecutable,
+      uiMode: uiMode ?? 'none',
+      protocol: protocol,
+      capabilities: capabilities,
       logoPath: logoPath,
     );
   }
@@ -252,7 +264,31 @@ class ExtensionsViewState extends State<ExtensionsView> {
       );
     }
 
-    if (config.entry != null) {
+    if (config.uiMode == 'webview') {
+      if (config.webEntry != null) {
+        final entryPath = File(p.join(directory.path, config.webEntry!));
+        if (!entryPath.existsSync()) {
+          throw FileSystemException(
+            'Extension web entry not found',
+            entryPath.path,
+          );
+        }
+      }
+      final pubspec = File(p.join(directory.path, 'pubspec.yaml'));
+      if (!pubspec.existsSync()) {
+        throw FileSystemException(
+          'Flutter extension requires pubspec.yaml',
+          pubspec.path,
+        );
+      }
+      final mainDart = File(p.join(directory.path, 'lib', 'main.dart'));
+      if (!mainDart.existsSync()) {
+        throw FileSystemException(
+          'Flutter extension requires lib/main.dart',
+          mainDart.path,
+        );
+      }
+    } else if (config.entry != null) {
       final entryPath = File(p.join(directory.path, config.entry!));
       if (!entryPath.existsSync()) {
         throw FileSystemException('Extension entry not found', entryPath.path);
@@ -386,14 +422,16 @@ class _ExtensionTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  extension.name,
-                  style: const TextStyle(fontSize: 12),
-                ),
+                Text(extension.name, style: const TextStyle(fontSize: 12)),
                 Text(
                   [
                     extension.enabled ? 'enabled' : 'disabled',
                     extension.filetypes.join(', '),
+                    'ui=${extension.uiMode}',
+                    'erp=${extension.protocol}',
+                    if (extension.webEntry != null) 'web=${extension.webEntry}',
+                    if (extension.capabilities.isNotEmpty)
+                      'caps=${extension.capabilities.join(',')}',
                     if (extension.languageId != null)
                       'language=${extension.languageId}',
                     if (extension.lspExecutable != null)
@@ -407,10 +445,7 @@ class _ExtensionTile extends StatelessWidget {
               ],
             ),
           ),
-          Switch(
-            value: extension.enabled,
-            onChanged: onToggle,
-          ),
+          Switch(value: extension.enabled, onChanged: onToggle),
           IconButton(
             icon: Icon(
               Icons.delete_outline_rounded,
@@ -495,7 +530,11 @@ class _ManagedExtension {
     required this.path,
     required this.enabled,
     required this.filetypes,
+    required this.uiMode,
+    required this.protocol,
+    required this.capabilities,
     this.entry,
+    this.webEntry,
     this.languageId,
     this.lspExecutable,
     this.logoPath,
@@ -505,7 +544,11 @@ class _ManagedExtension {
   final String path;
   final bool enabled;
   final String? entry;
+  final String? webEntry;
   final List<String> filetypes;
+  final String uiMode;
+  final String protocol;
+  final List<String> capabilities;
   final String? languageId;
   final String? lspExecutable;
   final String? logoPath;
@@ -515,7 +558,11 @@ class _ManagedExtension {
     String? path,
     bool? enabled,
     String? entry,
+    String? webEntry,
     List<String>? filetypes,
+    String? uiMode,
+    String? protocol,
+    List<String>? capabilities,
     String? languageId,
     String? lspExecutable,
     String? logoPath,
@@ -525,7 +572,11 @@ class _ManagedExtension {
       path: path ?? this.path,
       enabled: enabled ?? this.enabled,
       entry: entry ?? this.entry,
+      webEntry: webEntry ?? this.webEntry,
       filetypes: filetypes ?? this.filetypes,
+      uiMode: uiMode ?? this.uiMode,
+      protocol: protocol ?? this.protocol,
+      capabilities: capabilities ?? this.capabilities,
       languageId: languageId ?? this.languageId,
       lspExecutable: lspExecutable ?? this.lspExecutable,
       logoPath: logoPath ?? this.logoPath,

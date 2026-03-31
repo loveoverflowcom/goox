@@ -87,6 +87,15 @@ pub fn erp_get_page_count(session_id: u32) -> Result<i32, String> {
     crate::erp::get_page_count(session_id)
 }
 
+pub fn erp_render_page_artifact(
+    session_id: u32,
+    page_index: i32,
+    width: i32,
+    height: i32,
+) -> Result<String, String> {
+    crate::erp::render_page_artifact(session_id, page_index, width, height)
+}
+
 pub fn erp_render_page(
     session_id: u32,
     page_index: i32,
@@ -96,8 +105,20 @@ pub fn erp_render_page(
     crate::erp::render_page(session_id, page_index, width, height)
 }
 
+pub fn erp_read_artifact(session_id: u32, artifact_id: u64) -> Result<Vec<u8>, String> {
+    crate::erp::read_artifact(session_id, artifact_id)
+}
+
 pub fn erp_close_session(session_id: u32) -> Result<(), String> {
     crate::erp::close_session(session_id)
+}
+
+pub fn erp_get_metadata(session_id: u32) -> Result<Option<String>, String> {
+    crate::erp::get_metadata(session_id)
+}
+
+pub fn erp_drain_events(session_id: u32) -> Result<Vec<String>, String> {
+    crate::erp::drain_events(session_id)
 }
 
 pub fn validate_source_text(language_id: String, text: String) -> Option<String> {
@@ -115,13 +136,7 @@ pub fn sync_language_server(
     lsp_executable: Option<String>,
     text: String,
 ) -> bool {
-    crate::lsp::sync_language_server(
-        workspace_root,
-        file_path,
-        language_id,
-        lsp_executable,
-        text,
-    )
+    crate::lsp::sync_language_server(workspace_root, file_path, language_id, lsp_executable, text)
 }
 
 pub fn poll_language_server() -> crate::lsp::LanguageServerSnapshot {

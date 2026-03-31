@@ -112,8 +112,34 @@ final class GooxRustBootstrap {
     height: height,
   );
 
+  static Future<String> erpRenderPageFrame({
+    required int sessionId,
+    required int pageIndex,
+    required int width,
+    required int height,
+  }) async => ErpSessionManager.instance.renderPageFrame(
+    sessionId: sessionId,
+    pageIndex: pageIndex,
+    width: width,
+    height: height,
+  );
+
   static Future<void> erpCloseSession({required int sessionId}) async =>
       ErpSessionManager.instance.closeSession(sessionId);
+
+  static Future<String?> erpGetMetadata({required int sessionId}) async =>
+      ErpSessionManager.instance.getMetadata(sessionId);
+
+  static Future<List<String>> erpDrainEvents({required int sessionId}) async =>
+      ErpSessionManager.instance.drainEvents(sessionId);
+
+  static Future<Uint8List> erpReadArtifact({
+    required int sessionId,
+    required int artifactId,
+  }) async => ErpSessionManager.instance.readArtifact(
+    sessionId: sessionId,
+    artifactId: artifactId,
+  );
 
   static Future<String?> validateSourceText({
     required String languageId,

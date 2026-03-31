@@ -13,8 +13,17 @@ flutter_rust_bridge = "=2.11.1"
 portable-pty = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico", "tiff", "avif"] }
 wasmtime = "40.0.0"
 vte = "0.11"
 url = "2"
 dirs = "6"
 wasmtime-wasi = "40.0.4"
+pdfium-render = { version = "0.8", features = ["thread_safe"] }
+resvg = { version = "0.45", default-features = false }
+tiny-skia = "0.11"
+usvg = { version = "0.45", default-features = false }
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"

@@ -6,15 +6,21 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 use wasmtime::{Caller, Engine, Instance, Linker, Module, Store};
+use wasmtime_wasi::WasiCtxBuilder;
+use wasmtime_wasi::p1::{WasiP1Ctx, add_to_linker_sync};
 
 #[derive(Debug, Clone)]
 pub struct ExtensionMeta {
     pub name: String,
     pub path: PathBuf,
     pub entry: Option<String>,
+    pub web_entry: Option<String>,
     pub filetypes: Vec<String>,
     pub language_id: Option<String>,
     pub lsp_executable: Option<String>,
+    pub ui_mode: String,
+    pub protocol: String,
+    pub capabilities: Vec<String>,
     pub rendering: bool,
     pub enabled: bool,
 }
@@ -24,9 +30,13 @@ pub struct ExtensionInfo {
     pub name: String,
     pub path: String,
     pub entry: Option<String>,
+    pub web_entry: Option<String>,
     pub filetypes: Vec<String>,
     pub language_id: Option<String>,
     pub lsp_executable: Option<String>,
+    pub ui_mode: String,
+    pub protocol: String,
+    pub capabilities: Vec<String>,
     pub rendering: bool,
 }
 
@@ -87,11 +97,19 @@ struct ExtensionConfig {
     #[serde(default)]
     entry: Option<String>,
     #[serde(default)]
+    web_entry: Option<String>,
+    #[serde(default)]
     filetypes: Vec<String>,
     #[serde(default)]
     language_id: Option<String>,
     #[serde(default)]
     lsp_executable: Option<String>,
+    #[serde(default)]
+    ui_mode: Option<String>,
+    #[serde(default)]
+    protocol: Option<String>,
+    #[serde(default)]
+    capabilities: Vec<String>,
     #[serde(default)]
     rendering: bool,
 }
@@ -108,6 +126,10 @@ struct ExtensionRuntime {
 static ENGINE: LazyLock<Engine> = LazyLock::new(Engine::default);
 static RUNTIME: LazyLock<Mutex<ExtensionRuntime>> =
     LazyLock::new(|| Mutex::new(ExtensionRuntime::default()));
+
+struct ExtensionActivationState {
+    wasi: WasiP1Ctx,
+}
 
 pub(crate) fn wasm_engine() -> &'static Engine {
     &ENGINE
@@ -205,26 +227,47 @@ pub fn extension_logs() -> Vec<String> {
 }
 
 fn activate_extension(extension: &ExtensionMeta) -> bool {
-    let Some(entry) = extension.entry.as_deref() else {
+    let entry = if extension.ui_mode == "webview" {
+        extension.web_entry.as_deref()
+    } else {
+        extension.entry.as_deref()
+    };
+
+    let Some(entry) = entry else {
         return false;
     };
 
-    let module_path = extension.path.join(entry);
-    let canonical_module_path = fs::canonicalize(&module_path).unwrap_or(module_path.clone());
+    let entry_path = extension.path.join(entry);
+    let canonical_entry_path = fs::canonicalize(&entry_path).unwrap_or(entry_path.clone());
 
     {
         let runtime = RUNTIME.lock().unwrap();
-        if runtime.activated_modules.contains(&canonical_module_path) {
+        if runtime.activated_modules.contains(&canonical_entry_path) {
             return true;
         }
     }
 
-    let bytes = match fs::read(&module_path) {
+    if extension.ui_mode == "webview" {
+        if !entry_path.exists() {
+            debug_log(format!(
+                "failed to activate webview extension {}: web entry {} does not exist",
+                extension.name,
+                entry_path.display()
+            ));
+            return false;
+        }
+
+        let mut runtime = RUNTIME.lock().unwrap();
+        runtime.activated_modules.insert(canonical_entry_path);
+        return true;
+    }
+
+    let bytes = match fs::read(&entry_path) {
         Ok(bytes) => bytes,
         Err(error) => {
             debug_log(format!(
                 "failed to read wasm plugin {}: {}",
-                module_path.display(),
+                entry_path.display(),
                 error
             ));
             return false;
@@ -236,7 +279,7 @@ fn activate_extension(extension: &ExtensionMeta) -> bool {
         Err(error) => {
             debug_log(format!(
                 "failed to compile wasm plugin {}: {}",
-                module_path.display(),
+                entry_path.display(),
                 error
             ));
             return false;
@@ -247,19 +290,19 @@ fn activate_extension(extension: &ExtensionMeta) -> bool {
         let mut runtime = RUNTIME.lock().unwrap();
         runtime
             .module_cache
-            .insert(canonical_module_path.clone(), std::sync::Arc::new(module));
+            .insert(canonical_entry_path.clone(), std::sync::Arc::new(module));
     }
 
     let module = {
         let runtime = RUNTIME.lock().unwrap();
-        runtime.module_cache.get(&canonical_module_path).cloned()
+        runtime.module_cache.get(&canonical_entry_path).cloned()
     };
 
     let Some(module) = module else {
         return false;
     };
 
-    let mut linker = Linker::new(&ENGINE);
+    let mut linker: Linker<ExtensionActivationState> = Linker::new(&ENGINE);
     if let Err(error) = linker.func_wrap("env", "log", host_log) {
         debug_log(format!("failed to register log host function: {}", error));
         return false;
@@ -272,14 +315,80 @@ fn activate_extension(extension: &ExtensionMeta) -> bool {
         ));
         return false;
     }
+    if let Err(error) =
+        linker.func_wrap("env", "erp_set_output_buffer", host_noop_set_output_buffer)
+    {
+        debug_log(format!(
+            "failed to register erp_set_output_buffer host function: {}",
+            error
+        ));
+        return false;
+    }
+    if let Err(error) = linker.func_wrap("env", "erp_set_metadata", host_noop_set_metadata) {
+        debug_log(format!(
+            "failed to register erp_set_metadata host function: {}",
+            error
+        ));
+        return false;
+    }
+    if let Err(error) = linker.func_wrap("env", "erp_report_error", host_noop_report_error) {
+        debug_log(format!(
+            "failed to register erp_report_error host function: {}",
+            error
+        ));
+        return false;
+    }
+    if let Err(error) = linker.func_wrap(
+        "env",
+        "erp_get_pdf_page_count",
+        host_noop_get_pdf_page_count,
+    ) {
+        debug_log(format!(
+            "failed to register erp_get_pdf_page_count host function: {}",
+            error
+        ));
+        return false;
+    }
+    if let Err(error) = linker.func_wrap("env", "erp_render_pdf_page", host_noop_render_pdf_page) {
+        debug_log(format!(
+            "failed to register erp_render_pdf_page host function: {}",
+            error
+        ));
+        return false;
+    }
+    if let Err(error) = linker.func_wrap("env", "erp_get_image_info", host_noop_get_image_info) {
+        debug_log(format!(
+            "failed to register erp_get_image_info host function: {}",
+            error
+        ));
+        return false;
+    }
+    if let Err(error) = linker.func_wrap("env", "erp_render_image", host_noop_render_image) {
+        debug_log(format!(
+            "failed to register erp_render_image host function: {}",
+            error
+        ));
+        return false;
+    }
 
-    let mut store = Store::new(&ENGINE, ());
+    let wasi = WasiCtxBuilder::new()
+        .inherit_stderr()
+        .inherit_stdout()
+        .build_p1();
+    let state = ExtensionActivationState { wasi };
+
+    if let Err(error) = add_to_linker_sync(&mut linker, |state| &mut state.wasi) {
+        debug_log(format!("failed to add WASI to linker: {}", error));
+        return false;
+    }
+
+    let mut store = Store::new(&ENGINE, state);
     let instance = match linker.instantiate(&mut store, &module) {
         Ok(instance) => instance,
         Err(error) => {
             debug_log(format!(
                 "failed to instantiate wasm plugin {}: {}",
-                module_path.display(),
+                entry_path.display(),
                 error
             ));
             return false;
@@ -289,30 +398,30 @@ fn activate_extension(extension: &ExtensionMeta) -> bool {
     if let Err(error) = call_activate(&mut store, &instance) {
         debug_log(format!(
             "failed to activate wasm plugin {}: {}",
-            module_path.display(),
+            entry_path.display(),
             error
         ));
         return false;
     }
 
     let mut runtime = RUNTIME.lock().unwrap();
-    runtime.activated_modules.insert(canonical_module_path);
+    runtime.activated_modules.insert(canonical_entry_path);
     true
 }
 
-fn call_activate(store: &mut Store<()>, instance: &Instance) -> wasmtime::Result<()> {
+fn call_activate<T>(store: &mut Store<T>, instance: &Instance) -> wasmtime::Result<()> {
     let activate = instance.get_typed_func::<(), ()>(&mut *store, "activate")?;
     activate.call(&mut *store, ())?;
     Ok(())
 }
 
-fn host_log(mut caller: Caller<'_, ()>, ptr: i32, len: i32) -> wasmtime::Result<()> {
+fn host_log<T>(mut caller: Caller<'_, T>, ptr: i32, len: i32) -> wasmtime::Result<()> {
     let message = read_guest_string(&mut caller, ptr, len)?;
     debug_log(message);
     Ok(())
 }
 
-fn host_register_command(_caller: Caller<'_, ()>, ptr: i32, len: i32) -> wasmtime::Result<()> {
+fn host_register_command<T>(_caller: Caller<'_, T>, ptr: i32, len: i32) -> wasmtime::Result<()> {
     let mut caller = _caller;
     let command = read_guest_string(&mut caller, ptr, len)?;
     let mut runtime = RUNTIME.lock().unwrap();
@@ -320,7 +429,67 @@ fn host_register_command(_caller: Caller<'_, ()>, ptr: i32, len: i32) -> wasmtim
     Ok(())
 }
 
-fn read_guest_string(caller: &mut Caller<'_, ()>, ptr: i32, len: i32) -> wasmtime::Result<String> {
+fn host_noop_set_output_buffer<T>(
+    _caller: Caller<'_, T>,
+    _ptr: i32,
+    _len: i32,
+) -> wasmtime::Result<()> {
+    Ok(())
+}
+
+fn host_noop_set_metadata<T>(_caller: Caller<'_, T>, _ptr: i32, _len: i32) -> wasmtime::Result<()> {
+    Ok(())
+}
+
+fn host_noop_report_error<T>(_caller: Caller<'_, T>, _ptr: i32, _len: i32) -> wasmtime::Result<()> {
+    Ok(())
+}
+
+fn host_noop_get_pdf_page_count<T>(
+    _caller: Caller<'_, T>,
+    _file_ptr: i32,
+    _file_len: i32,
+) -> wasmtime::Result<i32> {
+    Ok(-1)
+}
+
+fn host_noop_render_pdf_page<T>(
+    _caller: Caller<'_, T>,
+    _file_ptr: i32,
+    _file_len: i32,
+    _page_index: i32,
+    _dpi: i32,
+    _out_width_ptr: i32,
+    _out_height_ptr: i32,
+) -> wasmtime::Result<i32> {
+    Ok(-1)
+}
+
+fn host_noop_get_image_info<T>(
+    _caller: Caller<'_, T>,
+    _file_ptr: i32,
+    _file_len: i32,
+    _out_width_ptr: i32,
+    _out_height_ptr: i32,
+) -> wasmtime::Result<i32> {
+    Ok(-1)
+}
+
+fn host_noop_render_image<T>(
+    _caller: Caller<'_, T>,
+    _file_ptr: i32,
+    _file_len: i32,
+    _width: i32,
+    _height: i32,
+) -> wasmtime::Result<i32> {
+    Ok(-1)
+}
+
+fn read_guest_string<T>(
+    caller: &mut Caller<'_, T>,
+    ptr: i32,
+    len: i32,
+) -> wasmtime::Result<String> {
     let memory = caller
         .get_export("memory")
         .and_then(|export| export.into_memory())
@@ -390,10 +559,12 @@ fn read_extension_config(path: &Path, scope: ExtensionScope) -> Option<Extension
         return None;
     }
 
+    let ui_mode = normalize_ui_mode(parsed.ui_mode, parsed.rendering);
     let extension = ExtensionMeta {
         name: parsed.name,
         path: path.to_path_buf(),
         entry: parsed.entry.filter(|entry| !entry.trim().is_empty()),
+        web_entry: parsed.web_entry.filter(|entry| !entry.trim().is_empty()),
         filetypes: filetypes
             .into_iter()
             .map(|filetype| normalize_filetype(&filetype))
@@ -404,7 +575,13 @@ fn read_extension_config(path: &Path, scope: ExtensionScope) -> Option<Extension
         lsp_executable: parsed
             .lsp_executable
             .filter(|lsp_executable| !lsp_executable.trim().is_empty()),
-        rendering: parsed.rendering,
+        ui_mode: ui_mode.clone(),
+        protocol: parsed
+            .protocol
+            .filter(|protocol| !protocol.trim().is_empty())
+            .unwrap_or_else(|| "erp/1".to_string()),
+        capabilities: normalize_capabilities(parsed.capabilities),
+        rendering: parsed.rendering || ui_mode != "none",
         enabled: is_extension_enabled(path),
     };
 
@@ -461,6 +638,31 @@ fn is_extension_enabled(path: &Path) -> bool {
 
 fn normalize_filetype(filetype: &str) -> String {
     filetype.trim().trim_start_matches('.').to_lowercase()
+}
+
+fn normalize_ui_mode(ui_mode: Option<String>, rendering: bool) -> String {
+    let normalized = ui_mode
+        .as_deref()
+        .map(|mode| mode.trim().to_lowercase())
+        .filter(|mode| !mode.is_empty())
+        .unwrap_or_default();
+
+    match normalized.as_str() {
+        "canvas" | "webview" | "native" | "none" => normalized,
+        _ if rendering => "canvas".to_string(),
+        _ => "none".to_string(),
+    }
+}
+
+fn normalize_capabilities(capabilities: Vec<String>) -> Vec<String> {
+    let mut normalized = capabilities
+        .into_iter()
+        .map(|capability| capability.trim().to_lowercase())
+        .filter(|capability| !capability.is_empty())
+        .collect::<Vec<_>>();
+    normalized.sort();
+    normalized.dedup();
+    normalized
 }
 
 fn validate_python_source(text: &str) -> Option<String> {
@@ -712,9 +914,13 @@ impl From<&ExtensionMeta> for ExtensionInfo {
             name: value.name.clone(),
             path: value.path.display().to_string(),
             entry: value.entry.clone(),
+            web_entry: value.web_entry.clone(),
             filetypes: value.filetypes.clone(),
             language_id: value.language_id.clone(),
             lsp_executable: value.lsp_executable.clone(),
+            ui_mode: value.ui_mode.clone(),
+            protocol: value.protocol.clone(),
+            capabilities: value.capabilities.clone(),
             rendering: value.rendering,
         }
     }
@@ -742,13 +948,32 @@ mod tests {
         std::env::temp_dir().join(format!("goox-{label}-{nanos}"))
     }
 
+    fn copy_directory(source: &Path, target: &Path) {
+        fs::create_dir_all(target).unwrap();
+        for entry in fs::read_dir(source).unwrap() {
+            let entry = entry.unwrap();
+            let source_path = entry.path();
+            let target_path = target.join(entry.file_name());
+            if source_path.is_dir() {
+                copy_directory(&source_path, &target_path);
+            } else {
+                fs::copy(&source_path, &target_path).unwrap();
+            }
+        }
+    }
+
     fn write_config(
         dir: &Path,
         name: &str,
         entry: Option<&str>,
+        web_entry: Option<&str>,
         filetypes: &[&str],
         language_id: Option<&str>,
         lsp_executable: Option<&str>,
+        ui_mode: Option<&str>,
+        protocol: Option<&str>,
+        capabilities: &[&str],
+        rendering: bool,
     ) {
         fs::create_dir_all(dir).unwrap();
         let mut file = File::create(dir.join("config.json")).unwrap();
@@ -758,13 +983,22 @@ mod tests {
             .collect::<Vec<_>>()
             .join(",");
         let entry_json = entry.map_or(String::from("null"), |entry| format!(r#""{entry}""#));
+        let web_entry_json =
+            web_entry.map_or(String::from("null"), |entry| format!(r#""{entry}""#));
         let language_id_json = language_id.map_or(String::from("null"), |language_id| {
             format!(r#""{language_id}""#)
         });
         let lsp_executable_json =
             lsp_executable.map_or(String::from("null"), |lsp| format!(r#""{lsp}""#));
+        let ui_mode_json = ui_mode.map_or(String::from("null"), |mode| format!(r#""{mode}""#));
+        let protocol_json = protocol.map_or(String::from("null"), |value| format!(r#""{value}""#));
+        let capabilities_json = capabilities
+            .iter()
+            .map(|capability| format!(r#""{capability}""#))
+            .collect::<Vec<_>>()
+            .join(",");
         let body = format!(
-            r#"{{"name":"{name}","entry":{entry_json},"filetypes":[{filetypes_json}],"language_id":{language_id_json},"lsp_executable":{lsp_executable_json}}}"#
+            r#"{{"name":"{name}","entry":{entry_json},"web_entry":{web_entry_json},"filetypes":[{filetypes_json}],"language_id":{language_id_json},"lsp_executable":{lsp_executable_json},"ui_mode":{ui_mode_json},"protocol":{protocol_json},"capabilities":[{capabilities_json}],"rendering":{rendering}}}"#
         );
         file.write_all(body.as_bytes()).unwrap();
     }
@@ -780,17 +1014,27 @@ mod tests {
             &global_plugin,
             "pdf-viewer",
             Some("plugin.wasm"),
+            None,
             &["pdf"],
             None,
             None,
+            Some("canvas"),
+            Some("erp/1"),
+            &["render.pdf"],
+            true,
         );
         write_config(
             &workspace_plugin,
             "pdf-viewer",
             Some("plugin.wasm"),
+            None,
             &["pdf", "pdfa"],
             None,
             None,
+            Some("canvas"),
+            Some("erp/1"),
+            &["render.pdf", "document.read"],
+            true,
         );
 
         let mut registry = ExtensionRegistry::default();
@@ -817,9 +1061,14 @@ mod tests {
             &python_plugin,
             "python",
             None,
+            None,
             &["py", "pyw"],
             Some("python"),
             Some("pyright-langserver"),
+            None,
+            None,
+            &[],
+            false,
         );
 
         let registry = ExtensionRegistry::build(Some(&workspace_root));
@@ -834,9 +1083,14 @@ mod tests {
     }
 
     #[test]
-    fn activates_sample_pdf_viewer_plugin() {
-        let workspace_root = fs::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
-            .expect("workspace root should exist");
+    fn activates_sample_flutter_webview_extension() {
+        let workspace_root = unique_temp_dir("workspace-pdf");
+        let workspace_extension = workspace_root.join(".goox/extensions/pdf-viewer");
+        let source_extension = fs::canonicalize(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../dummy_extensions/pdf-viewer"),
+        )
+        .expect("sample extension should exist");
+        copy_directory(&source_extension, &workspace_extension);
         let pdf_path = workspace_root.join("sample.pdf");
 
         {
@@ -849,12 +1103,19 @@ mod tests {
         }
 
         assert!(refresh_workspace_extensions(workspace_root.display().to_string(),) > 0);
+
+        let extension = extension_for_file(
+            workspace_root.display().to_string(),
+            pdf_path.display().to_string(),
+        )
+        .expect("webview extension should be resolved");
+        assert_eq!(extension.ui_mode, "webview");
+        assert_eq!(extension.web_entry.as_deref(), Some("web/index.html"));
+
         assert!(activate_extension_for_file(
             workspace_root.display().to_string(),
             pdf_path.display().to_string(),
         ));
-
-        let commands = registered_extension_commands();
-        assert!(commands.iter().any(|command| command == "doc.openPdf"));
+        assert!(registered_extension_commands().is_empty());
     }
 }

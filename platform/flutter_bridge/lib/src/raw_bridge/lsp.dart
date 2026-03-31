@@ -6,108 +6,90 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-class LanguageServerDiagnostic {
-  final LanguageServerDiagnosticRange range;
-  final int? severity;
-  final String? source;
-  final String message;
 
-  const LanguageServerDiagnostic({
-    required this.range,
-    this.severity,
-    this.source,
-    required this.message,
-  });
+            
 
-  @override
-  int get hashCode =>
-      range.hashCode ^ severity.hashCode ^ source.hashCode ^ message.hashCode;
+            
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is LanguageServerDiagnostic &&
-          runtimeType == other.runtimeType &&
-          range == other.range &&
-          severity == other.severity &&
-          source == other.source &&
-          message == other.message;
-}
+            class LanguageServerDiagnostic  {
+                final LanguageServerDiagnosticRange range;
+final int? severity;
+final String? source;
+final String message;
 
-class LanguageServerDiagnosticRange {
-  final int startLine;
-  final int startCharacter;
-  final int endLine;
-  final int endCharacter;
+                const LanguageServerDiagnostic({required this.range ,this.severity ,this.source ,required this.message ,});
 
-  const LanguageServerDiagnosticRange({
-    required this.startLine,
-    required this.startCharacter,
-    required this.endLine,
-    required this.endCharacter,
-  });
+                
+                
 
-  @override
-  int get hashCode =>
-      startLine.hashCode ^
-      startCharacter.hashCode ^
-      endLine.hashCode ^
-      endCharacter.hashCode;
+                
+        @override
+        int get hashCode => range.hashCode^severity.hashCode^source.hashCode^message.hashCode;
+        
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is LanguageServerDiagnosticRange &&
-          runtimeType == other.runtimeType &&
-          startLine == other.startLine &&
-          startCharacter == other.startCharacter &&
-          endLine == other.endLine &&
-          endCharacter == other.endCharacter;
-}
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is LanguageServerDiagnostic &&
+                runtimeType == other.runtimeType
+                && range == other.range&& severity == other.severity&& source == other.source&& message == other.message;
+        
+            }
 
-class LanguageServerSnapshot {
-  final String status;
-  final String? executable;
-  final String? languageId;
-  final String? documentUri;
-  final BigInt version;
-  final BigInt diagnosticsGeneration;
-  final List<LanguageServerDiagnostic> diagnostics;
-  final String? lastError;
+class LanguageServerDiagnosticRange  {
+                final int startLine;
+final int startCharacter;
+final int endLine;
+final int endCharacter;
 
-  const LanguageServerSnapshot({
-    required this.status,
-    this.executable,
-    this.languageId,
-    this.documentUri,
-    required this.version,
-    required this.diagnosticsGeneration,
-    required this.diagnostics,
-    this.lastError,
-  });
+                const LanguageServerDiagnosticRange({required this.startLine ,required this.startCharacter ,required this.endLine ,required this.endCharacter ,});
 
-  @override
-  int get hashCode =>
-      status.hashCode ^
-      executable.hashCode ^
-      languageId.hashCode ^
-      documentUri.hashCode ^
-      version.hashCode ^
-      diagnosticsGeneration.hashCode ^
-      diagnostics.hashCode ^
-      lastError.hashCode;
+                
+                
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is LanguageServerSnapshot &&
-          runtimeType == other.runtimeType &&
-          status == other.status &&
-          executable == other.executable &&
-          languageId == other.languageId &&
-          documentUri == other.documentUri &&
-          version == other.version &&
-          diagnosticsGeneration == other.diagnosticsGeneration &&
-          diagnostics == other.diagnostics &&
-          lastError == other.lastError;
-}
+                
+        @override
+        int get hashCode => startLine.hashCode^startCharacter.hashCode^endLine.hashCode^endCharacter.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is LanguageServerDiagnosticRange &&
+                runtimeType == other.runtimeType
+                && startLine == other.startLine&& startCharacter == other.startCharacter&& endLine == other.endLine&& endCharacter == other.endCharacter;
+        
+            }
+
+class LanguageServerSnapshot  {
+                final String status;
+final String? executable;
+final String? languageId;
+final String? documentUri;
+final BigInt version;
+final BigInt diagnosticsGeneration;
+final List<LanguageServerDiagnostic> diagnostics;
+final String? lastError;
+
+                const LanguageServerSnapshot({required this.status ,this.executable ,this.languageId ,this.documentUri ,required this.version ,required this.diagnosticsGeneration ,required this.diagnostics ,this.lastError ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => status.hashCode^executable.hashCode^languageId.hashCode^documentUri.hashCode^version.hashCode^diagnosticsGeneration.hashCode^diagnostics.hashCode^lastError.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is LanguageServerSnapshot &&
+                runtimeType == other.runtimeType
+                && status == other.status&& executable == other.executable&& languageId == other.languageId&& documentUri == other.documentUri&& version == other.version&& diagnosticsGeneration == other.diagnosticsGeneration&& diagnostics == other.diagnostics&& lastError == other.lastError;
+        
+            }
+            

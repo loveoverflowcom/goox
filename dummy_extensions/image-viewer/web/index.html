@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Goox Image Viewer</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+
+    .fallback {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      text-align: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    #goox-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: auto;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="goox-canvas"></canvas>
+  <div class="fallback" id="fallback">
+    <div>
+      <h1>Goox Image Viewer</h1>
+      <p>Flutter web extension entry point.</p>
+      <p>Host renders image frames into this canvas through the JS bridge.</p>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('goox-canvas');
+    const fallback = document.getElementById('fallback');
+    const ctx = canvas.getContext('2d', { alpha: true });
+
+    function resizeCanvas(width, height) {
+      canvas.width = width;
+      canvas.height = height;
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+    }
+
+    function renderFrame(payload) {
+      if (!payload || !payload.pixelsBase64) {
+        return;
+      }
+
+      fallback.style.display = 'none';
+      resizeCanvas(payload.width || canvas.width || 1, payload.height || canvas.height || 1);
+
+      const binary = atob(payload.pixelsBase64);
+      const bytes = new Uint8ClampedArray(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      const imageData = new ImageData(bytes, payload.width, payload.height);
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    window.gooxViewer = { renderFrame };
+  </script>
+</body>
+</html>
