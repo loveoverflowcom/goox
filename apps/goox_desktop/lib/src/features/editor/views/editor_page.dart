@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import '../../../state/app_state.dart';
 import '../../widgets/extensions_view.dart';
+import '../widgets/extension_webview_shell.dart';
 import '../../widgets/settings_view.dart';
 import '../../widgets/sidebar.dart';
 
@@ -26,28 +27,8 @@ class _EditorPageState extends State<EditorPage> {
   String? _loadedFilePath;
   bool _isUnsupportedFile = false;
   String? _unsupportedMessage;
-  int? _erpSessionId;
-  int _erpPageCount = 0;
-  bool _erpLoading = false;
+  bool _isRendererFile = false;
   final _extensionsKey = GlobalKey<ExtensionsViewState>();
-  static const Set<String> _binaryFileExtensions = {
-    'pdf',
-    'png',
-    'jpg',
-    'jpeg',
-    'gif',
-    'webp',
-    'bmp',
-    'ico',
-    'zip',
-    'gz',
-    'tar',
-    'mp3',
-    'mp4',
-    'mov',
-    'avi',
-    'mkv',
-  };
 
   @override
   void initState() {
@@ -68,16 +49,22 @@ class _EditorPageState extends State<EditorPage> {
 
   Future<void> _loadFile(String? filePath) async {
     if (filePath == null) {
-      await _closeErpSession();
       await _controller.setActiveExtension(null);
       await _controller.loadDocument('');
-      if (mounted) setState(() { _isUnsupportedFile = false; _unsupportedMessage = null; });
+      if (mounted) {
+        setState(() {
+          _isUnsupportedFile = false;
+          _unsupportedMessage = null;
+          _isRendererFile = false;
+        });
+      }
       return;
     }
 
     try {
       // Capture context-dependent values before any await
-      final workspaceRoot = context.read<AppState>().rootPath ?? '';
+      final appState = context.read<AppState>();
+      final workspaceRoot = appState.rootPath ?? '';
 
       await GooxEditorSdkBootstrap.ensureInitialized(
         workspaceRoot: workspaceRoot,
@@ -88,66 +75,31 @@ class _EditorPageState extends State<EditorPage> {
         filePath: filePath,
       );
       await _controller.setActiveExtension(extension);
-      final isBinaryFile = _isBinaryFile(filePath);
 
-      if (extension?.hasErpCapability == true) {
-        await _closeErpSession();
+      if (extension?.hasWebViewCapability == true) {
         if (mounted) {
           setState(() {
-            _erpLoading = true;
-            _erpPageCount = 0;
             _isUnsupportedFile = false;
             _unsupportedMessage = null;
+            _isRendererFile = true;
           });
         }
-
-        try {
-          final sessionId = await GooxEditorSdkBootstrap.erpOpenSession(
-            workspaceRoot: workspaceRoot,
-            filePath: filePath,
-          );
-          final pageCount = await GooxEditorSdkBootstrap.erpGetPageCount(
-            sessionId: sessionId,
-          );
-          if (!mounted) return;
-          setState(() {
-            _erpSessionId = sessionId;
-            _erpPageCount = pageCount;
-            _erpLoading = false;
-            _isUnsupportedFile = false;
-            _unsupportedMessage = null;
-          });
-          context.read<AppState>().markFileDirty(filePath, false);
-          return;
-        } catch (error) {
-          if (!mounted) return;
-          setState(() {
-            _erpSessionId = null;
-            _erpPageCount = 0;
-            _erpLoading = false;
-            _isUnsupportedFile = true;
-            _unsupportedMessage =
-                'Failed to open ${path.basename(filePath)}: $error';
-          });
-          context.read<AppState>().markFileDirty(filePath, false);
-          return;
-        }
-      } else {
-        await _closeErpSession();
-      }
-
-      if (isBinaryFile) {
-        final message = extension == null
-            ? 'No compatible extension found to open ${path.basename(filePath)}.'
-            : 'The ${extension.name} extension cannot open ${path.basename(filePath)} because it does not provide ERP rendering.';
-        if (mounted) {
-          setState(() { _isUnsupportedFile = true; _unsupportedMessage = message; });
-          context.read<AppState>().markFileDirty(filePath, false);
-        }
+        appState.markFileDirty(filePath, false);
         return;
+      } else {
+        if (mounted) {
+          setState(() {
+            _isRendererFile = false;
+          });
+        }
       }
 
-      if (mounted) setState(() { _isUnsupportedFile = false; _unsupportedMessage = null; });
+      if (mounted) {
+        setState(() {
+          _isUnsupportedFile = false;
+          _unsupportedMessage = null;
+        });
+      }
 
       final file = File(filePath);
       final text = file.existsSync() ? await file.readAsString() : '';
@@ -158,41 +110,26 @@ class _EditorPageState extends State<EditorPage> {
       );
 
       if (mounted) {
-        context.read<AppState>().markFileDirty(filePath, false);
+        appState.markFileDirty(filePath, false);
       }
     } on FileSystemException catch (_) {
-      await _closeErpSession();
       if (mounted) {
         setState(() {
           _isUnsupportedFile = true;
+          _isRendererFile = false;
           _unsupportedMessage =
               'This file cannot be opened as plain text. Install or enable a compatible extension for ${path.basename(filePath)}.';
         });
       }
     } catch (error) {
-      await _closeErpSession();
       if (mounted) {
         setState(() {
           _isUnsupportedFile = true;
+          _isRendererFile = false;
           _unsupportedMessage =
               'Failed to open ${path.basename(filePath)}. Please try again or check the extension configuration.';
         });
       }
-    }
-  }
-
-  bool _isBinaryFile(String filePath) {
-    final ext = path.extension(filePath).toLowerCase().replaceFirst('.', '');
-    return _binaryFileExtensions.contains(ext);
-  }
-
-  Future<void> _closeErpSession() async {
-    final sessionId = _erpSessionId;
-    _erpSessionId = null;
-    _erpPageCount = 0;
-    _erpLoading = false;
-    if (sessionId != null) {
-      await GooxEditorSdkBootstrap.erpCloseSession(sessionId: sessionId);
     }
   }
 
@@ -220,6 +157,54 @@ class _EditorPageState extends State<EditorPage> {
     }
   }
 
+  Future<void> _handleGoToDefinition() async {
+    final locations = await _controller.lspFindDefinitions();
+    if (mounted) {
+      _handleLocations(locations);
+    }
+  }
+
+  Future<void> _handleGoToDeclaration() async {
+    final locations = await _controller.lspFindDeclarations();
+    if (mounted) {
+      _handleLocations(locations);
+    }
+  }
+
+  Future<void> _handleGoToImplementation() async {
+    final locations = await _controller.lspFindImplementations();
+    if (mounted) {
+      _handleLocations(locations);
+    }
+  }
+
+  Future<void> _handleFindReferences() async {
+    final locations = await _controller.lspFindReferences();
+    if (mounted) {
+      _handleLocations(locations);
+    }
+  }
+
+  void _handleLocations(List<LanguageServerLocation> locations) {
+    if (locations.isEmpty) return;
+
+    final location = locations.first;
+    final uri = Uri.parse(location.uri);
+    final filePath = uri.toFilePath();
+
+    final appState = context.read<AppState>();
+    if (filePath != _loadedFilePath) {
+      appState.openFile(filePath);
+      // We might need a way to pass the target position to the newly opened file.
+      // For now, let's just open it.
+    } else {
+      _controller.moveCursorToPosition(
+        location.range.start.line + 1,
+        location.range.start.character + 1,
+      );
+    }
+  }
+
   Future<void> _handleEditorTextChanged(GooxEditorTextChange change) async {
     await _controller.replaceTextRange(
       change.start,
@@ -232,7 +217,6 @@ class _EditorPageState extends State<EditorPage> {
   @override
   void dispose() {
     _focusNode.dispose();
-    unawaited(_closeErpSession());
     _controller.dispose();
     super.dispose();
   }
@@ -246,6 +230,15 @@ class _EditorPageState extends State<EditorPage> {
     return ValueListenableBuilder<EditorViewState>(
       valueListenable: _controller.stateListenable,
       builder: (context, state, _) {
+        final activeExtension = state.activeExtension;
+        final webEntryPath =
+            activeExtension != null && activeExtension.hasWebViewCapability
+            ? activeExtension.webEntry
+            : null;
+        final resolvedWebEntryPath =
+            webEntryPath != null && activeExtension != null
+            ? path.join(activeExtension.path, webEntryPath)
+            : null;
         return GooxLayout(
           tabs: [
             GooxWidgetTab(
@@ -272,7 +265,8 @@ class _EditorPageState extends State<EditorPage> {
               title: 'Extensions',
               icon: Icons.extension_outlined,
               builder: (context) => ExtensionsView(key: _extensionsKey),
-              trailing: (context) => _ExtensionsTrailing(extensionsKey: _extensionsKey),
+              trailing: (context) =>
+                  _ExtensionsTrailing(extensionsKey: _extensionsKey),
             ),
             GooxWidgetTab(
               id: 'settings',
@@ -289,79 +283,90 @@ class _EditorPageState extends State<EditorPage> {
                   children: [
                     _LspDiagnosticsBanner(state: state),
                     Expanded(
-                      child: _erpLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : _erpSessionId != null
-                          ? GooxPluginCanvas(
-                              sessionId: _erpSessionId!,
-                              pageCount: _erpPageCount,
-                              onRenderPage: (pageIndex, width, height) =>
-                                  GooxEditorSdkBootstrap.erpRenderPage(
-                                    sessionId: _erpSessionId!,
-                                    pageIndex: pageIndex,
-                                    width: width,
-                                    height: height,
-                                  ),
+                      child: _isRendererFile && activeExtension != null
+                          ? GooxExtensionWebViewShell(
+                              extensionName: activeExtension.name,
+                              filePath: activeFile,
+                              fileType: activeExtension.filetypes.isNotEmpty
+                                  ? activeExtension.filetypes.first
+                                  : path
+                                        .extension(activeFile)
+                                        .replaceFirst('.', ''),
+                              webEntryPath: resolvedWebEntryPath,
+                              onBridgeMessage: (message) {
+                                debugPrint('WebView bridge: $message');
+                              },
                             )
                           : _isUnsupportedFile
                           ? _UnsupportedFileView(
                               message: _unsupportedMessage ?? '',
                             )
                           : CallbackShortcuts(
-                        bindings: <ShortcutActivator, VoidCallback>{
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyS,
-                            control: true,
-                          ): () {
-                            _saveCurrentFile();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyS,
-                            meta: true,
-                          ): () {
-                            _saveCurrentFile();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            control: true,
-                          ): () {
-                            _controller.undo();
-                            _markDirty();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            meta: true,
-                          ): () {
-                            _controller.undo();
-                            _markDirty();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            control: true,
-                            shift: true,
-                          ): () {
-                            _controller.redo();
-                          },
-                          const SingleActivator(
-                            LogicalKeyboardKey.keyZ,
-                            meta: true,
-                            shift: true,
-                          ): () {
-                            _controller.redo();
-                          },
-                        },
-                        child: GooxEditorCanvas(
-                          state: state,
-                          focusNode: _focusNode,
-                          autofocus: true,
-                          onTap: _focusNode.requestFocus,
-                          onTextChanged: _handleEditorTextChanged,
-                          onCursorOffsetChanged:
-                              _controller.moveCursorToOffset,
-                          fontSize: appState.settings.fontSize,
-                          fontWeight: appState.settings.fontWeight,
-                        ),
-                      ),
+                              bindings: <ShortcutActivator, VoidCallback>{
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyS,
+                                  control: true,
+                                ): () {
+                                  _saveCurrentFile();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyS,
+                                  meta: true,
+                                ): () {
+                                  _saveCurrentFile();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  control: true,
+                                ): () {
+                                  _controller.undo();
+                                  _markDirty();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  meta: true,
+                                ): () {
+                                  _controller.undo();
+                                  _markDirty();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  control: true,
+                                  shift: true,
+                                ): () {
+                                  _controller.redo();
+                                },
+                                const SingleActivator(
+                                  LogicalKeyboardKey.keyZ,
+                                  meta: true,
+                                  shift: true,
+                                ): () {
+                                  _controller.redo();
+                                },
+                              },
+                              child: GooxEditorCanvas(
+                                state: state,
+                                focusNode: _focusNode,
+                                autofocus: true,
+                                onTap: _focusNode.requestFocus,
+                                onTextChanged: _handleEditorTextChanged,
+                                onCursorOffsetChanged:
+                                    _controller.moveCursorToOffset,
+                                onGoToDefinition: _handleGoToDefinition,
+                                onGoToDeclaration: _handleGoToDeclaration,
+                                onGoToImplementation: _handleGoToImplementation,
+                                onFindReferences: _handleFindReferences,
+                                onHover: (offset) {
+                                  if (offset == -1) {
+                                    _controller.requestHover(-1);
+                                  } else {
+                                    _controller.requestHover(offset);
+                                  }
+                                },
+                                fontSize: appState.settings.fontSize,
+                                fontWeight: appState.settings.fontWeight,
+                              ),
+                            ),
                     ),
                   ],
                 )
@@ -630,12 +635,18 @@ class _LspDiagnosticsBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.errorContainer.withValues(alpha: 0.92),
         border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
         ),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline_rounded, size: 16, color: colorScheme.onErrorContainer),
+          Icon(
+            Icons.error_outline_rounded,
+            size: 16,
+            color: colorScheme.onErrorContainer,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -677,7 +688,8 @@ class _TabItem extends StatelessWidget {
 
   void _showContextMenu(BuildContext context, Offset position) {
     final colorScheme = Theme.of(context).colorScheme;
-    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
 
     showMenu<String>(
       context: context,
@@ -698,18 +710,36 @@ class _TabItem extends StatelessWidget {
         PopupMenuItem(
           height: 32,
           onTap: onClose,
-          child: Text('Close', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
+          child: Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface.withValues(alpha: 0.9),
+            ),
+          ),
         ),
         PopupMenuItem(
           height: 32,
           onTap: onCloseOthers,
-          child: Text('Close Others', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
+          child: Text(
+            'Close Others',
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface.withValues(alpha: 0.9),
+            ),
+          ),
         ),
         const PopupMenuDivider(height: 1),
         PopupMenuItem(
           height: 32,
           onTap: onCloseAll,
-          child: Text('Close All', style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9))),
+          child: Text(
+            'Close All',
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface.withValues(alpha: 0.9),
+            ),
+          ),
         ),
       ],
     );
@@ -722,7 +752,8 @@ class _TabItem extends StatelessWidget {
     return Material(
       color: isSelected ? colorScheme.surface : colorScheme.surfaceContainerLow,
       child: GestureDetector(
-        onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
+        onSecondaryTapDown: (details) =>
+            _showContextMenu(context, details.globalPosition),
         child: InkWell(
           onTap: onTap,
           child: Container(
@@ -871,21 +902,26 @@ class _ExtensionsTrailing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final rootPath = context.watch<AppState>().rootPath;
 
     return SizedBox(
       width: 32,
       height: 32,
       child: PopupMenuButton<String>(
         padding: EdgeInsets.zero,
-        icon: Icon(Icons.more_horiz, size: 16, color: colorScheme.onSurfaceVariant),
+        icon: Icon(
+          Icons.more_horiz,
+          size: 16,
+          color: colorScheme.onSurfaceVariant,
+        ),
         tooltip: 'More actions',
         popUpAnimationStyle: AnimationStyle(duration: Duration.zero),
         color: colorScheme.surface,
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
         onSelected: (value) {
           if (value == 'import') {
@@ -897,14 +933,19 @@ class _ExtensionsTrailing extends StatelessWidget {
         itemBuilder: (context) => [
           PopupMenuItem(
             height: 32,
-            enabled: rootPath != null,
             value: 'import',
-            child: Text('Import Extension', style: TextStyle(fontSize: 13, color: rootPath != null ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.4))),
+            child: Text(
+              'Import Extension',
+              style: TextStyle(fontSize: 13, color: colorScheme.onSurface),
+            ),
           ),
           PopupMenuItem(
             height: 32,
             value: 'refresh',
-            child: Text('Refresh', style: TextStyle(fontSize: 13, color: colorScheme.onSurface)),
+            child: Text(
+              'Refresh',
+              style: TextStyle(fontSize: 13, color: colorScheme.onSurface),
+            ),
           ),
         ],
       ),

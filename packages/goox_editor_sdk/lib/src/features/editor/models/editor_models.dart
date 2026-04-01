@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 enum EditorPatchKind { insert, delete }
@@ -47,32 +49,128 @@ class ActiveExtensionInfo {
     required this.path,
     required this.filetypes,
     required this.rendering,
+    required this.uiMode,
+    required this.protocol,
+    required this.capabilities,
     this.entry,
+    this.webEntry,
     this.languageId,
     this.lspExecutable,
   });
 
-  factory ActiveExtensionInfo.empty() =>
-      const ActiveExtensionInfo(
-        name: '',
-        path: '',
-        filetypes: [],
-        rendering: false,
-      );
+  factory ActiveExtensionInfo.empty() => const ActiveExtensionInfo(
+    name: '',
+    path: '',
+    filetypes: [],
+    rendering: false,
+    uiMode: 'none',
+    protocol: 'erp/1',
+    capabilities: [],
+  );
 
   final String name;
   final String path;
   final String? entry;
+  final String? webEntry;
   final List<String> filetypes;
   final bool rendering;
+  final String uiMode;
+  final String protocol;
+  final List<String> capabilities;
   final String? languageId;
   final String? lspExecutable;
 
   bool get hasWasmEntry => entry != null && entry!.trim().isNotEmpty;
-  bool get hasErpCapability => rendering && hasWasmEntry;
+  bool get hasWebEntry => webEntry != null && webEntry!.trim().isNotEmpty;
+  bool get hasDocumentRendering => capabilities.any(
+    (capability) =>
+        capability == 'render.document' || capability.startsWith('render.'),
+  );
+  bool get hasErpCapability =>
+      rendering && hasWasmEntry && hasDocumentRendering;
+  bool get hasWebViewCapability => rendering && hasWebViewUi && hasWebEntry;
+  bool get hasWebViewUi => uiMode == 'webview';
+  bool get hasCanvasUi => uiMode == 'canvas' || uiMode == 'native';
 
   bool get isEmpty => name.isEmpty;
 }
+
+@immutable
+class ExtensionEvent {
+  const ExtensionEvent({
+    required this.version,
+    required this.kind,
+    required this.topic,
+    required this.source,
+    required this.payload,
+  });
+
+  factory ExtensionEvent.fromJsonString(String json) {
+    final decoded = jsonDecode(json);
+    if (decoded is! Map<String, dynamic>) {
+      throw FormatException('Extension event must be a JSON object');
+    }
+
+    final payload = decoded['payload'];
+    return ExtensionEvent(
+      version: (decoded['v'] as num?)?.toInt() ?? 1,
+      kind: decoded['kind'] as String? ?? 'event',
+      topic: decoded['topic'] as String? ?? 'unknown',
+      source: decoded['source'] as String? ?? 'unknown',
+      payload: payload is Map<String, dynamic>
+          ? payload
+          : const <String, dynamic>{},
+    );
+  }
+
+  final int version;
+  final String kind;
+  final String topic;
+  final String source;
+  final Map<String, dynamic> payload;
+
+  bool get isError => kind == 'error';
+  bool get isMetadata =>
+      topic == 'document.metadata' || topic == 'image.metadata';
+  bool get isReady => topic == 'viewer.ready';
+}
+
+@immutable
+class ArtifactDescriptor {
+  const ArtifactDescriptor({
+    required this.artifactId,
+    required this.kind,
+    required this.pixelFormat,
+    required this.width,
+    required this.height,
+    required this.byteLength,
+  });
+
+  factory ArtifactDescriptor.fromJsonString(String json) {
+    final decoded = jsonDecode(json);
+    if (decoded is! Map<String, dynamic>) {
+      throw FormatException('Artifact descriptor must be a JSON object');
+    }
+
+    return ArtifactDescriptor(
+      artifactId: (decoded['artifact_id'] as num).toInt(),
+      kind: decoded['kind'] as String? ?? 'raster',
+      pixelFormat: decoded['pixel_format'] as String? ?? 'rgba8888',
+      width: (decoded['width'] as num).toInt(),
+      height: (decoded['height'] as num).toInt(),
+      byteLength: (decoded['byte_len'] as num).toInt(),
+    );
+  }
+
+  final int artifactId;
+  final String kind;
+  final String pixelFormat;
+  final int width;
+  final int height;
+  final int byteLength;
+}
+
+typedef ErpRenderFrame = ArtifactDescriptor;
 
 @immutable
 class LspDiagnostic {
@@ -99,6 +197,46 @@ class LspDiagnostic {
 }
 
 @immutable
+class LanguageServerPosition {
+  const LanguageServerPosition({required this.line, required this.character});
+
+  final int line;
+  final int character;
+}
+
+@immutable
+class LanguageServerRange {
+  const LanguageServerRange({required this.start, required this.end});
+
+  final LanguageServerPosition start;
+  final LanguageServerPosition end;
+}
+
+@immutable
+class LanguageServerLocation {
+  const LanguageServerLocation({required this.uri, required this.range});
+
+  final String uri;
+  final LanguageServerRange range;
+}
+
+@immutable
+class LanguageServerHover {
+  const LanguageServerHover({required this.contents, this.range});
+
+  final String contents;
+  final LanguageServerRange? range;
+}
+
+@immutable
+class LanguageServerDocumentHighlight {
+  const LanguageServerDocumentHighlight({required this.range, this.kind});
+
+  final LanguageServerRange range;
+  final int? kind;
+}
+
+@immutable
 class EditorViewState {
   const EditorViewState({
     required this.revision,
@@ -117,6 +255,8 @@ class EditorViewState {
     required this.activeExtension,
     required this.lspStatus,
     required this.lspDiagnostics,
+    this.lspHighlights = const [],
+    this.lspHover,
   });
 
   EditorViewState copyWith({
@@ -136,6 +276,8 @@ class EditorViewState {
     ActiveExtensionInfo? activeExtension,
     String? lspStatus,
     List<LspDiagnostic>? lspDiagnostics,
+    List<LanguageServerDocumentHighlight>? lspHighlights,
+    LanguageServerHover? lspHover,
   }) {
     return EditorViewState(
       revision: revision ?? this.revision,
@@ -154,6 +296,8 @@ class EditorViewState {
       activeExtension: activeExtension ?? this.activeExtension,
       lspStatus: lspStatus ?? this.lspStatus,
       lspDiagnostics: lspDiagnostics ?? this.lspDiagnostics,
+      lspHighlights: lspHighlights ?? this.lspHighlights,
+      lspHover: lspHover ?? this.lspHover,
     );
   }
 
@@ -174,6 +318,8 @@ class EditorViewState {
     activeExtension: null,
     lspStatus: 'inactive',
     lspDiagnostics: [],
+    lspHighlights: [],
+    lspHover: null,
   );
 
   final int revision;
@@ -192,4 +338,6 @@ class EditorViewState {
   final ActiveExtensionInfo? activeExtension;
   final String lspStatus;
   final List<LspDiagnostic> lspDiagnostics;
+  final List<LanguageServerDocumentHighlight> lspHighlights;
+  final LanguageServerHover? lspHover;
 }

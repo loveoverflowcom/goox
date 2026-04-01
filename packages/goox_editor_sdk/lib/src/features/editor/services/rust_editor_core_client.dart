@@ -448,6 +448,9 @@ class RustEditorCoreClient implements EditorCoreClient {
 
     await _syncLanguageServer(documentText);
     final lspSnapshot = await _refreshLanguageServerSnapshot();
+    final highlights = _canUseLanguageServer
+        ? await lspGetDocumentHighlights(charIndex: _cursorOffset)
+        : <LanguageServerDocumentHighlight>[];
 
     _state.value = EditorViewState(
       revision: snapshot.revision.toInt(),
@@ -475,6 +478,7 @@ class RustEditorCoreClient implements EditorCoreClient {
       lspDiagnostics: lspSnapshot.diagnostics
           .map(_diagnosticFromBridge)
           .toList(growable: false),
+      lspHighlights: highlights,
     );
   }
 
@@ -503,6 +507,105 @@ class RustEditorCoreClient implements EditorCoreClient {
       endColumn: diagnostic.range.endCharacter,
       severity: diagnostic.severity,
       source: diagnostic.source,
+    );
+  }
+
+  @override
+  Future<List<LanguageServerLocation>> lspFindDefinitions({
+    int? charIndex,
+  }) async {
+    final results = await _repository.lspFindDefinitions(
+      charIndex: BigInt.from(charIndex ?? _cursorOffset),
+    );
+    return results.map(_locationFromBridge).toList();
+  }
+
+  @override
+  Future<List<LanguageServerLocation>> lspFindDeclarations({
+    int? charIndex,
+  }) async {
+    final results = await _repository.lspFindDeclarations(
+      charIndex: BigInt.from(charIndex ?? _cursorOffset),
+    );
+    return results.map(_locationFromBridge).toList();
+  }
+
+  @override
+  Future<List<LanguageServerLocation>> lspFindImplementations({
+    int? charIndex,
+  }) async {
+    final results = await _repository.lspFindImplementations(
+      charIndex: BigInt.from(charIndex ?? _cursorOffset),
+    );
+    return results.map(_locationFromBridge).toList();
+  }
+
+  @override
+  Future<List<LanguageServerLocation>> lspFindReferences({
+    int? charIndex,
+  }) async {
+    final results = await _repository.lspFindReferences(
+      charIndex: BigInt.from(charIndex ?? _cursorOffset),
+    );
+    return results.map(_locationFromBridge).toList();
+  }
+
+  @override
+  Future<LanguageServerHover?> lspGetHover({int? charIndex}) async {
+    final result = await _repository.lspGetHover(
+      charIndex: BigInt.from(charIndex ?? _cursorOffset),
+    );
+    return result != null ? _hoverFromBridge(result) : null;
+  }
+
+  @override
+  Future<List<LanguageServerDocumentHighlight>> lspGetDocumentHighlights({
+    int? charIndex,
+  }) async {
+    final results = await _repository.lspGetDocumentHighlights(
+      charIndex: BigInt.from(charIndex ?? _cursorOffset),
+    );
+    return results.map(_highlightFromBridge).toList();
+  }
+
+  LanguageServerLocation _locationFromBridge(
+    raw_bridge.LanguageServerLocation bridge,
+  ) {
+    return LanguageServerLocation(
+      uri: bridge.uri,
+      range: _rangeFromBridge(bridge.range),
+    );
+  }
+
+  LanguageServerRange _rangeFromBridge(raw_bridge.LanguageServerRange bridge) {
+    return LanguageServerRange(
+      start: _positionFromBridge(bridge.start),
+      end: _positionFromBridge(bridge.end),
+    );
+  }
+
+  LanguageServerPosition _positionFromBridge(
+    raw_bridge.LanguageServerPosition bridge,
+  ) {
+    return LanguageServerPosition(
+      line: bridge.line,
+      character: bridge.character,
+    );
+  }
+
+  LanguageServerHover _hoverFromBridge(raw_bridge.LanguageServerHover bridge) {
+    return LanguageServerHover(
+      contents: bridge.contents,
+      range: bridge.range != null ? _rangeFromBridge(bridge.range!) : null,
+    );
+  }
+
+  LanguageServerDocumentHighlight _highlightFromBridge(
+    raw_bridge.LanguageServerDocumentHighlight bridge,
+  ) {
+    return LanguageServerDocumentHighlight(
+      range: _rangeFromBridge(bridge.range),
+      kind: bridge.kind,
     );
   }
 
@@ -572,6 +675,19 @@ class RustEditorCoreClient implements EditorCoreClient {
       lspStatus: snapshot.status,
       lspDiagnostics: diagnostics,
     );
+  }
+
+  @override
+  Future<void> requestHover(int offset) async {
+    if (!_canUseLanguageServer) return;
+
+    if (offset < 0) {
+      _state.value = _state.value.copyWith(lspHover: null);
+      return;
+    }
+
+    final hover = await lspGetHover(charIndex: offset);
+    _state.value = _state.value.copyWith(lspHover: hover);
   }
 
   @override

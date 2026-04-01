@@ -12,6 +12,7 @@ import 'raw_bridge/lsp.dart' as bridge_lsp;
 
 final class GooxRustBootstrap {
   static bool _initialized = false;
+  static Future<void>? _initializationFuture;
   static String? _nativeLibraryPath;
 
   static String? get nativeLibraryPath => _nativeLibraryPath;
@@ -24,11 +25,32 @@ final class GooxRustBootstrap {
       return;
     }
 
+    final inFlight = _initializationFuture;
+    if (inFlight != null) {
+      await inFlight;
+      if (workspaceRoot != null && workspaceRoot.isNotEmpty) {
+        await refreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
+      }
+      return;
+    }
+
+    final initFuture = _initialize(workspaceRoot: workspaceRoot);
+    _initializationFuture = initFuture;
+    try {
+      await initFuture;
+    } finally {
+      if (identical(_initializationFuture, initFuture)) {
+        _initializationFuture = null;
+      }
+    }
+  }
+
+  static Future<void> _initialize({String? workspaceRoot}) async {
     ExternalLibrary? externalLibrary;
     if (!kIsWeb) {
       final dylibPath = await _resolveOrBuildLibraryPath(
         workspaceRoot: workspaceRoot,
-        forceRebuild: kDebugMode,
+        forceRebuild: _shouldForceRebuild(),
       );
       if (dylibPath != null) {
         _nativeLibraryPath = dylibPath;
@@ -112,8 +134,34 @@ final class GooxRustBootstrap {
     height: height,
   );
 
+  static Future<String> erpRenderPageFrame({
+    required int sessionId,
+    required int pageIndex,
+    required int width,
+    required int height,
+  }) async => ErpSessionManager.instance.renderPageFrame(
+    sessionId: sessionId,
+    pageIndex: pageIndex,
+    width: width,
+    height: height,
+  );
+
   static Future<void> erpCloseSession({required int sessionId}) async =>
       ErpSessionManager.instance.closeSession(sessionId);
+
+  static Future<String?> erpGetMetadata({required int sessionId}) async =>
+      ErpSessionManager.instance.getMetadata(sessionId);
+
+  static Future<List<String>> erpDrainEvents({required int sessionId}) async =>
+      ErpSessionManager.instance.drainEvents(sessionId);
+
+  static Future<Uint8List> erpReadArtifact({
+    required int sessionId,
+    required int artifactId,
+  }) async => ErpSessionManager.instance.readArtifact(
+    sessionId: sessionId,
+    artifactId: artifactId,
+  );
 
   static Future<String?> validateSourceText({
     required String languageId,
@@ -190,6 +238,14 @@ final class GooxRustBootstrap {
     }
 
     return _resolveLibraryPath(workspaceRoot: root);
+  }
+
+  static bool _shouldForceRebuild() {
+    if (kReleaseMode) {
+      return false;
+    }
+
+    return Platform.environment['GOOX_FORCE_RUST_REBUILD'] == '1';
   }
 
   static void initMock({required RustLibApi api}) {

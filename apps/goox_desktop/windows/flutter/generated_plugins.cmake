@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
   objectbox_flutter_libs
+  webview_all_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

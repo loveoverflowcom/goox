@@ -1,7 +1,11 @@
 {
   "name": "pdf-viewer",
-  "entry": "plugin.wasm",
+  "type": "renderer",
+  "web_entry": "webview/index.html",
   "filetypes": ["pdf"],
   "rendering": true,
+  "ui_mode": "webview",
+  "protocol": "erp/1",
+  "capabilities": ["document.read", "render.document", "render.pdf", "events.stream"],
   "logo": "logo.svg"
 }

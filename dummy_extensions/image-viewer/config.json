@@ -1,0 +1,11 @@
+{
+  "name": "image-viewer",
+  "type": "renderer",
+  "web_entry": "webview/index.html",
+  "filetypes": ["png", "jpg", "jpeg", "gif", "webp", "svg"],
+  "rendering": true,
+  "ui_mode": "webview",
+  "protocol": "erp/1",
+  "capabilities": ["document.read", "render.document", "render.image", "events.stream"],
+  "logo": "logo.svg"
+}

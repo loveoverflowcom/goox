@@ -37,6 +37,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtensionInfo dco_decode_box_autoadd_extension_info(dynamic raw);
 
   @protected
+  LanguageServerHover dco_decode_box_autoadd_language_server_hover(dynamic raw);
+
+  @protected
+  LanguageServerRange dco_decode_box_autoadd_language_server_range(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -75,6 +81,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  LanguageServerDocumentHighlight dco_decode_language_server_document_highlight(
+    dynamic raw,
+  );
+
+  @protected
+  LanguageServerHover dco_decode_language_server_hover(dynamic raw);
+
+  @protected
+  LanguageServerLocation dco_decode_language_server_location(dynamic raw);
+
+  @protected
+  LanguageServerPosition dco_decode_language_server_position(dynamic raw);
+
+  @protected
+  LanguageServerRange dco_decode_language_server_range(dynamic raw);
+
+  @protected
   LanguageServerSnapshot dco_decode_language_server_snapshot(dynamic raw);
 
   @protected
@@ -85,6 +108,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<LanguageServerDiagnostic> dco_decode_list_language_server_diagnostic(
+    dynamic raw,
+  );
+
+  @protected
+  List<LanguageServerDocumentHighlight>
+  dco_decode_list_language_server_document_highlight(dynamic raw);
+
+  @protected
+  List<LanguageServerLocation> dco_decode_list_language_server_location(
     dynamic raw,
   );
 
@@ -110,6 +142,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ExtensionInfo? dco_decode_opt_box_autoadd_extension_info(dynamic raw);
+
+  @protected
+  LanguageServerHover? dco_decode_opt_box_autoadd_language_server_hover(
+    dynamic raw,
+  );
+
+  @protected
+  LanguageServerRange? dco_decode_opt_box_autoadd_language_server_range(
+    dynamic raw,
+  );
 
   @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
@@ -170,6 +212,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  LanguageServerHover sse_decode_box_autoadd_language_server_hover(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerRange sse_decode_box_autoadd_language_server_range(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
@@ -212,6 +264,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  LanguageServerDocumentHighlight sse_decode_language_server_document_highlight(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerHover sse_decode_language_server_hover(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerLocation sse_decode_language_server_location(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerPosition sse_decode_language_server_position(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerRange sse_decode_language_server_range(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   LanguageServerSnapshot sse_decode_language_server_snapshot(
     SseDeserializer deserializer,
   );
@@ -226,6 +303,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<LanguageServerDiagnostic> sse_decode_list_language_server_diagnostic(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<LanguageServerDocumentHighlight>
+  sse_decode_list_language_server_document_highlight(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<LanguageServerLocation> sse_decode_list_language_server_location(
     SseDeserializer deserializer,
   );
 
@@ -255,6 +343,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ExtensionInfo? sse_decode_opt_box_autoadd_extension_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerHover? sse_decode_opt_box_autoadd_language_server_hover(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LanguageServerRange? sse_decode_opt_box_autoadd_language_server_range(
     SseDeserializer deserializer,
   );
 
@@ -325,6 +423,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_language_server_hover(
+    LanguageServerHover self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_language_server_range(
+    LanguageServerRange self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
@@ -382,6 +492,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_language_server_document_highlight(
+    LanguageServerDocumentHighlight self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_hover(
+    LanguageServerHover self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_location(
+    LanguageServerLocation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_position(
+    LanguageServerPosition self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_range(
+    LanguageServerRange self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_language_server_snapshot(
     LanguageServerSnapshot self,
     SseSerializer serializer,
@@ -399,6 +539,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_language_server_diagnostic(
     List<LanguageServerDiagnostic> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_language_server_document_highlight(
+    List<LanguageServerDocumentHighlight> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_language_server_location(
+    List<LanguageServerLocation> self,
     SseSerializer serializer,
   );
 
@@ -435,6 +587,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_extension_info(
     ExtensionInfo? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_language_server_hover(
+    LanguageServerHover? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_language_server_range(
+    LanguageServerRange? self,
     SseSerializer serializer,
   );
 

@@ -65,6 +65,96 @@ class LanguageServerDiagnosticRange {
           endCharacter == other.endCharacter;
 }
 
+class LanguageServerDocumentHighlight {
+  final LanguageServerRange range;
+  final int? kind;
+
+  const LanguageServerDocumentHighlight({required this.range, this.kind});
+
+  @override
+  int get hashCode => range.hashCode ^ kind.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LanguageServerDocumentHighlight &&
+          runtimeType == other.runtimeType &&
+          range == other.range &&
+          kind == other.kind;
+}
+
+class LanguageServerHover {
+  final String contents;
+  final LanguageServerRange? range;
+
+  const LanguageServerHover({required this.contents, this.range});
+
+  @override
+  int get hashCode => contents.hashCode ^ range.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LanguageServerHover &&
+          runtimeType == other.runtimeType &&
+          contents == other.contents &&
+          range == other.range;
+}
+
+class LanguageServerLocation {
+  final String uri;
+  final LanguageServerRange range;
+
+  const LanguageServerLocation({required this.uri, required this.range});
+
+  @override
+  int get hashCode => uri.hashCode ^ range.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LanguageServerLocation &&
+          runtimeType == other.runtimeType &&
+          uri == other.uri &&
+          range == other.range;
+}
+
+class LanguageServerPosition {
+  final int line;
+  final int character;
+
+  const LanguageServerPosition({required this.line, required this.character});
+
+  @override
+  int get hashCode => line.hashCode ^ character.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LanguageServerPosition &&
+          runtimeType == other.runtimeType &&
+          line == other.line &&
+          character == other.character;
+}
+
+class LanguageServerRange {
+  final LanguageServerPosition start;
+  final LanguageServerPosition end;
+
+  const LanguageServerRange({required this.start, required this.end});
+
+  @override
+  int get hashCode => start.hashCode ^ end.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LanguageServerRange &&
+          runtimeType == other.runtimeType &&
+          start == other.start &&
+          end == other.end;
+}
+
 class LanguageServerSnapshot {
   final String status;
   final String? executable;

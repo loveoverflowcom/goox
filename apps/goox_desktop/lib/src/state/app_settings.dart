@@ -27,7 +27,7 @@ class AppSettings {
     return {
       'themeMode': themeMode.name,
       'fontSize': fontSize,
-      'fontWeight': fontWeight.index, // 0-8 for w100-w900
+      'fontWeight': fontWeight.value, // 100-900 in steps of 100
     };
   }
 

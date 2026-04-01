@@ -26,5 +26,16 @@ abstract interface class EditorCoreClient {
     String? workspaceRoot,
   });
   Future<String> getDocumentText();
+  Future<List<LanguageServerLocation>> lspFindDefinitions({int? charIndex});
+  Future<List<LanguageServerLocation>> lspFindDeclarations({int? charIndex});
+  Future<List<LanguageServerLocation>> lspFindImplementations({int? charIndex});
+  Future<List<LanguageServerLocation>> lspFindReferences({int? charIndex});
+  Future<LanguageServerHover?> lspGetHover({int? charIndex});
+  Future<List<LanguageServerDocumentHighlight>> lspGetDocumentHighlights({
+    int? charIndex,
+  });
+
+  Future<void> requestHover(int offset);
+
   void dispose();
 }

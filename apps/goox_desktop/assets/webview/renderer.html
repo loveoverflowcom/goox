@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Goox WebView Viewer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101418;
+      --panel: #182028;
+      --panel-soft: #1e2933;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #edf2f7;
+      --muted: #9fb0c2;
+      --accent: #6bd5ff;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at top, #1b2631 0%, var(--bg) 58%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: auto;
+    }
+
+    #shell {
+      min-height: 100%;
+      box-sizing: border-box;
+      padding: 20px;
+    }
+
+    #panel {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(16px);
+      max-width: min(100%, 1600px);
+    }
+
+    #title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    #status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    #meta {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    #canvasWrap {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: rgba(0, 0, 0, 0.14);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      overflow: auto;
+    }
+
+    canvas {
+      display: block;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+    }
+  </style>
+</head>
+<body>
+  <div id="shell">
+    <div id="panel">
+      <div id="title">Goox WebView Viewer</div>
+      <div id="status">Waiting for native render...</div>
+      <div id="meta"></div>
+      <div id="canvasWrap">
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+    const titleEl = document.getElementById('title');
+    const statusEl = document.getElementById('status');
+    const metaEl = document.getElementById('meta');
+
+    function decodeBase64ToBytes(base64) {
+      const raw = atob(base64);
+      const bytes = new Uint8ClampedArray(raw.length);
+      for (let i = 0; i < raw.length; i += 1) {
+        bytes[i] = raw.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    function renderFrame(frame) {
+      if (!frame || !frame.width || !frame.height || !frame.pixelsBase64) {
+        throw new Error('Invalid frame payload');
+      }
+
+      canvas.width = frame.width;
+      canvas.height = frame.height;
+      canvas.style.width = frame.width + 'px';
+      canvas.style.height = frame.height + 'px';
+
+      const pixels = decodeBase64ToBytes(frame.pixelsBase64);
+      const imageData = new ImageData(pixels, frame.width, frame.height);
+      ctx.putImageData(imageData, 0, 0);
+
+      const pageLabel = typeof frame.page === 'number' ? frame.page + 1 : '?';
+      statusEl.textContent = `Rendered page ${pageLabel}`;
+      if (frame.documentName) {
+        titleEl.textContent = frame.documentName;
+      }
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = String(text ?? '');
+    }
+
+    function setDocument(doc) {
+      if (!doc || typeof doc !== 'object') {
+        return;
+      }
+
+      if (doc.title) {
+        titleEl.textContent = String(doc.title);
+      }
+      if (doc.status) {
+        statusEl.textContent = String(doc.status);
+      }
+      if (doc.meta) {
+        metaEl.textContent = typeof doc.meta === 'string'
+          ? doc.meta
+          : JSON.stringify(doc.meta, null, 2);
+      }
+    }
+
+    window.gooxViewer = {
+      renderFrame,
+      setStatus,
+      setDocument,
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      metaEl.textContent = 'Canvas is controlled by the native ERP renderer.';
+      if (window.chrome && window.chrome.webview) {
+        try {
+          window.chrome.webview.postMessage(JSON.stringify({
+            type: 'ready',
+            source: 'goox-webview-viewer'
+          }));
+        } catch (_) {
+          // Ignore bridge errors and continue.
+        }
+      }
+    });
+  </script>
+</body>
+</html>

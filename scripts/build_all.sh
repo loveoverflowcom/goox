@@ -2,8 +2,23 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+EXTENSIONS_DEST="$HOME/Library/Application Support/dev.goox.goox/extensions"
 
 cd "$ROOT_DIR"
+
+# ── Sync renderer extensions into the app support directory ──────────────────
+echo "==> Syncing renderer extensions"
+
+for plugin in image-viewer pdf-viewer; do
+  echo "  Syncing $plugin..."
+  src="$ROOT_DIR/dummy_extensions/$plugin"
+  dst="$EXTENSIONS_DEST/$plugin"
+  mkdir -p "$dst"
+  cp -R "$src"/. "$dst"/
+  echo "  Deployed → $dst"
+done
+
+# ── Rust tests ────────────────────────────────────────────────────────────────
 cargo test --workspace
 
 for flutter_dir in \

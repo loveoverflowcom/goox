@@ -1,6 +1,4 @@
-use portable_pty::{
-    native_pty_system, Child, ChildKiller, CommandBuilder, MasterPty, PtySize,
-};
+use portable_pty::{Child, ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_system};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -504,8 +502,7 @@ impl ScreenBuffer {
         let count = count.max(1).min(span);
         for _ in 0..count {
             self.cells.remove(self.scroll_bottom);
-            self.cells
-                .insert(self.scroll_top, blank_row(self.cols()));
+            self.cells.insert(self.scroll_top, blank_row(self.cols()));
         }
         true
     }
@@ -733,12 +730,7 @@ impl ScreenState {
         changed
     }
 
-    fn csi_dispatch(
-        &mut self,
-        params: &vte::Params,
-        intermediates: &[u8],
-        action: char,
-    ) -> bool {
+    fn csi_dispatch(&mut self, params: &vte::Params, intermediates: &[u8], action: char) -> bool {
         let values: Vec<usize> = params
             .iter()
             .map(|param| param.first().copied().unwrap_or(0) as usize)
@@ -936,16 +928,12 @@ impl TerminalSession {
                         .take_writer()
                         .map_err(|error| TerminalError::PtyError(error.to_string()))?;
                     let master = Arc::new(Mutex::new(master));
-                    let screen = Arc::new(Mutex::new(ScreenState::new(rows as usize, cols as usize)));
+                    let screen =
+                        Arc::new(Mutex::new(ScreenState::new(rows as usize, cols as usize)));
                     let (input_tx, input_rx) = mpsc::channel::<Vec<u8>>();
                     let child_killer = Arc::new(Mutex::new(Some(child.clone_killer())));
 
-                    spawn_reader_thread(
-                        id,
-                        reader,
-                        Arc::clone(&screen),
-                        Arc::clone(&child_killer),
-                    );
+                    spawn_reader_thread(id, reader, Arc::clone(&screen), Arc::clone(&child_killer));
                     spawn_writer_thread(
                         id,
                         writer,
@@ -1063,31 +1051,33 @@ fn spawn_writer_thread(
     screen: Arc<Mutex<ScreenState>>,
     child_killer: Arc<Mutex<Option<Box<dyn ChildKiller + Send + Sync>>>>,
 ) {
-    thread::spawn(move || loop {
-        if screen.lock().unwrap().is_exited() {
-            break;
-        }
+    thread::spawn(move || {
+        loop {
+            if screen.lock().unwrap().is_exited() {
+                break;
+            }
 
-        match input_rx.recv_timeout(Duration::from_millis(50)) {
-            Ok(bytes) => {
-                if bytes.is_empty() {
-                    continue;
-                }
-
-                if let Err(error) = writer.write_all(&bytes).and_then(|_| writer.flush()) {
-                    let mut screen = screen.lock().unwrap();
-                    let _ = screen.set_exit(None, format!("pty write error: {error}"));
-                    if let Some(killer) = child_killer.lock().unwrap().as_mut() {
-                        let _ = killer.kill();
+            match input_rx.recv_timeout(Duration::from_millis(50)) {
+                Ok(bytes) => {
+                    if bytes.is_empty() {
+                        continue;
                     }
+
+                    if let Err(error) = writer.write_all(&bytes).and_then(|_| writer.flush()) {
+                        let mut screen = screen.lock().unwrap();
+                        let _ = screen.set_exit(None, format!("pty write error: {error}"));
+                        if let Some(killer) = child_killer.lock().unwrap().as_mut() {
+                            let _ = killer.kill();
+                        }
+                        break;
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    let mut screen = screen.lock().unwrap();
+                    let _ = screen.set_exit(None, format!("terminal input channel closed ({id})"));
                     break;
                 }
-            }
-            Err(mpsc::RecvTimeoutError::Timeout) => {}
-            Err(mpsc::RecvTimeoutError::Disconnected) => {
-                let mut screen = screen.lock().unwrap();
-                let _ = screen.set_exit(None, format!("terminal input channel closed ({id})"));
-                break;
             }
         }
     });
@@ -1139,13 +1129,7 @@ impl vte::Perform for TerminalPerformer {
 
     fn osc_dispatch(&mut self, _params: &[&[u8]], _bell_terminated: bool) {}
 
-    fn hook(
-        &mut self,
-        _params: &vte::Params,
-        _intermediates: &[u8],
-        _ignore: bool,
-        _action: char,
-    ) {
+    fn hook(&mut self, _params: &vte::Params, _intermediates: &[u8], _ignore: bool, _action: char) {
     }
 
     fn put(&mut self, _byte: u8) {}
@@ -1202,7 +1186,8 @@ pub fn terminal_exists(id: TerminalId) -> bool {
 
 pub fn terminal_snapshot_json(id: TerminalId) -> Result<String, TerminalError> {
     let snapshot = poll_screen(id)?;
-    serde_json::to_string(&snapshot).map_err(|error| TerminalError::Serialization(error.to_string()))
+    serde_json::to_string(&snapshot)
+        .map_err(|error| TerminalError::Serialization(error.to_string()))
 }
 
 fn get_session(id: TerminalId) -> Result<Arc<TerminalSession>, TerminalError> {
@@ -1231,11 +1216,7 @@ pub extern "C" fn goox_terminal_create(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn goox_terminal_send_input(
-    id: u64,
-    bytes_ptr: *const u8,
-    len: usize,
-) -> bool {
+pub extern "C" fn goox_terminal_send_input(id: u64, bytes_ptr: *const u8, len: usize) -> bool {
     if bytes_ptr.is_null() || len == 0 {
         return true;
     }
@@ -1309,11 +1290,7 @@ fn shell_candidates() -> Vec<String> {
             "cmd.exe".to_string(),
         ]);
     } else {
-        candidates.extend([
-            "bash".to_string(),
-            "zsh".to_string(),
-            "/bin/sh".to_string(),
-        ]);
+        candidates.extend(["bash".to_string(), "zsh".to_string(), "/bin/sh".to_string()]);
     }
 
     candidates
@@ -1332,24 +1309,12 @@ fn blank_row(cols: usize) -> Vec<Cell> {
 fn ansi_color_value(index: usize, bright: bool) -> u32 {
     let colors = if bright {
         [
-            0xFF666666,
-            0xFFFF5555,
-            0xFF55FF55,
-            0xFFFFFF55,
-            0xFF5555FF,
-            0xFFFF55FF,
-            0xFF55FFFF,
+            0xFF666666, 0xFFFF5555, 0xFF55FF55, 0xFFFFFF55, 0xFF5555FF, 0xFFFF55FF, 0xFF55FFFF,
             0xFFFFFFFF,
         ]
     } else {
         [
-            0xFF000000,
-            0xFFCC0000,
-            0xFF00CC00,
-            0xFFCCCC00,
-            0xFF0000CC,
-            0xFFCC00CC,
-            0xFF00CCCC,
+            0xFF000000, 0xFFCC0000, 0xFF00CC00, 0xFFCCCC00, 0xFF0000CC, 0xFFCC00CC, 0xFF00CCCC,
             0xFFCCCCCC,
         ]
     };
@@ -1363,11 +1328,7 @@ unsafe fn c_string_ptr_to_option_string(ptr: *const c_char) -> Option<String> {
 
     let c_str = unsafe { CStr::from_ptr(ptr) };
     let value = c_str.to_string_lossy().trim().to_string();
-    if value.is_empty() {
-        None
-    } else {
-        Some(value)
-    }
+    if value.is_empty() { None } else { Some(value) }
 }
 
 #[cfg(test)]
