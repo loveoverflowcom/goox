@@ -3,7 +3,6 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
@@ -17,278 +16,659 @@ import 'lsp.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 import 'terminal.dart';
 
+abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
+  RustLibApiImplPlatform({
+    required super.handler,
+    required super.wire,
+    required super.generalizedFrbRustBinding,
+    required super.portManager,
+  });
 
+  @protected
+  String dco_decode_String(dynamic raw);
 
+  @protected
+  bool dco_decode_bool(dynamic raw);
 
-                abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
-                  RustLibApiImplPlatform({
-                    required super.handler,
-                    required super.wire,
-                    required super.generalizedFrbRustBinding,
-                    required super.portManager,
-                  });
+  @protected
+  BufferTransaction dco_decode_box_autoadd_buffer_transaction(dynamic raw);
 
-                  
+  @protected
+  ExtensionInfo dco_decode_box_autoadd_extension_info(dynamic raw);
 
-                  @protected String dco_decode_String(dynamic raw);
+  @protected
+  LanguageServerHover dco_decode_box_autoadd_language_server_hover(dynamic raw);
 
-@protected bool dco_decode_bool(dynamic raw);
+  @protected
+  LanguageServerRange dco_decode_box_autoadd_language_server_range(dynamic raw);
 
-@protected BufferTransaction dco_decode_box_autoadd_buffer_transaction(dynamic raw);
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
 
-@protected ExtensionInfo dco_decode_box_autoadd_extension_info(dynamic raw);
+  @protected
+  ViewportRequest dco_decode_box_autoadd_viewport_request(dynamic raw);
 
-@protected int dco_decode_box_autoadd_u_32(dynamic raw);
+  @protected
+  BufferError dco_decode_buffer_error(dynamic raw);
 
-@protected ViewportRequest dco_decode_box_autoadd_viewport_request(dynamic raw);
+  @protected
+  BufferOperation dco_decode_buffer_operation(dynamic raw);
 
-@protected BufferError dco_decode_buffer_error(dynamic raw);
+  @protected
+  BufferPatchBatch dco_decode_buffer_patch_batch(dynamic raw);
 
-@protected BufferOperation dco_decode_buffer_operation(dynamic raw);
+  @protected
+  BufferSnapshot dco_decode_buffer_snapshot(dynamic raw);
 
-@protected BufferPatchBatch dco_decode_buffer_patch_batch(dynamic raw);
+  @protected
+  BufferTransaction dco_decode_buffer_transaction(dynamic raw);
 
-@protected BufferSnapshot dco_decode_buffer_snapshot(dynamic raw);
+  @protected
+  CursorPos dco_decode_cursor_pos(dynamic raw);
 
-@protected BufferTransaction dco_decode_buffer_transaction(dynamic raw);
+  @protected
+  ExtensionInfo dco_decode_extension_info(dynamic raw);
 
-@protected CursorPos dco_decode_cursor_pos(dynamic raw);
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
-@protected ExtensionInfo dco_decode_extension_info(dynamic raw);
+  @protected
+  LanguageServerDiagnostic dco_decode_language_server_diagnostic(dynamic raw);
 
-@protected int dco_decode_i_32(dynamic raw);
+  @protected
+  LanguageServerDiagnosticRange dco_decode_language_server_diagnostic_range(
+    dynamic raw,
+  );
 
-@protected LanguageServerDiagnostic dco_decode_language_server_diagnostic(dynamic raw);
+  @protected
+  LanguageServerDocumentHighlight dco_decode_language_server_document_highlight(
+    dynamic raw,
+  );
 
-@protected LanguageServerDiagnosticRange dco_decode_language_server_diagnostic_range(dynamic raw);
+  @protected
+  LanguageServerHover dco_decode_language_server_hover(dynamic raw);
 
-@protected LanguageServerSnapshot dco_decode_language_server_snapshot(dynamic raw);
+  @protected
+  LanguageServerLocation dco_decode_language_server_location(dynamic raw);
 
-@protected List<String> dco_decode_list_String(dynamic raw);
+  @protected
+  LanguageServerPosition dco_decode_language_server_position(dynamic raw);
 
-@protected List<BufferOperation> dco_decode_list_buffer_operation(dynamic raw);
+  @protected
+  LanguageServerRange dco_decode_language_server_range(dynamic raw);
 
-@protected List<LanguageServerDiagnostic> dco_decode_list_language_server_diagnostic(dynamic raw);
+  @protected
+  LanguageServerSnapshot dco_decode_language_server_snapshot(dynamic raw);
 
-@protected List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
 
-@protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+  @protected
+  List<BufferOperation> dco_decode_list_buffer_operation(dynamic raw);
 
-@protected List<TerminalCellSnapshot> dco_decode_list_terminal_cell_snapshot(dynamic raw);
+  @protected
+  List<LanguageServerDiagnostic> dco_decode_list_language_server_diagnostic(
+    dynamic raw,
+  );
 
-@protected List<TerminalRowSnapshot> dco_decode_list_terminal_row_snapshot(dynamic raw);
+  @protected
+  List<LanguageServerDocumentHighlight>
+  dco_decode_list_language_server_document_highlight(dynamic raw);
 
-@protected List<ViewportLine> dco_decode_list_viewport_line(dynamic raw);
+  @protected
+  List<LanguageServerLocation> dco_decode_list_language_server_location(
+    dynamic raw,
+  );
 
-@protected String? dco_decode_opt_String(dynamic raw);
+  @protected
+  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
 
-@protected ExtensionInfo? dco_decode_opt_box_autoadd_extension_info(dynamic raw);
+  @protected
+  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
-@protected int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+  @protected
+  List<TerminalCellSnapshot> dco_decode_list_terminal_cell_snapshot(
+    dynamic raw,
+  );
 
-@protected TerminalCellSnapshot dco_decode_terminal_cell_snapshot(dynamic raw);
+  @protected
+  List<TerminalRowSnapshot> dco_decode_list_terminal_row_snapshot(dynamic raw);
 
-@protected TerminalError dco_decode_terminal_error(dynamic raw);
+  @protected
+  List<ViewportLine> dco_decode_list_viewport_line(dynamic raw);
 
-@protected TerminalRowSnapshot dco_decode_terminal_row_snapshot(dynamic raw);
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
 
-@protected TerminalScreenSnapshot dco_decode_terminal_screen_snapshot(dynamic raw);
+  @protected
+  ExtensionInfo? dco_decode_opt_box_autoadd_extension_info(dynamic raw);
 
-@protected int dco_decode_u_16(dynamic raw);
+  @protected
+  LanguageServerHover? dco_decode_opt_box_autoadd_language_server_hover(
+    dynamic raw,
+  );
 
-@protected int dco_decode_u_32(dynamic raw);
+  @protected
+  LanguageServerRange? dco_decode_opt_box_autoadd_language_server_range(
+    dynamic raw,
+  );
 
-@protected BigInt dco_decode_u_64(dynamic raw);
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
 
-@protected int dco_decode_u_8(dynamic raw);
+  @protected
+  TerminalCellSnapshot dco_decode_terminal_cell_snapshot(dynamic raw);
 
-@protected void dco_decode_unit(dynamic raw);
+  @protected
+  TerminalError dco_decode_terminal_error(dynamic raw);
 
-@protected BigInt dco_decode_usize(dynamic raw);
+  @protected
+  TerminalRowSnapshot dco_decode_terminal_row_snapshot(dynamic raw);
 
-@protected ViewportLine dco_decode_viewport_line(dynamic raw);
+  @protected
+  TerminalScreenSnapshot dco_decode_terminal_screen_snapshot(dynamic raw);
 
-@protected ViewportRequest dco_decode_viewport_request(dynamic raw);
+  @protected
+  int dco_decode_u_16(dynamic raw);
 
-@protected ViewportSnapshot dco_decode_viewport_snapshot(dynamic raw);
+  @protected
+  int dco_decode_u_32(dynamic raw);
 
-@protected String sse_decode_String(SseDeserializer deserializer);
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
-@protected bool sse_decode_bool(SseDeserializer deserializer);
+  @protected
+  int dco_decode_u_8(dynamic raw);
 
-@protected BufferTransaction sse_decode_box_autoadd_buffer_transaction(SseDeserializer deserializer);
+  @protected
+  void dco_decode_unit(dynamic raw);
 
-@protected ExtensionInfo sse_decode_box_autoadd_extension_info(SseDeserializer deserializer);
+  @protected
+  BigInt dco_decode_usize(dynamic raw);
 
-@protected int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+  @protected
+  ViewportLine dco_decode_viewport_line(dynamic raw);
 
-@protected ViewportRequest sse_decode_box_autoadd_viewport_request(SseDeserializer deserializer);
+  @protected
+  ViewportRequest dco_decode_viewport_request(dynamic raw);
 
-@protected BufferError sse_decode_buffer_error(SseDeserializer deserializer);
+  @protected
+  ViewportSnapshot dco_decode_viewport_snapshot(dynamic raw);
 
-@protected BufferOperation sse_decode_buffer_operation(SseDeserializer deserializer);
+  @protected
+  String sse_decode_String(SseDeserializer deserializer);
 
-@protected BufferPatchBatch sse_decode_buffer_patch_batch(SseDeserializer deserializer);
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
 
-@protected BufferSnapshot sse_decode_buffer_snapshot(SseDeserializer deserializer);
+  @protected
+  BufferTransaction sse_decode_box_autoadd_buffer_transaction(
+    SseDeserializer deserializer,
+  );
 
-@protected BufferTransaction sse_decode_buffer_transaction(SseDeserializer deserializer);
+  @protected
+  ExtensionInfo sse_decode_box_autoadd_extension_info(
+    SseDeserializer deserializer,
+  );
 
-@protected CursorPos sse_decode_cursor_pos(SseDeserializer deserializer);
+  @protected
+  LanguageServerHover sse_decode_box_autoadd_language_server_hover(
+    SseDeserializer deserializer,
+  );
 
-@protected ExtensionInfo sse_decode_extension_info(SseDeserializer deserializer);
+  @protected
+  LanguageServerRange sse_decode_box_autoadd_language_server_range(
+    SseDeserializer deserializer,
+  );
 
-@protected int sse_decode_i_32(SseDeserializer deserializer);
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
-@protected LanguageServerDiagnostic sse_decode_language_server_diagnostic(SseDeserializer deserializer);
+  @protected
+  ViewportRequest sse_decode_box_autoadd_viewport_request(
+    SseDeserializer deserializer,
+  );
 
-@protected LanguageServerDiagnosticRange sse_decode_language_server_diagnostic_range(SseDeserializer deserializer);
+  @protected
+  BufferError sse_decode_buffer_error(SseDeserializer deserializer);
 
-@protected LanguageServerSnapshot sse_decode_language_server_snapshot(SseDeserializer deserializer);
+  @protected
+  BufferOperation sse_decode_buffer_operation(SseDeserializer deserializer);
 
-@protected List<String> sse_decode_list_String(SseDeserializer deserializer);
+  @protected
+  BufferPatchBatch sse_decode_buffer_patch_batch(SseDeserializer deserializer);
 
-@protected List<BufferOperation> sse_decode_list_buffer_operation(SseDeserializer deserializer);
+  @protected
+  BufferSnapshot sse_decode_buffer_snapshot(SseDeserializer deserializer);
 
-@protected List<LanguageServerDiagnostic> sse_decode_list_language_server_diagnostic(SseDeserializer deserializer);
+  @protected
+  BufferTransaction sse_decode_buffer_transaction(SseDeserializer deserializer);
 
-@protected List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
+  @protected
+  CursorPos sse_decode_cursor_pos(SseDeserializer deserializer);
 
-@protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+  @protected
+  ExtensionInfo sse_decode_extension_info(SseDeserializer deserializer);
 
-@protected List<TerminalCellSnapshot> sse_decode_list_terminal_cell_snapshot(SseDeserializer deserializer);
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
 
-@protected List<TerminalRowSnapshot> sse_decode_list_terminal_row_snapshot(SseDeserializer deserializer);
+  @protected
+  LanguageServerDiagnostic sse_decode_language_server_diagnostic(
+    SseDeserializer deserializer,
+  );
 
-@protected List<ViewportLine> sse_decode_list_viewport_line(SseDeserializer deserializer);
+  @protected
+  LanguageServerDiagnosticRange sse_decode_language_server_diagnostic_range(
+    SseDeserializer deserializer,
+  );
 
-@protected String? sse_decode_opt_String(SseDeserializer deserializer);
+  @protected
+  LanguageServerDocumentHighlight sse_decode_language_server_document_highlight(
+    SseDeserializer deserializer,
+  );
 
-@protected ExtensionInfo? sse_decode_opt_box_autoadd_extension_info(SseDeserializer deserializer);
+  @protected
+  LanguageServerHover sse_decode_language_server_hover(
+    SseDeserializer deserializer,
+  );
 
-@protected int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+  @protected
+  LanguageServerLocation sse_decode_language_server_location(
+    SseDeserializer deserializer,
+  );
 
-@protected TerminalCellSnapshot sse_decode_terminal_cell_snapshot(SseDeserializer deserializer);
+  @protected
+  LanguageServerPosition sse_decode_language_server_position(
+    SseDeserializer deserializer,
+  );
 
-@protected TerminalError sse_decode_terminal_error(SseDeserializer deserializer);
+  @protected
+  LanguageServerRange sse_decode_language_server_range(
+    SseDeserializer deserializer,
+  );
 
-@protected TerminalRowSnapshot sse_decode_terminal_row_snapshot(SseDeserializer deserializer);
+  @protected
+  LanguageServerSnapshot sse_decode_language_server_snapshot(
+    SseDeserializer deserializer,
+  );
 
-@protected TerminalScreenSnapshot sse_decode_terminal_screen_snapshot(SseDeserializer deserializer);
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
 
-@protected int sse_decode_u_16(SseDeserializer deserializer);
+  @protected
+  List<BufferOperation> sse_decode_list_buffer_operation(
+    SseDeserializer deserializer,
+  );
 
-@protected int sse_decode_u_32(SseDeserializer deserializer);
+  @protected
+  List<LanguageServerDiagnostic> sse_decode_list_language_server_diagnostic(
+    SseDeserializer deserializer,
+  );
 
-@protected BigInt sse_decode_u_64(SseDeserializer deserializer);
+  @protected
+  List<LanguageServerDocumentHighlight>
+  sse_decode_list_language_server_document_highlight(
+    SseDeserializer deserializer,
+  );
 
-@protected int sse_decode_u_8(SseDeserializer deserializer);
+  @protected
+  List<LanguageServerLocation> sse_decode_list_language_server_location(
+    SseDeserializer deserializer,
+  );
 
-@protected void sse_decode_unit(SseDeserializer deserializer);
+  @protected
+  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
 
-@protected BigInt sse_decode_usize(SseDeserializer deserializer);
+  @protected
+  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
-@protected ViewportLine sse_decode_viewport_line(SseDeserializer deserializer);
+  @protected
+  List<TerminalCellSnapshot> sse_decode_list_terminal_cell_snapshot(
+    SseDeserializer deserializer,
+  );
 
-@protected ViewportRequest sse_decode_viewport_request(SseDeserializer deserializer);
+  @protected
+  List<TerminalRowSnapshot> sse_decode_list_terminal_row_snapshot(
+    SseDeserializer deserializer,
+  );
 
-@protected ViewportSnapshot sse_decode_viewport_snapshot(SseDeserializer deserializer);
+  @protected
+  List<ViewportLine> sse_decode_list_viewport_line(
+    SseDeserializer deserializer,
+  );
 
-@protected void sse_encode_String(String self, SseSerializer serializer);
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
 
-@protected void sse_encode_bool(bool self, SseSerializer serializer);
+  @protected
+  ExtensionInfo? sse_decode_opt_box_autoadd_extension_info(
+    SseDeserializer deserializer,
+  );
 
-@protected void sse_encode_box_autoadd_buffer_transaction(BufferTransaction self, SseSerializer serializer);
+  @protected
+  LanguageServerHover? sse_decode_opt_box_autoadd_language_server_hover(
+    SseDeserializer deserializer,
+  );
 
-@protected void sse_encode_box_autoadd_extension_info(ExtensionInfo self, SseSerializer serializer);
+  @protected
+  LanguageServerRange? sse_decode_opt_box_autoadd_language_server_range(
+    SseDeserializer deserializer,
+  );
 
-@protected void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
 
-@protected void sse_encode_box_autoadd_viewport_request(ViewportRequest self, SseSerializer serializer);
+  @protected
+  TerminalCellSnapshot sse_decode_terminal_cell_snapshot(
+    SseDeserializer deserializer,
+  );
 
-@protected void sse_encode_buffer_error(BufferError self, SseSerializer serializer);
+  @protected
+  TerminalError sse_decode_terminal_error(SseDeserializer deserializer);
 
-@protected void sse_encode_buffer_operation(BufferOperation self, SseSerializer serializer);
+  @protected
+  TerminalRowSnapshot sse_decode_terminal_row_snapshot(
+    SseDeserializer deserializer,
+  );
 
-@protected void sse_encode_buffer_patch_batch(BufferPatchBatch self, SseSerializer serializer);
+  @protected
+  TerminalScreenSnapshot sse_decode_terminal_screen_snapshot(
+    SseDeserializer deserializer,
+  );
 
-@protected void sse_encode_buffer_snapshot(BufferSnapshot self, SseSerializer serializer);
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
 
-@protected void sse_encode_buffer_transaction(BufferTransaction self, SseSerializer serializer);
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
 
-@protected void sse_encode_cursor_pos(CursorPos self, SseSerializer serializer);
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
-@protected void sse_encode_extension_info(ExtensionInfo self, SseSerializer serializer);
+  @protected
+  int sse_decode_u_8(SseDeserializer deserializer);
 
-@protected void sse_encode_i_32(int self, SseSerializer serializer);
+  @protected
+  void sse_decode_unit(SseDeserializer deserializer);
 
-@protected void sse_encode_language_server_diagnostic(LanguageServerDiagnostic self, SseSerializer serializer);
-
-@protected void sse_encode_language_server_diagnostic_range(LanguageServerDiagnosticRange self, SseSerializer serializer);
-
-@protected void sse_encode_language_server_snapshot(LanguageServerSnapshot self, SseSerializer serializer);
-
-@protected void sse_encode_list_String(List<String> self, SseSerializer serializer);
-
-@protected void sse_encode_list_buffer_operation(List<BufferOperation> self, SseSerializer serializer);
-
-@protected void sse_encode_list_language_server_diagnostic(List<LanguageServerDiagnostic> self, SseSerializer serializer);
-
-@protected void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
-
-@protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
-
-@protected void sse_encode_list_terminal_cell_snapshot(List<TerminalCellSnapshot> self, SseSerializer serializer);
-
-@protected void sse_encode_list_terminal_row_snapshot(List<TerminalRowSnapshot> self, SseSerializer serializer);
-
-@protected void sse_encode_list_viewport_line(List<ViewportLine> self, SseSerializer serializer);
-
-@protected void sse_encode_opt_String(String? self, SseSerializer serializer);
-
-@protected void sse_encode_opt_box_autoadd_extension_info(ExtensionInfo? self, SseSerializer serializer);
-
-@protected void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
-
-@protected void sse_encode_terminal_cell_snapshot(TerminalCellSnapshot self, SseSerializer serializer);
-
-@protected void sse_encode_terminal_error(TerminalError self, SseSerializer serializer);
-
-@protected void sse_encode_terminal_row_snapshot(TerminalRowSnapshot self, SseSerializer serializer);
-
-@protected void sse_encode_terminal_screen_snapshot(TerminalScreenSnapshot self, SseSerializer serializer);
-
-@protected void sse_encode_u_16(int self, SseSerializer serializer);
-
-@protected void sse_encode_u_32(int self, SseSerializer serializer);
-
-@protected void sse_encode_u_64(BigInt self, SseSerializer serializer);
-
-@protected void sse_encode_u_8(int self, SseSerializer serializer);
-
-@protected void sse_encode_unit(void self, SseSerializer serializer);
-
-@protected void sse_encode_usize(BigInt self, SseSerializer serializer);
-
-@protected void sse_encode_viewport_line(ViewportLine self, SseSerializer serializer);
-
-@protected void sse_encode_viewport_request(ViewportRequest self, SseSerializer serializer);
-
-@protected void sse_encode_viewport_snapshot(ViewportSnapshot self, SseSerializer serializer);
-                }
-                
-
+  @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  ViewportLine sse_decode_viewport_line(SseDeserializer deserializer);
+
+  @protected
+  ViewportRequest sse_decode_viewport_request(SseDeserializer deserializer);
+
+  @protected
+  ViewportSnapshot sse_decode_viewport_snapshot(SseDeserializer deserializer);
+
+  @protected
+  void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_buffer_transaction(
+    BufferTransaction self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_extension_info(
+    ExtensionInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_language_server_hover(
+    LanguageServerHover self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_language_server_range(
+    LanguageServerRange self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_viewport_request(
+    ViewportRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_buffer_error(BufferError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_buffer_operation(
+    BufferOperation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_buffer_patch_batch(
+    BufferPatchBatch self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_buffer_snapshot(
+    BufferSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_buffer_transaction(
+    BufferTransaction self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cursor_pos(CursorPos self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_extension_info(ExtensionInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_language_server_diagnostic(
+    LanguageServerDiagnostic self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_diagnostic_range(
+    LanguageServerDiagnosticRange self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_document_highlight(
+    LanguageServerDocumentHighlight self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_hover(
+    LanguageServerHover self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_location(
+    LanguageServerLocation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_position(
+    LanguageServerPosition self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_range(
+    LanguageServerRange self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_language_server_snapshot(
+    LanguageServerSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_buffer_operation(
+    List<BufferOperation> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_language_server_diagnostic(
+    List<LanguageServerDiagnostic> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_language_server_document_highlight(
+    List<LanguageServerDocumentHighlight> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_language_server_location(
+    List<LanguageServerLocation> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_prim_u_8_strict(
+    Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_terminal_cell_snapshot(
+    List<TerminalCellSnapshot> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_terminal_row_snapshot(
+    List<TerminalRowSnapshot> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_viewport_line(
+    List<ViewportLine> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_extension_info(
+    ExtensionInfo? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_language_server_hover(
+    LanguageServerHover? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_language_server_range(
+    LanguageServerRange? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_terminal_cell_snapshot(
+    TerminalCellSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_terminal_error(TerminalError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_terminal_row_snapshot(
+    TerminalRowSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_terminal_screen_snapshot(
+    TerminalScreenSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_8(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_viewport_line(ViewportLine self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_viewport_request(
+    ViewportRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_viewport_snapshot(
+    ViewportSnapshot self,
+    SseSerializer serializer,
+  );
+}
 
 // Section: wire_class
 
 class RustLibWire implements BaseWire {
-            RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+  RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+}
 
-            
-        }
-        @JS('wasm_bindgen') external RustLibWasmModule get wasmModule;
+@JS('wasm_bindgen')
+external RustLibWasmModule get wasmModule;
 
-        @JS() @anonymous extension type RustLibWasmModule._(JSObject _) implements JSObject {
-            
-        }
-        
+@JS()
+@anonymous
+extension type RustLibWasmModule._(JSObject _) implements JSObject {}

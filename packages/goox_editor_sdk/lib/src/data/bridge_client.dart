@@ -12,6 +12,12 @@ typedef BridgeLanguageServerSnapshot = bridge.LanguageServerSnapshot;
 typedef BridgeViewportLine = bridge.ViewportLine;
 typedef BridgeViewportRequest = bridge.ViewportRequest;
 typedef BridgeViewportSnapshot = bridge.ViewportSnapshot;
+typedef BridgeLanguageServerLocation = bridge.LanguageServerLocation;
+typedef BridgeLanguageServerHover = bridge.LanguageServerHover;
+typedef BridgeLanguageServerDocumentHighlight =
+    bridge.LanguageServerDocumentHighlight;
+typedef BridgeLanguageServerRange = bridge.LanguageServerRange;
+typedef BridgeLanguageServerPosition = bridge.LanguageServerPosition;
 
 class GooxBridgeClient {
   Future<void> seedDocument({required String text}) =>
@@ -55,4 +61,28 @@ class GooxBridgeClient {
       bridge.pollLanguageServer();
 
   Future<void> shutdownLanguageServer() => bridge.shutdownLanguageServer();
+
+  Future<List<BridgeLanguageServerLocation>> lspFindDefinitions({
+    required BigInt charIndex,
+  }) => bridge.lspFindDefinitions(charIndex: charIndex);
+
+  Future<List<BridgeLanguageServerLocation>> lspFindDeclarations({
+    required BigInt charIndex,
+  }) => bridge.lspFindDeclarations(charIndex: charIndex);
+
+  Future<List<BridgeLanguageServerLocation>> lspFindImplementations({
+    required BigInt charIndex,
+  }) => bridge.lspFindImplementations(charIndex: charIndex);
+
+  Future<List<BridgeLanguageServerLocation>> lspFindReferences({
+    required BigInt charIndex,
+  }) => bridge.lspFindReferences(charIndex: charIndex);
+
+  Future<BridgeLanguageServerHover?> lspGetHover({
+    required BigInt charIndex,
+  }) => bridge.lspGetHover(charIndex: charIndex);
+
+  Future<List<BridgeLanguageServerDocumentHighlight>> lspGetDocumentHighlights({
+    required BigInt charIndex,
+  }) => bridge.lspGetDocumentHighlights(charIndex: charIndex);
 }

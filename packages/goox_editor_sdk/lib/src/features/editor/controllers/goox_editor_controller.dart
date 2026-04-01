@@ -61,5 +61,27 @@ class GooxEditorController {
 
   Future<void> redo() => _coreClient.redo();
 
+  Future<List<LanguageServerLocation>> lspFindDefinitions({int? charIndex}) =>
+      _coreClient.lspFindDefinitions(charIndex: charIndex);
+
+  Future<List<LanguageServerLocation>> lspFindDeclarations({int? charIndex}) =>
+      _coreClient.lspFindDeclarations(charIndex: charIndex);
+
+  Future<List<LanguageServerLocation>> lspFindImplementations({
+    int? charIndex,
+  }) => _coreClient.lspFindImplementations(charIndex: charIndex);
+
+  Future<List<LanguageServerLocation>> lspFindReferences({int? charIndex}) =>
+      _coreClient.lspFindReferences(charIndex: charIndex);
+
+  Future<LanguageServerHover?> lspGetHover({int? charIndex}) =>
+      _coreClient.lspGetHover(charIndex: charIndex);
+
+  Future<void> requestHover(int offset) => _coreClient.requestHover(offset);
+
+  Future<List<LanguageServerDocumentHighlight>> lspGetDocumentHighlights({
+    int? charIndex,
+  }) => _coreClient.lspGetDocumentHighlights(charIndex: charIndex);
+
   void dispose() => _coreClient.dispose();
 }

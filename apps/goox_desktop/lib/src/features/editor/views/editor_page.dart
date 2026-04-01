@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 
 import '../../../state/app_state.dart';
 import '../../widgets/extensions_view.dart';
-import '../widgets/image_viewer_shell.dart';
+import '../widgets/extension_webview_shell.dart';
 import '../../widgets/settings_view.dart';
 import '../../widgets/sidebar.dart';
 
@@ -27,11 +27,7 @@ class _EditorPageState extends State<EditorPage> {
   String? _loadedFilePath;
   bool _isUnsupportedFile = false;
   String? _unsupportedMessage;
-  int? _erpSessionId;
-  int _erpPageCount = 0;
-  String? _erpMetadataJson;
-  List<ExtensionEvent> _erpEvents = const [];
-  bool _erpLoading = false;
+  bool _isRendererFile = false;
   final _extensionsKey = GlobalKey<ExtensionsViewState>();
 
   @override
@@ -53,13 +49,13 @@ class _EditorPageState extends State<EditorPage> {
 
   Future<void> _loadFile(String? filePath) async {
     if (filePath == null) {
-      await _closeErpSession();
       await _controller.setActiveExtension(null);
       await _controller.loadDocument('');
       if (mounted) {
         setState(() {
           _isUnsupportedFile = false;
           _unsupportedMessage = null;
+          _isRendererFile = false;
         });
       }
       return;
@@ -67,7 +63,8 @@ class _EditorPageState extends State<EditorPage> {
 
     try {
       // Capture context-dependent values before any await
-      final workspaceRoot = context.read<AppState>().rootPath ?? '';
+      final appState = context.read<AppState>();
+      final workspaceRoot = appState.rootPath ?? '';
 
       await GooxEditorSdkBootstrap.ensureInitialized(
         workspaceRoot: workspaceRoot,
@@ -79,58 +76,22 @@ class _EditorPageState extends State<EditorPage> {
       );
       await _controller.setActiveExtension(extension);
 
-      if (extension?.hasWebViewCapability == true ||
-          extension?.hasErpCapability == true) {
-        await _closeErpSession();
+      if (extension?.hasWebViewCapability == true) {
         if (mounted) {
           setState(() {
-            _erpLoading = true;
-            _erpPageCount = 0;
-            _erpMetadataJson = null;
             _isUnsupportedFile = false;
             _unsupportedMessage = null;
+            _isRendererFile = true;
           });
         }
-
-        try {
-          final sessionId = await GooxEditorSdkBootstrap.erpOpenSession(
-            workspaceRoot: workspaceRoot,
-            filePath: filePath,
-          );
-          final pageCount = await GooxEditorSdkBootstrap.erpGetPageCount(
-            sessionId: sessionId,
-          );
-          final metadataJson = await GooxEditorSdkBootstrap.erpGetMetadata(
-            sessionId: sessionId,
-          );
-          await _syncExtensionEvents(sessionId);
-          if (!mounted) return;
-          setState(() {
-            _erpSessionId = sessionId;
-            _erpPageCount = pageCount;
-            _erpMetadataJson = metadataJson;
-            _erpLoading = false;
-            _isUnsupportedFile = false;
-            _unsupportedMessage = null;
-          });
-          context.read<AppState>().markFileDirty(filePath, false);
-          return;
-        } catch (error) {
-          if (!mounted) return;
-          setState(() {
-            _erpSessionId = null;
-            _erpPageCount = 0;
-            _erpMetadataJson = null;
-            _erpLoading = false;
-            _isUnsupportedFile = true;
-            _unsupportedMessage =
-                'Failed to open ${path.basename(filePath)}: $error';
-          });
-          context.read<AppState>().markFileDirty(filePath, false);
-          return;
-        }
+        appState.markFileDirty(filePath, false);
+        return;
       } else {
-        await _closeErpSession();
+        if (mounted) {
+          setState(() {
+            _isRendererFile = false;
+          });
+        }
       }
 
       if (mounted) {
@@ -149,58 +110,26 @@ class _EditorPageState extends State<EditorPage> {
       );
 
       if (mounted) {
-        context.read<AppState>().markFileDirty(filePath, false);
+        appState.markFileDirty(filePath, false);
       }
     } on FileSystemException catch (_) {
-      await _closeErpSession();
       if (mounted) {
         setState(() {
           _isUnsupportedFile = true;
+          _isRendererFile = false;
           _unsupportedMessage =
               'This file cannot be opened as plain text. Install or enable a compatible extension for ${path.basename(filePath)}.';
         });
       }
     } catch (error) {
-      await _closeErpSession();
       if (mounted) {
         setState(() {
           _isUnsupportedFile = true;
+          _isRendererFile = false;
           _unsupportedMessage =
               'Failed to open ${path.basename(filePath)}. Please try again or check the extension configuration.';
         });
       }
-    }
-  }
-
-  Future<void> _closeErpSession() async {
-    final sessionId = _erpSessionId;
-    _erpSessionId = null;
-    _erpPageCount = 0;
-    _erpMetadataJson = null;
-    _erpEvents = const [];
-    _erpLoading = false;
-    if (sessionId != null) {
-      await GooxEditorSdkBootstrap.erpCloseSession(sessionId: sessionId);
-    }
-  }
-
-  Future<void> _syncExtensionEvents(int sessionId) async {
-    try {
-      final events = await GooxEditorSdkBootstrap.erpDrainEvents(
-        sessionId: sessionId,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        final merged = <ExtensionEvent>[..._erpEvents, ...events];
-        if (merged.length > 24) {
-          merged.removeRange(0, merged.length - 24);
-        }
-        _erpEvents = List.unmodifiable(merged);
-      });
-    } catch (error) {
-      debugPrint('Failed to drain extension events: $error');
     }
   }
 
@@ -228,6 +157,54 @@ class _EditorPageState extends State<EditorPage> {
     }
   }
 
+  Future<void> _handleGoToDefinition() async {
+    final locations = await _controller.lspFindDefinitions();
+    if (mounted) {
+      _handleLocations(locations);
+    }
+  }
+
+  Future<void> _handleGoToDeclaration() async {
+    final locations = await _controller.lspFindDeclarations();
+    if (mounted) {
+      _handleLocations(locations);
+    }
+  }
+
+  Future<void> _handleGoToImplementation() async {
+    final locations = await _controller.lspFindImplementations();
+    if (mounted) {
+      _handleLocations(locations);
+    }
+  }
+
+  Future<void> _handleFindReferences() async {
+    final locations = await _controller.lspFindReferences();
+    if (mounted) {
+      _handleLocations(locations);
+    }
+  }
+
+  void _handleLocations(List<LanguageServerLocation> locations) {
+    if (locations.isEmpty) return;
+
+    final location = locations.first;
+    final uri = Uri.parse(location.uri);
+    final filePath = uri.toFilePath();
+
+    final appState = context.read<AppState>();
+    if (filePath != _loadedFilePath) {
+      appState.openFile(filePath);
+      // We might need a way to pass the target position to the newly opened file.
+      // For now, let's just open it.
+    } else {
+      _controller.moveCursorToPosition(
+        location.range.start.line + 1,
+        location.range.start.character + 1,
+      );
+    }
+  }
+
   Future<void> _handleEditorTextChanged(GooxEditorTextChange change) async {
     await _controller.replaceTextRange(
       change.start,
@@ -240,7 +217,6 @@ class _EditorPageState extends State<EditorPage> {
   @override
   void dispose() {
     _focusNode.dispose();
-    unawaited(_closeErpSession());
     _controller.dispose();
     super.dispose();
   }
@@ -254,11 +230,14 @@ class _EditorPageState extends State<EditorPage> {
     return ValueListenableBuilder<EditorViewState>(
       valueListenable: _controller.stateListenable,
       builder: (context, state, _) {
-        final erpSessionId = _erpSessionId;
         final activeExtension = state.activeExtension;
         final webEntryPath =
-            activeExtension != null && activeExtension.webEntry != null
-            ? path.join(activeExtension.path, activeExtension.webEntry!)
+            activeExtension != null && activeExtension.hasWebViewCapability
+            ? activeExtension.webEntry
+            : null;
+        final resolvedWebEntryPath =
+            webEntryPath != null && activeExtension != null
+            ? path.join(activeExtension.path, webEntryPath)
             : null;
         return GooxLayout(
           tabs: [
@@ -304,59 +283,19 @@ class _EditorPageState extends State<EditorPage> {
                   children: [
                     _LspDiagnosticsBanner(state: state),
                     Expanded(
-                      child: _erpLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : erpSessionId != null
-                          ? Column(
-                              children: [
-                                if (_erpEvents.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      12,
-                                      12,
-                                      12,
-                                      8,
-                                    ),
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: _erpEvents
-                                            .map(
-                                              (event) => Chip(
-                                                label: Text(
-                                                  '${event.source}:${event.topic}',
-                                                ),
-                                              ),
-                                            )
-                                            .toList(growable: false),
-                                      ),
-                                    ),
-                                  ),
-                                Expanded(
-                                  child: GooxRenderWebViewShell(
-                                    sessionId: erpSessionId,
-                                    pageCount: _erpPageCount,
-                                    metadataJson: _erpMetadataJson,
-                                    documentName: path.basename(activeFile),
-                                    webEntryPath: webEntryPath,
-                                    onRenderPage: (pageIndex, width, height) async {
-                                      final pixels =
-                                          await GooxEditorSdkBootstrap.erpRenderPage(
-                                            sessionId: erpSessionId,
-                                            pageIndex: pageIndex,
-                                            width: width,
-                                            height: height,
-                                          );
-                                      unawaited(
-                                        _syncExtensionEvents(erpSessionId),
-                                      );
-                                      return pixels;
-                                    },
-                                  ),
-                                ),
-                              ],
+                      child: _isRendererFile && activeExtension != null
+                          ? GooxExtensionWebViewShell(
+                              extensionName: activeExtension.name,
+                              filePath: activeFile,
+                              fileType: activeExtension.filetypes.isNotEmpty
+                                  ? activeExtension.filetypes.first
+                                  : path
+                                        .extension(activeFile)
+                                        .replaceFirst('.', ''),
+                              webEntryPath: resolvedWebEntryPath,
+                              onBridgeMessage: (message) {
+                                debugPrint('WebView bridge: $message');
+                              },
                             )
                           : _isUnsupportedFile
                           ? _UnsupportedFileView(
@@ -413,6 +352,17 @@ class _EditorPageState extends State<EditorPage> {
                                 onTextChanged: _handleEditorTextChanged,
                                 onCursorOffsetChanged:
                                     _controller.moveCursorToOffset,
+                                onGoToDefinition: _handleGoToDefinition,
+                                onGoToDeclaration: _handleGoToDeclaration,
+                                onGoToImplementation: _handleGoToImplementation,
+                                onFindReferences: _handleFindReferences,
+                                onHover: (offset) {
+                                  if (offset == -1) {
+                                    _controller.requestHover(-1);
+                                  } else {
+                                    _controller.requestHover(offset);
+                                  }
+                                },
                                 fontSize: appState.settings.fontSize,
                                 fontWeight: appState.settings.fontWeight,
                               ),
@@ -952,7 +902,6 @@ class _ExtensionsTrailing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final rootPath = context.watch<AppState>().rootPath;
 
     return SizedBox(
       width: 32,
@@ -984,16 +933,10 @@ class _ExtensionsTrailing extends StatelessWidget {
         itemBuilder: (context) => [
           PopupMenuItem(
             height: 32,
-            enabled: rootPath != null,
             value: 'import',
             child: Text(
               'Import Extension',
-              style: TextStyle(
-                fontSize: 13,
-                color: rootPath != null
-                    ? colorScheme.onSurface
-                    : colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
+              style: TextStyle(fontSize: 13, color: colorScheme.onSurface),
             ),
           ),
           PopupMenuItem(

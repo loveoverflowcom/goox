@@ -1,6 +1,7 @@
 {
   "name": "image-viewer",
-  "web_entry": "web/index.html",
+  "type": "renderer",
+  "web_entry": "webview/index.html",
   "filetypes": ["png", "jpg", "jpeg", "gif", "webp", "svg"],
   "rendering": true,
   "ui_mode": "webview",

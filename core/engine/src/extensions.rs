@@ -94,6 +94,8 @@ impl ExtensionRegistry {
 #[derive(Debug, Deserialize)]
 struct ExtensionConfig {
     name: String,
+    #[serde(default, rename = "type")]
+    extension_type: Option<String>,
     #[serde(default)]
     entry: Option<String>,
     #[serde(default)]
@@ -559,7 +561,12 @@ fn read_extension_config(path: &Path, scope: ExtensionScope) -> Option<Extension
         return None;
     }
 
-    let ui_mode = normalize_ui_mode(parsed.ui_mode, parsed.rendering);
+    let extension_type = parsed
+        .extension_type
+        .as_deref()
+        .map(|value| value.trim().to_lowercase())
+        .filter(|value| !value.is_empty());
+    let ui_mode = normalize_ui_mode(parsed.ui_mode, parsed.rendering, extension_type.as_deref());
     let extension = ExtensionMeta {
         name: parsed.name,
         path: path.to_path_buf(),
@@ -581,7 +588,9 @@ fn read_extension_config(path: &Path, scope: ExtensionScope) -> Option<Extension
             .filter(|protocol| !protocol.trim().is_empty())
             .unwrap_or_else(|| "erp/1".to_string()),
         capabilities: normalize_capabilities(parsed.capabilities),
-        rendering: parsed.rendering || ui_mode != "none",
+        rendering: parsed.rendering
+            || ui_mode != "none"
+            || extension_type.as_deref() == Some("renderer"),
         enabled: is_extension_enabled(path),
     };
 
@@ -640,12 +649,20 @@ fn normalize_filetype(filetype: &str) -> String {
     filetype.trim().trim_start_matches('.').to_lowercase()
 }
 
-fn normalize_ui_mode(ui_mode: Option<String>, rendering: bool) -> String {
+fn normalize_ui_mode(
+    ui_mode: Option<String>,
+    rendering: bool,
+    extension_type: Option<&str>,
+) -> String {
     let normalized = ui_mode
         .as_deref()
         .map(|mode| mode.trim().to_lowercase())
         .filter(|mode| !mode.is_empty())
         .unwrap_or_default();
+
+    if matches!(extension_type, Some("renderer")) {
+        return "webview".to_string();
+    }
 
     match normalized.as_str() {
         "canvas" | "webview" | "native" | "none" => normalized,
@@ -967,6 +984,7 @@ mod tests {
         name: &str,
         entry: Option<&str>,
         web_entry: Option<&str>,
+        extension_type: Option<&str>,
         filetypes: &[&str],
         language_id: Option<&str>,
         lsp_executable: Option<&str>,
@@ -985,6 +1003,8 @@ mod tests {
         let entry_json = entry.map_or(String::from("null"), |entry| format!(r#""{entry}""#));
         let web_entry_json =
             web_entry.map_or(String::from("null"), |entry| format!(r#""{entry}""#));
+        let extension_type_json =
+            extension_type.map_or(String::from("null"), |value| format!(r#""{value}""#));
         let language_id_json = language_id.map_or(String::from("null"), |language_id| {
             format!(r#""{language_id}""#)
         });
@@ -998,7 +1018,7 @@ mod tests {
             .collect::<Vec<_>>()
             .join(",");
         let body = format!(
-            r#"{{"name":"{name}","entry":{entry_json},"web_entry":{web_entry_json},"filetypes":[{filetypes_json}],"language_id":{language_id_json},"lsp_executable":{lsp_executable_json},"ui_mode":{ui_mode_json},"protocol":{protocol_json},"capabilities":[{capabilities_json}],"rendering":{rendering}}}"#
+            r#"{{"name":"{name}","type":{extension_type_json},"entry":{entry_json},"web_entry":{web_entry_json},"filetypes":[{filetypes_json}],"language_id":{language_id_json},"lsp_executable":{lsp_executable_json},"ui_mode":{ui_mode_json},"protocol":{protocol_json},"capabilities":[{capabilities_json}],"rendering":{rendering}}}"#
         );
         file.write_all(body.as_bytes()).unwrap();
     }
@@ -1015,6 +1035,7 @@ mod tests {
             "pdf-viewer",
             Some("plugin.wasm"),
             None,
+            None,
             &["pdf"],
             None,
             None,
@@ -1027,6 +1048,7 @@ mod tests {
             &workspace_plugin,
             "pdf-viewer",
             Some("plugin.wasm"),
+            None,
             None,
             &["pdf", "pdfa"],
             None,
@@ -1060,6 +1082,7 @@ mod tests {
         write_config(
             &python_plugin,
             "python",
+            None,
             None,
             None,
             &["py", "pyw"],
@@ -1110,12 +1133,38 @@ mod tests {
         )
         .expect("webview extension should be resolved");
         assert_eq!(extension.ui_mode, "webview");
-        assert_eq!(extension.web_entry.as_deref(), Some("web/index.html"));
+        assert_eq!(extension.web_entry.as_deref(), Some("webview/index.html"));
 
         assert!(activate_extension_for_file(
             workspace_root.display().to_string(),
             pdf_path.display().to_string(),
         ));
         assert!(registered_extension_commands().is_empty());
+    }
+
+    #[test]
+    fn renderer_type_defaults_to_webview_mode() {
+        let workspace_root = unique_temp_dir("workspace-renderer-type");
+        let renderer_extension = workspace_root.join(".goox/extensions/image-viewer");
+
+        write_config(
+            &renderer_extension,
+            "image-viewer",
+            None,
+            Some("webview/index.html"),
+            Some("renderer"),
+            &["png"],
+            None,
+            None,
+            None,
+            Some("erp/1"),
+            &["render.image"],
+            true,
+        );
+
+        let registry = ExtensionRegistry::build(Some(&workspace_root));
+        let extension = registry.find_for_filetype("png").unwrap();
+        assert_eq!(extension.ui_mode, "webview");
+        assert_eq!(extension.web_entry.as_deref(), Some("webview/index.html"));
     }
 }

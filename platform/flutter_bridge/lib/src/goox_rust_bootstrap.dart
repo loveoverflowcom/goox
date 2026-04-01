@@ -12,6 +12,7 @@ import 'raw_bridge/lsp.dart' as bridge_lsp;
 
 final class GooxRustBootstrap {
   static bool _initialized = false;
+  static Future<void>? _initializationFuture;
   static String? _nativeLibraryPath;
 
   static String? get nativeLibraryPath => _nativeLibraryPath;
@@ -24,11 +25,32 @@ final class GooxRustBootstrap {
       return;
     }
 
+    final inFlight = _initializationFuture;
+    if (inFlight != null) {
+      await inFlight;
+      if (workspaceRoot != null && workspaceRoot.isNotEmpty) {
+        await refreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
+      }
+      return;
+    }
+
+    final initFuture = _initialize(workspaceRoot: workspaceRoot);
+    _initializationFuture = initFuture;
+    try {
+      await initFuture;
+    } finally {
+      if (identical(_initializationFuture, initFuture)) {
+        _initializationFuture = null;
+      }
+    }
+  }
+
+  static Future<void> _initialize({String? workspaceRoot}) async {
     ExternalLibrary? externalLibrary;
     if (!kIsWeb) {
       final dylibPath = await _resolveOrBuildLibraryPath(
         workspaceRoot: workspaceRoot,
-        forceRebuild: kDebugMode,
+        forceRebuild: _shouldForceRebuild(),
       );
       if (dylibPath != null) {
         _nativeLibraryPath = dylibPath;
@@ -216,6 +238,14 @@ final class GooxRustBootstrap {
     }
 
     return _resolveLibraryPath(workspaceRoot: root);
+  }
+
+  static bool _shouldForceRebuild() {
+    if (kReleaseMode) {
+      return false;
+    }
+
+    return Platform.environment['GOOX_FORCE_RUST_REBUILD'] == '1';
   }
 
   static void initMock({required RustLibApi api}) {

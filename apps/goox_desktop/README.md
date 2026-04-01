@@ -1,17 +1,12 @@
 # goox_desktop
 
-Desktop shell for the Goox editor workspace.
+Flutter desktop shell for the Goox workspace.
 
-## Responsibilities
+Rendering for extension content uses `webview_all`, with the UI kept intentionally minimal so content stays centered.
 
-- Compose `goox_editor_sdk` and `goox_ui_shared` into the full desktop UX.
-- Own shell-specific layout, workspace navigation, and native app packaging.
-- Avoid importing raw bridge bindings directly outside tests or dev-only helpers.
+The render layer is still abstracted so Windows and Linux can hook in a different engine later without changing editor callsites.
 
-## Development
+## Status
 
-```bash
-flutter analyze
-flutter test
-flutter run -d macos
-```
+- This package is the active desktop app.
+- The Rust runtime prototype remains in the repo for experimentation, but it is not the primary rendering path.

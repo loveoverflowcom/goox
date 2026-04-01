@@ -1,6 +1,7 @@
 {
   "name": "pdf-viewer",
-  "web_entry": "web/index.html",
+  "type": "renderer",
+  "web_entry": "webview/index.html",
   "filetypes": ["pdf"],
   "rendering": true,
   "ui_mode": "webview",

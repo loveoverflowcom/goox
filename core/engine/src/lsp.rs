@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -8,6 +9,36 @@ use std::sync::{Arc, Condvar, LazyLock, Mutex, mpsc};
 use std::thread;
 use std::time::Duration;
 use url::Url;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageServerPosition {
+    pub line: u32,
+    pub character: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageServerRange {
+    pub start: LanguageServerPosition,
+    pub end: LanguageServerPosition,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageServerLocation {
+    pub uri: String,
+    pub range: LanguageServerRange,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageServerHover {
+    pub contents: String,
+    pub range: Option<LanguageServerRange>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageServerDocumentHighlight {
+    pub range: LanguageServerRange,
+    pub kind: Option<u32>,
+}
 
 #[derive(Debug, Clone)]
 pub struct LanguageServerDiagnosticRange {
@@ -268,6 +299,75 @@ pub fn shutdown_language_server() {
     runtime.last_snapshot = LanguageServerSnapshot::inactive();
 }
 
+pub fn lsp_find_definitions(line: u32, column: u32) -> Vec<LanguageServerLocation> {
+    let runtime = RUNTIME.lock().unwrap();
+    if let Some(session) = &runtime.session {
+        session
+            .as_ref()
+            .find_definitions(line, column)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    }
+}
+
+pub fn lsp_find_declarations(line: u32, column: u32) -> Vec<LanguageServerLocation> {
+    let runtime = RUNTIME.lock().unwrap();
+    if let Some(session) = &runtime.session {
+        session
+            .as_ref()
+            .find_declarations(line, column)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    }
+}
+
+pub fn lsp_find_implementations(line: u32, column: u32) -> Vec<LanguageServerLocation> {
+    let runtime = RUNTIME.lock().unwrap();
+    if let Some(session) = &runtime.session {
+        session
+            .as_ref()
+            .find_implementations(line, column)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    }
+}
+
+pub fn lsp_find_references(line: u32, column: u32) -> Vec<LanguageServerLocation> {
+    let runtime = RUNTIME.lock().unwrap();
+    if let Some(session) = &runtime.session {
+        session
+            .as_ref()
+            .find_references(line, column)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    }
+}
+
+pub fn lsp_get_hover(line: u32, column: u32) -> Option<LanguageServerHover> {
+    let runtime = RUNTIME.lock().unwrap();
+    if let Some(session) = &runtime.session {
+        session.as_ref().get_hover(line, column).unwrap_or(None)
+    } else {
+        None
+    }
+}
+
+pub fn lsp_get_document_highlights(line: u32, column: u32) -> Vec<LanguageServerDocumentHighlight> {
+    let runtime = RUNTIME.lock().unwrap();
+    if let Some(session) = &runtime.session {
+        session
+            .as_ref()
+            .get_document_highlights(line, column)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    }
+}
+
 impl LanguageServerSession {
     fn start(config: LanguageServerConfig) -> Result<Self, String> {
         let mut command_parts = vec![config.executable.clone()];
@@ -522,6 +622,124 @@ impl LanguageServerSession {
             }
         }
     }
+
+    pub fn find_definitions(
+        &self,
+        line: u32,
+        column: u32,
+    ) -> Result<Vec<LanguageServerLocation>, String> {
+        let params = json!({
+            "textDocument": {
+                "uri": self.config.file_uri().ok_or("uri unavailable")?,
+            },
+            "position": {
+                "line": line,
+                "character": column,
+            }
+        });
+
+        let response = self.send_request("textDocument/definition", params)?;
+        parse_locations(&response).ok_or_else(|| "failed to parse definition response".to_string())
+    }
+
+    pub fn find_declarations(
+        &self,
+        line: u32,
+        column: u32,
+    ) -> Result<Vec<LanguageServerLocation>, String> {
+        let params = json!({
+            "textDocument": {
+                "uri": self.config.file_uri().ok_or("uri unavailable")?,
+            },
+            "position": {
+                "line": line,
+                "character": column,
+            }
+        });
+
+        let response = self.send_request("textDocument/declaration", params)?;
+        parse_locations(&response).ok_or_else(|| "failed to parse declaration response".to_string())
+    }
+
+    pub fn find_implementations(
+        &self,
+        line: u32,
+        column: u32,
+    ) -> Result<Vec<LanguageServerLocation>, String> {
+        let params = json!({
+            "textDocument": {
+                "uri": self.config.file_uri().ok_or("uri unavailable")?,
+            },
+            "position": {
+                "line": line,
+                "character": column,
+            }
+        });
+
+        let response = self.send_request("textDocument/implementation", params)?;
+        parse_locations(&response)
+            .ok_or_else(|| "failed to parse implementation response".to_string())
+    }
+
+    pub fn find_references(
+        &self,
+        line: u32,
+        column: u32,
+    ) -> Result<Vec<LanguageServerLocation>, String> {
+        let params = json!({
+            "textDocument": {
+                "uri": self.config.file_uri().ok_or("uri unavailable")?,
+            },
+            "position": {
+                "line": line,
+                "character": column,
+            },
+            "context": {
+                "includeDeclaration": true,
+            }
+        });
+
+        let response = self.send_request("textDocument/references", params)?;
+        parse_locations(&response).ok_or_else(|| "failed to parse references response".to_string())
+    }
+
+    pub fn get_hover(&self, line: u32, column: u32) -> Result<Option<LanguageServerHover>, String> {
+        let params = json!({
+            "textDocument": {
+                "uri": self.config.file_uri().ok_or("uri unavailable")?,
+            },
+            "position": {
+                "line": line,
+                "character": column,
+            }
+        });
+
+        let response = self.send_request("textDocument/hover", params)?;
+        if response.is_null() {
+            return Ok(None);
+        }
+
+        Ok(parse_hover(&response))
+    }
+
+    pub fn get_document_highlights(
+        &self,
+        line: u32,
+        column: u32,
+    ) -> Result<Vec<LanguageServerDocumentHighlight>, String> {
+        let params = json!({
+            "textDocument": {
+                "uri": self.config.file_uri().ok_or("uri unavailable")?,
+            },
+            "position": {
+                "line": line,
+                "character": column,
+            }
+        });
+
+        let response = self.send_request("textDocument/documentHighlight", params)?;
+        Ok(parse_document_highlights(&response).unwrap_or_default())
+    }
 }
 
 fn spawn_writer_thread(
@@ -616,6 +834,78 @@ fn handle_message(
             }
         }
     }
+}
+
+fn parse_locations(value: &Value) -> Option<Vec<LanguageServerLocation>> {
+    if value.is_null() {
+        return Some(Vec::new());
+    }
+
+    if let Some(array) = value.as_array() {
+        return Some(array.iter().filter_map(parse_location).collect());
+    }
+
+    parse_location(value).map(|loc| vec![loc])
+}
+
+fn parse_location(value: &Value) -> Option<LanguageServerLocation> {
+    // Handle both Location and LocationLink (simplified for now)
+    let uri = value.get("uri")?.as_str()?.to_string();
+    let range = parse_range(value.get("range")?)?;
+    Some(LanguageServerLocation { uri, range })
+}
+
+fn parse_range(value: &Value) -> Option<LanguageServerRange> {
+    let start = parse_position(value.get("start")?)?;
+    let end = parse_position(value.get("end")?)?;
+    Some(LanguageServerRange { start, end })
+}
+
+fn parse_position(value: &Value) -> Option<LanguageServerPosition> {
+    let line = value.get("line")?.as_u64()? as u32;
+    let character = value.get("character")?.as_u64()? as u32;
+    Some(LanguageServerPosition { line, character })
+}
+
+fn parse_hover(value: &Value) -> Option<LanguageServerHover> {
+    let contents_val = value.get("contents")?;
+    let contents = if let Some(s) = contents_val.as_str() {
+        s.to_string()
+    } else if let Some(obj) = contents_val.get("value") {
+        obj.as_str()?.to_string()
+    } else if let Some(arr) = contents_val.as_array() {
+        arr.iter()
+            .filter_map(|v| {
+                if let Some(s) = v.as_str() {
+                    Some(s.to_string())
+                } else if let Some(obj) = v.get("value") {
+                    Some(obj.as_str()?.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n")
+    } else {
+        return None;
+    };
+
+    let range = value.get("range").and_then(parse_range);
+    Some(LanguageServerHover { contents, range })
+}
+
+fn parse_document_highlights(value: &Value) -> Option<Vec<LanguageServerDocumentHighlight>> {
+    let array = value.as_array()?;
+    Some(
+        array
+            .iter()
+            .filter_map(|v| {
+                let range = parse_range(v.get("range")?)?;
+                let kind = v.get("kind").and_then(Value::as_u64).map(|k| k as u32);
+                Some(LanguageServerDocumentHighlight { range, kind })
+            })
+            .collect(),
+    )
 }
 
 fn parse_diagnostics(params: &Value) -> Option<Vec<LanguageServerDiagnostic>> {

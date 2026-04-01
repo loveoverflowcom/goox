@@ -48,4 +48,28 @@ class GooxEditorRepository {
 
   Future<void> shutdownLanguageServer() =>
       _bridgeClient.shutdownLanguageServer();
+
+  Future<List<BridgeLanguageServerLocation>> lspFindDefinitions({
+    required BigInt charIndex,
+  }) => _bridgeClient.lspFindDefinitions(charIndex: charIndex);
+
+  Future<List<BridgeLanguageServerLocation>> lspFindDeclarations({
+    required BigInt charIndex,
+  }) => _bridgeClient.lspFindDeclarations(charIndex: charIndex);
+
+  Future<List<BridgeLanguageServerLocation>> lspFindImplementations({
+    required BigInt charIndex,
+  }) => _bridgeClient.lspFindImplementations(charIndex: charIndex);
+
+  Future<List<BridgeLanguageServerLocation>> lspFindReferences({
+    required BigInt charIndex,
+  }) => _bridgeClient.lspFindReferences(charIndex: charIndex);
+
+  Future<BridgeLanguageServerHover?> lspGetHover({
+    required BigInt charIndex,
+  }) => _bridgeClient.lspGetHover(charIndex: charIndex);
+
+  Future<List<BridgeLanguageServerDocumentHighlight>> lspGetDocumentHighlights({
+    required BigInt charIndex,
+  }) => _bridgeClient.lspGetDocumentHighlights(charIndex: charIndex);
 }

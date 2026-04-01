@@ -1,6 +1,4 @@
 PODS:
-  - atomic_webview (0.0.1):
-    - FlutterMacOS
   - desktop_drop (0.0.1):
     - FlutterMacOS
   - file_picker (0.0.1):
@@ -15,7 +13,6 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - atomic_webview (from `Flutter/ephemeral/.symlinks/plugins/atomic_webview/macos`)
   - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
@@ -27,8 +24,6 @@ SPEC REPOS:
     - ObjectBox
 
 EXTERNAL SOURCES:
-  atomic_webview:
-    :path: Flutter/ephemeral/.symlinks/plugins/atomic_webview/macos
   desktop_drop:
     :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
   file_picker:
@@ -41,7 +36,6 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/webview_flutter_wkwebview/darwin
 
 SPEC CHECKSUMS:
-  atomic_webview: bc6d80c98c9c44da484155d29bfaceb86ec44c4b
   desktop_drop: 69eeff437544aa619c8db7f4481b3a65f7696898
   file_picker: e716a70a9fe5fd9e09ebc922d7541464289443af
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1

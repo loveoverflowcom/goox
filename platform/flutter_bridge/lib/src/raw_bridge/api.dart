@@ -137,6 +137,30 @@ Future<LanguageServerSnapshot> pollLanguageServer() =>
 Future<void> shutdownLanguageServer() =>
     RustLib.instance.api.crateApiShutdownLanguageServer();
 
+Future<List<LanguageServerLocation>> lspFindDefinitions({
+  required BigInt charIndex,
+}) => RustLib.instance.api.crateApiLspFindDefinitions(charIndex: charIndex);
+
+Future<List<LanguageServerLocation>> lspFindDeclarations({
+  required BigInt charIndex,
+}) => RustLib.instance.api.crateApiLspFindDeclarations(charIndex: charIndex);
+
+Future<List<LanguageServerLocation>> lspFindImplementations({
+  required BigInt charIndex,
+}) => RustLib.instance.api.crateApiLspFindImplementations(charIndex: charIndex);
+
+Future<List<LanguageServerLocation>> lspFindReferences({
+  required BigInt charIndex,
+}) => RustLib.instance.api.crateApiLspFindReferences(charIndex: charIndex);
+
+Future<LanguageServerHover?> lspGetHover({required BigInt charIndex}) =>
+    RustLib.instance.api.crateApiLspGetHover(charIndex: charIndex);
+
+Future<List<LanguageServerDocumentHighlight>> lspGetDocumentHighlights({
+  required BigInt charIndex,
+}) =>
+    RustLib.instance.api.crateApiLspGetDocumentHighlights(charIndex: charIndex);
+
 Future<BigInt> createTerminal({
   required int rows,
   required int cols,

@@ -147,6 +147,38 @@ pub fn shutdown_language_server() {
     crate::lsp::shutdown_language_server();
 }
 
+pub fn lsp_find_definitions(char_index: usize) -> Vec<crate::lsp::LanguageServerLocation> {
+    let (line, column) = BUFFER.lock().unwrap().char_to_line_column(char_index);
+    crate::lsp::lsp_find_definitions(line as u32, column as u32)
+}
+
+pub fn lsp_find_declarations(char_index: usize) -> Vec<crate::lsp::LanguageServerLocation> {
+    let (line, column) = BUFFER.lock().unwrap().char_to_line_column(char_index);
+    crate::lsp::lsp_find_declarations(line as u32, column as u32)
+}
+
+pub fn lsp_find_implementations(char_index: usize) -> Vec<crate::lsp::LanguageServerLocation> {
+    let (line, column) = BUFFER.lock().unwrap().char_to_line_column(char_index);
+    crate::lsp::lsp_find_implementations(line as u32, column as u32)
+}
+
+pub fn lsp_find_references(char_index: usize) -> Vec<crate::lsp::LanguageServerLocation> {
+    let (line, column) = BUFFER.lock().unwrap().char_to_line_column(char_index);
+    crate::lsp::lsp_find_references(line as u32, column as u32)
+}
+
+pub fn lsp_get_hover(char_index: usize) -> Option<crate::lsp::LanguageServerHover> {
+    let (line, column) = BUFFER.lock().unwrap().char_to_line_column(char_index);
+    crate::lsp::lsp_get_hover(line as u32, column as u32)
+}
+
+pub fn lsp_get_document_highlights(
+    char_index: usize,
+) -> Vec<crate::lsp::LanguageServerDocumentHighlight> {
+    let (line, column) = BUFFER.lock().unwrap().char_to_line_column(char_index);
+    crate::lsp::lsp_get_document_highlights(line as u32, column as u32)
+}
+
 pub type TerminalId = crate::terminal::TerminalId;
 
 pub fn create_terminal(

@@ -212,12 +212,18 @@ class ExtensionsViewState extends State<ExtensionsView> {
 
     final entry = _asTrimmedString(raw['entry']);
     final webEntry = _asTrimmedString(raw['web_entry']);
+    final extensionType = _asTrimmedString(raw['type'])?.toLowerCase();
     final languageId = _asTrimmedString(raw['language_id']);
     final lspExecutable = _asTrimmedString(raw['lsp_executable']);
     final uiMode = _asTrimmedString(raw['ui_mode']);
     final protocol = _asTrimmedString(raw['protocol']) ?? 'erp/1';
     final capabilities = _asStringList(raw['capabilities']);
     final logoPath = _resolveLogoPath(directory.path, raw['logo']);
+    final rendering = raw['rendering'] == true || extensionType == 'renderer';
+    final resolvedUiMode = extensionType == 'renderer'
+        ? 'webview'
+        : uiMode ??
+              (webEntry != null ? 'webview' : (rendering ? 'canvas' : 'none'));
 
     return _ManagedExtension(
       name: name,
@@ -225,10 +231,12 @@ class ExtensionsViewState extends State<ExtensionsView> {
       enabled: true,
       entry: entry,
       webEntry: webEntry,
+      extensionType:
+          extensionType ?? (resolvedUiMode == 'webview' ? 'renderer' : 'logic'),
       filetypes: filetypes,
       languageId: languageId,
       lspExecutable: lspExecutable,
-      uiMode: uiMode ?? 'none',
+      uiMode: resolvedUiMode,
       protocol: protocol,
       capabilities: capabilities,
       logoPath: logoPath,
@@ -265,27 +273,14 @@ class ExtensionsViewState extends State<ExtensionsView> {
     }
 
     if (config.uiMode == 'webview') {
-      if (config.webEntry != null) {
-        final entryPath = File(p.join(directory.path, config.webEntry!));
-        if (!entryPath.existsSync()) {
-          throw FileSystemException(
-            'Extension web entry not found',
-            entryPath.path,
-          );
-        }
+      if (config.webEntry == null) {
+        throw const FormatException('webview extensions require "web_entry"');
       }
-      final pubspec = File(p.join(directory.path, 'pubspec.yaml'));
-      if (!pubspec.existsSync()) {
+      final entryPath = File(p.join(directory.path, config.webEntry!));
+      if (!entryPath.existsSync()) {
         throw FileSystemException(
-          'Flutter extension requires pubspec.yaml',
-          pubspec.path,
-        );
-      }
-      final mainDart = File(p.join(directory.path, 'lib', 'main.dart'));
-      if (!mainDart.existsSync()) {
-        throw FileSystemException(
-          'Flutter extension requires lib/main.dart',
-          mainDart.path,
+          'Extension web entry not found',
+          entryPath.path,
         );
       }
     } else if (config.entry != null) {
@@ -427,8 +422,9 @@ class _ExtensionTile extends StatelessWidget {
                   [
                     extension.enabled ? 'enabled' : 'disabled',
                     extension.filetypes.join(', '),
+                    'type=${extension.extensionType}',
                     'ui=${extension.uiMode}',
-                    'erp=${extension.protocol}',
+                    'protocol=${extension.protocol}',
                     if (extension.webEntry != null) 'web=${extension.webEntry}',
                     if (extension.capabilities.isNotEmpty)
                       'caps=${extension.capabilities.join(',')}',
@@ -530,6 +526,7 @@ class _ManagedExtension {
     required this.path,
     required this.enabled,
     required this.filetypes,
+    required this.extensionType,
     required this.uiMode,
     required this.protocol,
     required this.capabilities,
@@ -546,6 +543,7 @@ class _ManagedExtension {
   final String? entry;
   final String? webEntry;
   final List<String> filetypes;
+  final String extensionType;
   final String uiMode;
   final String protocol;
   final List<String> capabilities;
@@ -560,6 +558,7 @@ class _ManagedExtension {
     String? entry,
     String? webEntry,
     List<String>? filetypes,
+    String? extensionType,
     String? uiMode,
     String? protocol,
     List<String>? capabilities,
@@ -574,6 +573,7 @@ class _ManagedExtension {
       entry: entry ?? this.entry,
       webEntry: webEntry ?? this.webEntry,
       filetypes: filetypes ?? this.filetypes,
+      extensionType: extensionType ?? this.extensionType,
       uiMode: uiMode ?? this.uiMode,
       protocol: protocol ?? this.protocol,
       capabilities: capabilities ?? this.capabilities,

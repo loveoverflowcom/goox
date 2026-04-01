@@ -88,8 +88,7 @@ class ActiveExtensionInfo {
   );
   bool get hasErpCapability =>
       rendering && hasWasmEntry && hasDocumentRendering;
-  bool get hasWebViewCapability =>
-      rendering && hasWebViewUi && hasDocumentRendering && hasWebEntry;
+  bool get hasWebViewCapability => rendering && hasWebViewUi && hasWebEntry;
   bool get hasWebViewUi => uiMode == 'webview';
   bool get hasCanvasUi => uiMode == 'canvas' || uiMode == 'native';
 
@@ -198,6 +197,46 @@ class LspDiagnostic {
 }
 
 @immutable
+class LanguageServerPosition {
+  const LanguageServerPosition({required this.line, required this.character});
+
+  final int line;
+  final int character;
+}
+
+@immutable
+class LanguageServerRange {
+  const LanguageServerRange({required this.start, required this.end});
+
+  final LanguageServerPosition start;
+  final LanguageServerPosition end;
+}
+
+@immutable
+class LanguageServerLocation {
+  const LanguageServerLocation({required this.uri, required this.range});
+
+  final String uri;
+  final LanguageServerRange range;
+}
+
+@immutable
+class LanguageServerHover {
+  const LanguageServerHover({required this.contents, this.range});
+
+  final String contents;
+  final LanguageServerRange? range;
+}
+
+@immutable
+class LanguageServerDocumentHighlight {
+  const LanguageServerDocumentHighlight({required this.range, this.kind});
+
+  final LanguageServerRange range;
+  final int? kind;
+}
+
+@immutable
 class EditorViewState {
   const EditorViewState({
     required this.revision,
@@ -216,6 +255,8 @@ class EditorViewState {
     required this.activeExtension,
     required this.lspStatus,
     required this.lspDiagnostics,
+    this.lspHighlights = const [],
+    this.lspHover,
   });
 
   EditorViewState copyWith({
@@ -235,6 +276,8 @@ class EditorViewState {
     ActiveExtensionInfo? activeExtension,
     String? lspStatus,
     List<LspDiagnostic>? lspDiagnostics,
+    List<LanguageServerDocumentHighlight>? lspHighlights,
+    LanguageServerHover? lspHover,
   }) {
     return EditorViewState(
       revision: revision ?? this.revision,
@@ -253,6 +296,8 @@ class EditorViewState {
       activeExtension: activeExtension ?? this.activeExtension,
       lspStatus: lspStatus ?? this.lspStatus,
       lspDiagnostics: lspDiagnostics ?? this.lspDiagnostics,
+      lspHighlights: lspHighlights ?? this.lspHighlights,
+      lspHover: lspHover ?? this.lspHover,
     );
   }
 
@@ -273,6 +318,8 @@ class EditorViewState {
     activeExtension: null,
     lspStatus: 'inactive',
     lspDiagnostics: [],
+    lspHighlights: [],
+    lspHover: null,
   );
 
   final int revision;
@@ -291,4 +338,6 @@ class EditorViewState {
   final ActiveExtensionInfo? activeExtension;
   final String lspStatus;
   final List<LspDiagnostic> lspDiagnostics;
+  final List<LanguageServerDocumentHighlight> lspHighlights;
+  final LanguageServerHover? lspHover;
 }

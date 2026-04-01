@@ -18,19 +18,13 @@ class RecentFolder {
   @Property(type: PropertyType.date)
   DateTime lastOpenedAt;
 
-  RecentFolder({
-    this.id = 0,
-    required this.path,
-    required this.lastOpenedAt,
-  });
+  RecentFolder({this.id = 0, required this.path, required this.lastOpenedAt});
 }
-
-
 
 class PersistenceService {
   late final Store store;
   late final Box<RecentFolder> recentFolderBox;
-  
+
   late final File _settingsFile;
   AppSettings _cachedSettings = const AppSettings();
 
@@ -45,8 +39,22 @@ class PersistenceService {
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
-    
-    store = await openStore(directory: dbPath);
+
+    try {
+      store = await openStore(directory: dbPath);
+    } catch (error) {
+      final message = error.toString();
+      if (!message.contains(
+        'another store is still open using the same path',
+      )) {
+        rethrow;
+      }
+
+      // Hot restart can leave the native ObjectBox store alive while Dart
+      // re-enters main(), so attach to the existing store instead of opening a
+      // second instance for the same directory.
+      store = Store.attach(getObjectBoxModel(), dbPath);
+    }
     recentFolderBox = store.box<RecentFolder>();
 
     // Load settings from JSON
@@ -87,7 +95,9 @@ class PersistenceService {
 
   void addOrUpdateRecentFolder(String path) {
     // Check if it exists
-    final query = recentFolderBox.query(RecentFolder_.path.equals(path)).build();
+    final query = recentFolderBox
+        .query(RecentFolder_.path.equals(path))
+        .build();
     final existing = query.findFirst();
     query.close();
 
@@ -95,7 +105,9 @@ class PersistenceService {
       existing.lastOpenedAt = DateTime.now();
       recentFolderBox.put(existing);
     } else {
-      recentFolderBox.put(RecentFolder(path: path, lastOpenedAt: DateTime.now()));
+      recentFolderBox.put(
+        RecentFolder(path: path, lastOpenedAt: DateTime.now()),
+      );
     }
 
     _enforceRecentFoldersLimit(100);

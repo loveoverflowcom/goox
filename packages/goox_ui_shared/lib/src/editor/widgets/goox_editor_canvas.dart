@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
 
@@ -18,21 +20,30 @@ class GooxEditorTextChange {
 class GooxCodeController extends TextEditingController {
   GooxCodeController({super.text, String? languageId})
     : _languageId = _normalizeLanguageId(languageId);
-
+ 
   String? _languageId;
-
+  List<LanguageServerDocumentHighlight> _lspHighlights = [];
+ 
   String? get languageId => _languageId;
+ 
+  void updateLspHighlights(List<LanguageServerDocumentHighlight> value) {
+    if (listEquals(_lspHighlights, value)) {
+      return;
+    }
+    _lspHighlights = value;
+    notifyListeners();
+  }
 
   void updateLanguageId(String? value) {
     final normalized = _normalizeLanguageId(value);
     if (normalized == _languageId) {
       return;
     }
-
+ 
     _languageId = normalized;
     notifyListeners();
   }
-
+ 
   @override
   TextSpan buildTextSpan({
     required BuildContext context,
@@ -42,12 +53,22 @@ class GooxCodeController extends TextEditingController {
     final baseStyle =
         style ??
         DefaultTextStyle.of(context).style.copyWith(fontFamily: 'monospace');
-    final spans = _GooxSyntaxHighlighter(
+    var spans = _GooxSyntaxHighlighter(
       languageId: _languageId,
       theme: Theme.of(context),
       baseStyle: baseStyle,
     ).highlight(text);
 
+    if (_lspHighlights.isNotEmpty) {
+      spans = _applyHighlights(
+        spans,
+        text,
+        _lspHighlights,
+        theme: Theme.of(context),
+        baseTextStyle: baseStyle,
+      );
+    }
+ 
     final root = TextSpan(style: baseStyle, children: spans);
     if (!withComposing || !value.composing.isValid) {
       return root;
@@ -131,6 +152,73 @@ class GooxCodeController extends TextEditingController {
 
     return TextSpan(style: root.style, children: children);
   }
+
+  List<TextSpan> _applyHighlights(
+    List<TextSpan> spans,
+    String text,
+    List<LanguageServerDocumentHighlight> highlights, {
+    required ThemeData theme,
+    required TextStyle baseTextStyle,
+  }) {
+    if (highlights.isEmpty) return spans;
+
+    final highlightRanges = highlights.map((h) {
+      final start = _getOffset(text, h.range.start.line, h.range.start.character);
+      final end = _getOffset(text, h.range.end.line, h.range.end.character);
+      return TextRange(start: start, end: end);
+    }).toList();
+
+    final result = <TextSpan>[];
+    var currentOffset = 0;
+
+    for (final span in spans) {
+      final spanText = span.text ?? '';
+      if (spanText.isEmpty) {
+        result.add(span);
+        continue;
+      }
+
+      final spanStart = currentOffset;
+      final spanEnd = currentOffset + spanText.length;
+
+      // Check if this span intersects with any highlight
+      bool intersected = false;
+      for (final range in highlightRanges) {
+        if (range.start < spanEnd && range.end > spanStart) {
+          // Intersection found. For simplicity, we'll just style the whole span if it intersects.
+          // In a better implementation, we'd split the span.
+          result.add(
+            TextSpan(
+              text: spanText,
+              style: (span.style ?? baseTextStyle).copyWith(
+                backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                decoration: TextDecoration.underline,
+                decorationColor: theme.colorScheme.primary,
+              ),
+            ),
+          );
+          intersected = true;
+          break;
+        }
+      }
+
+      if (!intersected) {
+        result.add(span);
+      }
+      currentOffset = spanEnd;
+    }
+
+    return result;
+  }
+
+  int _getOffset(String text, int line, int character) {
+    final lines = text.split('\n');
+    var offset = 0;
+    for (var i = 0; i < line && i < lines.length; i++) {
+      offset += lines[i].length + 1;
+    }
+    return offset + character;
+  }
 }
 
 class GooxEditorCanvas extends StatefulWidget {
@@ -143,6 +231,11 @@ class GooxEditorCanvas extends StatefulWidget {
     this.onTextChanged,
     this.onCursorOffsetChanged,
     this.onSyntaxErrorChanged,
+    this.onGoToDefinition,
+    this.onGoToDeclaration,
+    this.onGoToImplementation,
+    this.onFindReferences,
+    this.onHover,
     this.autofocus = false,
     this.fontSize = 16.0,
     this.fontWeight = FontWeight.normal,
@@ -155,6 +248,11 @@ class GooxEditorCanvas extends StatefulWidget {
   final Future<void> Function(GooxEditorTextChange change)? onTextChanged;
   final ValueChanged<int>? onCursorOffsetChanged;
   final Future<void> Function(String? syntaxError)? onSyntaxErrorChanged;
+  final VoidCallback? onGoToDefinition;
+  final VoidCallback? onGoToDeclaration;
+  final VoidCallback? onGoToImplementation;
+  final VoidCallback? onFindReferences;
+  final ValueChanged<int>? onHover;
   final bool autofocus;
   final double fontSize;
   final FontWeight fontWeight;
@@ -172,7 +270,10 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
 
   final ScrollController _textScrollController = ScrollController();
   final ScrollController _lineScrollController = ScrollController();
-
+ 
+  Timer? _hoverTimer;
+  Offset? _lastMousePosition;
+ 
   @override
   void initState() {
     super.initState();
@@ -205,7 +306,8 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
     }
 
     _textController.updateLanguageId(widget.state.activeExtension?.languageId);
-
+    _textController.updateLspHighlights(widget.state.lspHighlights);
+ 
     final textChanged = _textController.text != widget.state.documentText;
     final selectionOutOfBounds =
         _textController.selection.start > _textController.text.length ||
@@ -377,96 +479,215 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
               : theme.colorScheme.outlineVariant.withValues(alpha: 0.1),
         ),
       ),
-      child: Listener(
-        onPointerDown: (event) {
-          final callback = widget.onTapDown;
-          if (callback == null) return;
-          callback(
-            TapDownDetails(
-              globalPosition: event.position,
-              localPosition: event.localPosition,
-              kind: event.kind,
-            ),
-            context,
-          );
-        },
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 48,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerLow,
-                border: Border(
-                  right: BorderSide(
-                    color: theme.colorScheme.outlineVariant.withValues(
-                      alpha: 0.2,
-                    ),
-                    width: 1,
-                  ),
+      child: Stack(
+        children: [
+          Listener(
+            onPointerDown: (event) {
+              final callback = widget.onTapDown;
+              if (callback == null) return;
+              callback(
+                TapDownDetails(
+                  globalPosition: event.position,
+                  localPosition: event.localPosition,
+                  kind: event.kind,
                 ),
-              ),
-              child: ListView.builder(
-                controller: _lineScrollController,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                itemCount: lineCount,
-                itemBuilder: (context, index) {
-                  return Container(
-                    height: lineHeight,
-                    alignment: Alignment.topRight,
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Text(
-                      '${index + 1}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.6,
+                context,
+              );
+            },
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerLow,
+                    border: Border(
+                      right: BorderSide(
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.2,
                         ),
-                        fontFamily: 'monospace',
-                        fontSize: widget.fontSize * 0.75, // Scaled with main font
-                        height: 1.35 * (widget.fontSize / (widget.fontSize * 0.75)),
+                        width: 1,
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  left: 8,
-                  right: 16,
-                  top: 16,
-                  bottom: 16,
-                ),
-                child: TextField(
-                  controller: _textController,
-                  scrollController: _textScrollController,
-                  focusNode: widget.focusNode,
-                  autofocus: widget.autofocus,
-                  onTap: widget.onTap,
-                  maxLines: null,
-                  expands: true,
-                  keyboardType: TextInputType.multiline,
-                  textInputAction: TextInputAction.newline,
-                  cursorColor: theme.colorScheme.primary,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                    fontFamily: 'monospace',
-                    fontSize: widget.fontSize,
-                    fontWeight: widget.fontWeight,
-                    height: 1.35,
                   ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    isCollapsed: true,
+                  child: ListView.builder(
+                    controller: _lineScrollController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    itemCount: lineCount,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        height: lineHeight,
+                        alignment: Alignment.topRight,
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Text(
+                          '${index + 1}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.6,
+                            ),
+                            fontFamily: 'monospace',
+                            fontSize: widget.fontSize * 0.75, // Scaled with main font
+                            height: 1.35 * (widget.fontSize / (widget.fontSize * 0.75)),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: 8,
+                      right: 16,
+                      top: 16,
+                      bottom: 16,
+                    ),
+                    child: MouseRegion(
+                      onHover: _handleMouseMove,
+                      onExit: (_) {
+                        _hoverTimer?.cancel();
+                        _lastMousePosition = null;
+                        widget.onHover?.call(-1); // Signal to clear hover
+                      },
+                      child: TextField(
+                        controller: _textController,
+                        scrollController: _textScrollController,
+                        focusNode: widget.focusNode,
+                        autofocus: widget.autofocus,
+                        onTap: widget.onTap,
+                        maxLines: null,
+                        expands: true,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        cursorColor: theme.colorScheme.primary,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                          fontFamily: 'monospace',
+                          fontSize: widget.fontSize,
+                          fontWeight: widget.fontWeight,
+                          height: 1.35,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isCollapsed: true,
+                        ),
+                        contextMenuBuilder: (context, editableTextState) {
+                          return _buildContextMenu(context, editableTextState);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (widget.state.lspHover != null && _lastMousePosition != null)
+            Positioned(
+              left: _lastMousePosition!.dx + 10,
+              top: _lastMousePosition!.dy + 10,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    widget.state.lspHover!.contents,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
+    );
+  }
+
+  void _handleMouseMove(PointerHoverEvent event) {
+    if (widget.onHover == null) return;
+ 
+    _lastMousePosition = event.localPosition;
+    _hoverTimer?.cancel();
+    _hoverTimer = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted || _lastMousePosition == null) return;
+      
+      final theme = Theme.of(context);
+      final textStyle = theme.textTheme.bodyLarge?.copyWith(
+        fontFamily: 'monospace',
+        fontSize: widget.fontSize,
+        height: 1.35,
+      );
+
+      final textPainter = TextPainter(
+        text: TextSpan(text: _textController.text, style: textStyle),
+        textDirection: TextDirection.ltr,
+      );
+
+      // Add padding/offset correction if needed
+      final localPos = _lastMousePosition!;
+      final correctedPos = Offset(
+        localPos.dx,
+        localPos.dy + _textScrollController.offset,
+      );
+
+      textPainter.layout(maxWidth: double.infinity);
+      final textPosition = textPainter.getPositionForOffset(correctedPos);
+      final offset = textPosition.offset;
+
+      if (offset >= 0 && offset < _textController.text.length) {
+        widget.onHover?.call(offset);
+      }
+    });
+  }
+
+  Widget _buildContextMenu(
+    BuildContext context,
+    EditableTextState editableTextState,
+  ) {
+    final textSelectionToolbarItems = editableTextState.contextMenuButtonItems;
+
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      anchors: editableTextState.contextMenuAnchors,
+      buttonItems: [
+        ...textSelectionToolbarItems,
+        if (widget.state.lspStatus != 'inactive') ...[
+          ContextMenuButtonItem(
+            onPressed: () {
+              editableTextState.hideToolbar();
+              widget.onGoToDefinition?.call();
+            },
+            label: 'Go to Definition',
+          ),
+          ContextMenuButtonItem(
+            onPressed: () {
+              editableTextState.hideToolbar();
+              widget.onGoToDeclaration?.call();
+            },
+            label: 'Go to Declaration',
+          ),
+          ContextMenuButtonItem(
+            onPressed: () {
+              editableTextState.hideToolbar();
+              widget.onGoToImplementation?.call();
+            },
+            label: 'Go to Implementation',
+          ),
+          ContextMenuButtonItem(
+            onPressed: () {
+              editableTextState.hideToolbar();
+              widget.onFindReferences?.call();
+            },
+            label: 'Find References',
+          ),
+        ],
+      ],
     );
   }
 }
