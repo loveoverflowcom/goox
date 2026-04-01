@@ -109,6 +109,8 @@ class _EditorPageState extends State<EditorPage> {
         workspaceRoot: workspaceRoot,
       );
 
+      await _applyPendingNavigationTarget(filePath);
+
       if (mounted) {
         appState.markFileDirty(filePath, false);
       }
@@ -191,18 +193,31 @@ class _EditorPageState extends State<EditorPage> {
     final location = locations.first;
     final uri = Uri.parse(location.uri);
     final filePath = uri.toFilePath();
+    final line = location.range.start.line + 1;
+    final column = location.range.start.character + 1;
 
     final appState = context.read<AppState>();
     if (filePath != _loadedFilePath) {
-      appState.openFile(filePath);
-      // We might need a way to pass the target position to the newly opened file.
-      // For now, let's just open it.
-    } else {
-      _controller.moveCursorToPosition(
-        location.range.start.line + 1,
-        location.range.start.character + 1,
+      appState.setPendingNavigationTarget(
+        filePath: filePath,
+        line: line,
+        column: column,
       );
+      appState.openFile(filePath);
+    } else {
+      _controller.moveCursorToPosition(line, column);
     }
+  }
+
+  Future<void> _applyPendingNavigationTarget(String currentFilePath) async {
+    final appState = context.read<AppState>();
+    final target = appState.pendingNavigationTarget;
+    if (target == null || target.filePath != currentFilePath) {
+      return;
+    }
+
+    appState.consumePendingNavigationTarget();
+    await _controller.moveCursorToPosition(target.line, target.column);
   }
 
   Future<void> _handleEditorTextChanged(GooxEditorTextChange change) async {

@@ -5,6 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
 
+import 'language_definition.dart';
+
 class GooxEditorTextChange {
   const GooxEditorTextChange({
     required this.start,
@@ -20,12 +22,12 @@ class GooxEditorTextChange {
 class GooxCodeController extends TextEditingController {
   GooxCodeController({super.text, String? languageId})
     : _languageId = _normalizeLanguageId(languageId);
- 
+
   String? _languageId;
   List<LanguageServerDocumentHighlight> _lspHighlights = [];
- 
+
   String? get languageId => _languageId;
- 
+
   void updateLspHighlights(List<LanguageServerDocumentHighlight> value) {
     if (listEquals(_lspHighlights, value)) {
       return;
@@ -39,11 +41,11 @@ class GooxCodeController extends TextEditingController {
     if (normalized == _languageId) {
       return;
     }
- 
+
     _languageId = normalized;
     notifyListeners();
   }
- 
+
   @override
   TextSpan buildTextSpan({
     required BuildContext context,
@@ -68,7 +70,7 @@ class GooxCodeController extends TextEditingController {
         baseTextStyle: baseStyle,
       );
     }
- 
+
     final root = TextSpan(style: baseStyle, children: spans);
     if (!withComposing || !value.composing.isValid) {
       return root;
@@ -163,7 +165,11 @@ class GooxCodeController extends TextEditingController {
     if (highlights.isEmpty) return spans;
 
     final highlightRanges = highlights.map((h) {
-      final start = _getOffset(text, h.range.start.line, h.range.start.character);
+      final start = _getOffset(
+        text,
+        h.range.start.line,
+        h.range.start.character,
+      );
       final end = _getOffset(text, h.range.end.line, h.range.end.character);
       return TextRange(start: start, end: end);
     }).toList();
@@ -191,7 +197,9 @@ class GooxCodeController extends TextEditingController {
             TextSpan(
               text: spanText,
               style: (span.style ?? baseTextStyle).copyWith(
-                backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                backgroundColor: theme.colorScheme.primaryContainer.withValues(
+                  alpha: 0.3,
+                ),
                 decoration: TextDecoration.underline,
                 decorationColor: theme.colorScheme.primary,
               ),
@@ -270,10 +278,12 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
 
   final ScrollController _textScrollController = ScrollController();
   final ScrollController _lineScrollController = ScrollController();
- 
+
   Timer? _hoverTimer;
   Offset? _lastMousePosition;
- 
+  int? _pendingHoverOffset;
+  int? _lastDispatchedHoverOffset;
+
   @override
   void initState() {
     super.initState();
@@ -307,7 +317,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
 
     _textController.updateLanguageId(widget.state.activeExtension?.languageId);
     _textController.updateLspHighlights(widget.state.lspHighlights);
- 
+
     final textChanged = _textController.text != widget.state.documentText;
     final selectionOutOfBounds =
         _textController.selection.start > _textController.text.length ||
@@ -523,12 +533,14 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
                         child: Text(
                           '${index + 1}',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant.withValues(
-                              alpha: 0.6,
-                            ),
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.6),
                             fontFamily: 'monospace',
-                            fontSize: widget.fontSize * 0.75, // Scaled with main font
-                            height: 1.35 * (widget.fontSize / (widget.fontSize * 0.75)),
+                            fontSize:
+                                widget.fontSize * 0.75, // Scaled with main font
+                            height:
+                                1.35 *
+                                (widget.fontSize / (widget.fontSize * 0.75)),
                           ),
                         ),
                       );
@@ -544,10 +556,13 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
                       bottom: 16,
                     ),
                     child: MouseRegion(
+                      opaque: false,
                       onHover: _handleMouseMove,
                       onExit: (_) {
                         _hoverTimer?.cancel();
                         _lastMousePosition = null;
+                        _pendingHoverOffset = null;
+                        _lastDispatchedHoverOffset = null;
                         widget.onHover?.call(-1); // Signal to clear hover
                       },
                       child: TextField(
@@ -586,20 +601,22 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
             Positioned(
               left: _lastMousePosition!.dx + 10,
               top: _lastMousePosition!.dy + 10,
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(4),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    widget.state.lspHover!.contents,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontFamily: 'monospace',
+              child: IgnorePointer(
+                child: Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      widget.state.lspHover!.contents,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ),
                 ),
@@ -612,39 +629,56 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
 
   void _handleMouseMove(PointerHoverEvent event) {
     if (widget.onHover == null) return;
- 
+
     _lastMousePosition = event.localPosition;
+    final offset = _resolveHoverOffset(event.localPosition);
+    if (offset == null) {
+      _hoverTimer?.cancel();
+      _pendingHoverOffset = null;
+      return;
+    }
+
+    if (_pendingHoverOffset == offset) {
+      return;
+    }
+
+    _pendingHoverOffset = offset;
     _hoverTimer?.cancel();
-    _hoverTimer = Timer(const Duration(milliseconds: 400), () {
-      if (!mounted || _lastMousePosition == null) return;
-      
-      final theme = Theme.of(context);
-      final textStyle = theme.textTheme.bodyLarge?.copyWith(
-        fontFamily: 'monospace',
-        fontSize: widget.fontSize,
-        height: 1.35,
-      );
+    _hoverTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted || _pendingHoverOffset != offset) return;
+      if (_lastDispatchedHoverOffset == offset) return;
 
-      final textPainter = TextPainter(
-        text: TextSpan(text: _textController.text, style: textStyle),
-        textDirection: TextDirection.ltr,
-      );
-
-      // Add padding/offset correction if needed
-      final localPos = _lastMousePosition!;
-      final correctedPos = Offset(
-        localPos.dx,
-        localPos.dy + _textScrollController.offset,
-      );
-
-      textPainter.layout(maxWidth: double.infinity);
-      final textPosition = textPainter.getPositionForOffset(correctedPos);
-      final offset = textPosition.offset;
-
-      if (offset >= 0 && offset < _textController.text.length) {
-        widget.onHover?.call(offset);
-      }
+      _lastDispatchedHoverOffset = offset;
+      widget.onHover?.call(offset);
     });
+  }
+
+  int? _resolveHoverOffset(Offset localPosition) {
+    final theme = Theme.of(context);
+    final textStyle = theme.textTheme.bodyLarge?.copyWith(
+      fontFamily: 'monospace',
+      fontSize: widget.fontSize,
+      height: 1.35,
+    );
+
+    final textPainter = TextPainter(
+      text: TextSpan(text: _textController.text, style: textStyle),
+      textDirection: TextDirection.ltr,
+    );
+
+    final correctedPos = Offset(
+      localPosition.dx,
+      localPosition.dy + _textScrollController.offset,
+    );
+
+    textPainter.layout(maxWidth: double.infinity);
+    final textPosition = textPainter.getPositionForOffset(correctedPos);
+    final offset = textPosition.offset;
+    if (offset < 0 || offset >= _textController.text.length) {
+      return null;
+    }
+
+    return offset;
   }
 
   Widget _buildContextMenu(
@@ -697,11 +731,86 @@ class _GooxSyntaxHighlighter {
     required this.languageId,
     required this.theme,
     required this.baseStyle,
-  });
+  }) : _definition =
+           LanguageDefinitionRegistry.getDefinition(languageId) ??
+           LanguageDefinitionRegistry.fallback;
 
   final String? languageId;
   final ThemeData theme;
   final TextStyle baseStyle;
+  final LanguageDefinition _definition;
+
+  // ── VS Code–inspired semantic colors ──────────────────────────────────
+
+  /// Keywords: if, for, class, return — bold, blue/purple
+  TextStyle get _keywordStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFFC586C0) // VS Code dark: magenta-pink
+            : const Color(0xFF0000FF), // VS Code light: blue
+        fontWeight: FontWeight.w700,
+      );
+
+  /// Built-in types: int, String, bool, List — teal/cyan
+  TextStyle get _typeStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFF4EC9B0) // VS Code dark: teal
+            : const Color(0xFF267F99), // VS Code light: dark teal
+      );
+
+  /// Constants: true, false, null — orange
+  TextStyle get _constantStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFF569CD6) // VS Code dark: blue
+            : const Color(0xFF0000FF), // VS Code light: blue
+        fontWeight: FontWeight.w700,
+      );
+
+  /// Built-in functions: print, len, println — yellow/gold
+  TextStyle get _builtinFuncStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFFDCDCAA) // VS Code dark: yellow
+            : const Color(0xFF795E26), // VS Code light: dark gold
+      );
+
+  /// Comments — grey, italic
+  TextStyle get _commentStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFF6A9955) // VS Code dark: green
+            : const Color(0xFF008000), // VS Code light: green
+        fontStyle: FontStyle.italic,
+      );
+
+  /// Strings — orange-brown
+  TextStyle get _stringStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFFCE9178) // VS Code dark: light brown
+            : const Color(0xFFA31515), // VS Code light: dark red
+      );
+
+  /// Numbers — light green
+  TextStyle get _numberStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFFB5CEA8) // VS Code dark: pale green
+            : const Color(0xFF098658), // VS Code light: dark green
+      );
+
+  /// Annotations/decorators (@override, @deprecated)
+  TextStyle get _annotationStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFFDCDCAA) // VS Code dark: yellow
+            : const Color(0xFF795E26), // VS Code light: dark gold
+      );
+
+  /// Operators and punctuation
+  TextStyle get _punctuationStyle => baseStyle.copyWith(
+        color: _isDark
+            ? const Color(0xFFD4D4D4) // VS Code dark: light grey
+            : const Color(0xFF000000), // VS Code light: black
+      );
+
+  bool get _isDark => theme.brightness == Brightness.dark;
+
+  // ── Main highlight method ─────────────────────────────────────────────
 
   List<TextSpan> highlight(String text) {
     if (text.isEmpty) {
@@ -720,92 +829,136 @@ class _GooxSyntaxHighlighter {
         continue;
       }
 
-      final commentStart = _commentStart(text, index);
-      if (commentStart != null) {
-        spans.add(
-          TextSpan(
-            text: commentStart.text,
-            style: baseStyle.copyWith(color: theme.colorScheme.outline),
-          ),
-        );
-        index = commentStart.end;
+      // ── Comments ──
+      final commentMatch = _commentStart(text, index);
+      if (commentMatch != null) {
+        spans.add(TextSpan(text: commentMatch.text, style: _commentStyle));
+        index = commentMatch.end;
         continue;
       }
 
-      final stringStart = _stringStart(text, index);
-      if (stringStart != null) {
-        spans.add(
-          TextSpan(
-            text: stringStart.text,
-            style: baseStyle.copyWith(color: theme.colorScheme.tertiary),
-          ),
-        );
-        index = stringStart.end;
+      // ── Strings ──
+      final stringMatch = _stringStart(text, index);
+      if (stringMatch != null) {
+        spans.add(TextSpan(text: stringMatch.text, style: _stringStyle));
+        index = stringMatch.end;
         continue;
       }
 
+      // ── Annotations (@override, @deprecated) ──
+      final annotationPrefix = _definition.annotationPrefix;
+      if (annotationPrefix != null && current == annotationPrefix) {
+        if (index + 1 < text.length && _isIdentifierStart(text[index + 1])) {
+          final identEnd = _consumeIdentifier(text, index + 1);
+          final annotation = text.substring(index, identEnd);
+          spans.add(TextSpan(text: annotation, style: _annotationStyle));
+          index = identEnd;
+          continue;
+        }
+      }
+
+      // ── Numbers ──
       if (_isDigit(current)) {
         final numberEnd = _consumeNumber(text, index);
         spans.add(
           TextSpan(
             text: text.substring(index, numberEnd),
-            style: baseStyle.copyWith(color: theme.colorScheme.secondary),
+            style: _numberStyle,
           ),
         );
         index = numberEnd;
         continue;
       }
 
+      // ── Identifiers & Keywords ──
       if (_isIdentifierStart(current)) {
         final identifierEnd = _consumeIdentifier(text, index);
         final identifier = text.substring(index, identifierEnd);
         spans.add(
           TextSpan(
             text: identifier,
-            style: _keywordStyleFor(identifier) ?? baseStyle,
+            style: _styleForIdentifier(identifier),
           ),
         );
         index = identifierEnd;
         continue;
       }
 
-      spans.add(TextSpan(text: current, style: baseStyle));
+      // ── Operators & punctuation ──
+      if (_isOperator(current)) {
+        spans.add(TextSpan(text: current, style: _punctuationStyle));
+      } else {
+        spans.add(TextSpan(text: current, style: baseStyle));
+      }
       index++;
     }
 
     return spans;
   }
 
-  TextStyle? _keywordStyleFor(String identifier) {
-    final keywords = _keywordsForLanguage(languageId);
-    if (!keywords.contains(identifier)) {
-      return null;
+  // ── Token classification ──────────────────────────────────────────────
+
+  TextStyle _styleForIdentifier(String identifier) {
+    // Keywords: highest priority
+    if (_definition.keywords.contains(identifier)) {
+      return _keywordStyle;
     }
 
-    return baseStyle.copyWith(
-      color: theme.colorScheme.primary,
-      fontWeight: FontWeight.w600,
-    );
+    // Built-in constants (true, false, null)
+    if (_definition.builtinConstants.contains(identifier)) {
+      return _constantStyle;
+    }
+
+    // Built-in types (int, String, bool)
+    if (_definition.builtinTypes.contains(identifier)) {
+      return _typeStyle;
+    }
+
+    // Built-in functions (print, len)
+    if (_definition.builtinFunctions.contains(identifier)) {
+      return _builtinFuncStyle;
+    }
+
+    // Heuristic: UpperCamelCase → likely a type/class name
+    if (identifier.length > 1 &&
+        identifier[0].toUpperCase() == identifier[0] &&
+        identifier[0].toLowerCase() != identifier[0] &&
+        !identifier.contains('_')) {
+      return _typeStyle;
+    }
+
+    return baseStyle;
   }
 
+  bool _isOperator(String char) {
+    return '=<>!&|+-*/%^~?:;,.(){}[]'.contains(char);
+  }
+
+  // ── Comment parsing ───────────────────────────────────────────────────
+
   _MatchSpan? _commentStart(String text, int index) {
-    if (_isPython()) {
-      if (text[index] == '#') {
-        return _MatchSpan(
-          text.substring(index, _lineEnd(text, index)),
-          _lineEnd(text, index),
-        );
-      }
+    // Hash comments (#)
+    if (_definition.hashComment && text[index] == '#') {
+      final end = _lineEnd(text, index);
+      return _MatchSpan(text.substring(index, end), end);
     }
 
-    if (_isJavaScript()) {
-      if (_startsWith(text, index, '//')) {
-        final end = _lineEnd(text, index);
-        return _MatchSpan(text.substring(index, end), end);
-      }
+    // Line comments (// etc.)
+    final linePrefix = _definition.lineCommentPrefix;
+    if (linePrefix != null && _startsWith(text, index, linePrefix)) {
+      final end = _lineEnd(text, index);
+      return _MatchSpan(text.substring(index, end), end);
+    }
 
-      if (_startsWith(text, index, '/*')) {
-        final end = _findBlockCommentEnd(text, index + 2);
+    // Block comments (/* */ or <!-- --> etc.)
+    if (_definition.hasBlockComment) {
+      final blockStart = _definition.blockCommentStart!;
+      if (_startsWith(text, index, blockStart)) {
+        final end = _findBlockCommentEnd(
+          text,
+          index + blockStart.length,
+          _definition.blockCommentEnd!,
+        );
         return _MatchSpan(text.substring(index, end), end);
       }
     }
@@ -813,48 +966,79 @@ class _GooxSyntaxHighlighter {
     return null;
   }
 
+  // ── String parsing ────────────────────────────────────────────────────
+
   _MatchSpan? _stringStart(String text, int index) {
-    if (_isPython() && _startsWith(text, index, "'''")) {
-      final end = _findClosingTripleQuote(text, index + 3, "'''");
+    // Triple-quote delimiters (must check before single-char delimiters)
+    for (final tripleQuote in _definition.tripleQuoteDelimiters) {
+      if (_startsWith(text, index, tripleQuote)) {
+        final end = _findClosingTripleQuote(
+          text,
+          index + tripleQuote.length,
+          tripleQuote,
+        );
+        return _MatchSpan(text.substring(index, end), end);
+      }
+    }
+
+    // Template string delimiter (e.g. backtick for JS/TS/Go)
+    final templateDelim = _definition.templateStringDelimiter;
+    if (templateDelim != null && text[index] == templateDelim) {
+      final end = _findStringEnd(
+        text,
+        index + 1,
+        templateDelim,
+        allowMultiline: true,
+      );
       return _MatchSpan(text.substring(index, end), end);
     }
 
-    if (_isPython() && _startsWith(text, index, '"""')) {
-      final end = _findClosingTripleQuote(text, index + 3, '"""');
-      return _MatchSpan(text.substring(index, end), end);
-    }
-
+    // Standard string delimiters
     final current = text[index];
-    if (current != '\'' &&
-        current != '"' &&
-        !(current == '`' && _isJavaScript())) {
+    if (!_definition.stringDelimiters.contains(current)) {
       return null;
     }
 
-    final quote = current;
-    final allowMultiline = _isJavaScript() && quote == '`';
-    final end = _findStringEnd(
-      text,
-      index + 1,
-      quote,
-      allowMultiline: allowMultiline,
-    );
+    final end = _findStringEnd(text, index + 1, current, allowMultiline: false);
     return _MatchSpan(text.substring(index, end), end);
   }
 
+  // ── Utility methods ───────────────────────────────────────────────────
+
   int _consumeNumber(String text, int start) {
     var index = start;
+    // Hex: 0x...
+    if (index + 1 < text.length &&
+        text[index] == '0' &&
+        (text[index + 1] == 'x' || text[index + 1] == 'X')) {
+      index += 2;
+      while (index < text.length && _isHexDigit(text[index])) {
+        index++;
+      }
+      return index;
+    }
+    // Decimal
     while (index < text.length && _isDigit(text[index])) {
       index++;
     }
-
     if (index < text.length && text[index] == '.') {
       index++;
       while (index < text.length && _isDigit(text[index])) {
         index++;
       }
     }
-
+    // Exponent: e/E
+    if (index < text.length &&
+        (text[index] == 'e' || text[index] == 'E')) {
+      index++;
+      if (index < text.length &&
+          (text[index] == '+' || text[index] == '-')) {
+        index++;
+      }
+      while (index < text.length && _isDigit(text[index])) {
+        index++;
+      }
+    }
     return index;
   }
 
@@ -871,9 +1055,9 @@ class _GooxSyntaxHighlighter {
     return newline == -1 ? text.length : newline;
   }
 
-  int _findBlockCommentEnd(String text, int index) {
-    final end = text.indexOf('*/', index);
-    return end == -1 ? text.length : end + 2;
+  int _findBlockCommentEnd(String text, int index, String endToken) {
+    final end = text.indexOf(endToken, index);
+    return end == -1 ? text.length : end + endToken.length;
   }
 
   int _findClosingTripleQuote(String text, int index, String quote) {
@@ -922,111 +1106,16 @@ class _GooxSyntaxHighlighter {
         text.substring(index, index + pattern.length) == pattern;
   }
 
-  bool _isPython() => _normalizedLanguageId == 'python';
-
-  bool _isJavaScript() {
-    final id = _normalizedLanguageId;
-    return id == 'javascript' || id == 'js' || id == 'typescript';
-  }
-
-  String? get _normalizedLanguageId {
-    final id = languageId?.trim().toLowerCase();
-    return (id == null || id.isEmpty) ? null : id;
-  }
-
-  Set<String> _keywordsForLanguage(String? id) {
-    switch (id) {
-      case 'python':
-        return const {
-          'and',
-          'as',
-          'assert',
-          'async',
-          'await',
-          'break',
-          'class',
-          'continue',
-          'def',
-          'del',
-          'elif',
-          'else',
-          'except',
-          'False',
-          'finally',
-          'for',
-          'from',
-          'global',
-          'if',
-          'import',
-          'in',
-          'is',
-          'lambda',
-          'None',
-          'nonlocal',
-          'not',
-          'or',
-          'pass',
-          'raise',
-          'return',
-          'True',
-          'try',
-          'while',
-          'with',
-          'yield',
-        };
-      case 'javascript':
-      case 'js':
-      case 'typescript':
-        return const {
-          'async',
-          'await',
-          'break',
-          'case',
-          'catch',
-          'class',
-          'const',
-          'continue',
-          'debugger',
-          'default',
-          'delete',
-          'do',
-          'else',
-          'export',
-          'extends',
-          'false',
-          'finally',
-          'for',
-          'function',
-          'if',
-          'import',
-          'in',
-          'instanceof',
-          'let',
-          'new',
-          'null',
-          'return',
-          'super',
-          'switch',
-          'this',
-          'throw',
-          'true',
-          'try',
-          'typeof',
-          'undefined',
-          'var',
-          'void',
-          'while',
-          'with',
-          'yield',
-        };
-      default:
-        return const {};
-    }
-  }
-
   bool _isDigit(String char) {
     final code = char.codeUnitAt(0);
     return code >= 48 && code <= 57;
+  }
+
+  bool _isHexDigit(String char) {
+    final code = char.codeUnitAt(0);
+    return (code >= 48 && code <= 57) ||
+        (code >= 65 && code <= 70) ||
+        (code >= 97 && code <= 102);
   }
 
   bool _isIdentifierStart(String char) {

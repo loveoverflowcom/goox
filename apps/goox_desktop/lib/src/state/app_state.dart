@@ -23,10 +23,7 @@ class AppState extends ChangeNotifier {
   }
 
   void setEditorSettings({double? fontSize, FontWeight? fontWeight}) {
-    _settings = _settings.copyWith(
-      fontSize: fontSize,
-      fontWeight: fontWeight,
-    );
+    _settings = _settings.copyWith(fontSize: fontSize, fontWeight: fontWeight);
     _persistence.saveSettings(_settings);
     notifyListeners();
   }
@@ -66,6 +63,9 @@ class AppState extends ChangeNotifier {
   // --- Recent Folders ---
   List<RecentFolder> _recentFolders = [];
   List<RecentFolder> get recentFolders => _recentFolders;
+
+  NavigationTarget? _pendingNavigationTarget;
+  NavigationTarget? get pendingNavigationTarget => _pendingNavigationTarget;
 
   AppState(this._persistence) {
     _settings = _persistence.getSettings();
@@ -184,6 +184,24 @@ class AppState extends ChangeNotifier {
     }
     _activeFile = path;
     notifyListeners();
+  }
+
+  void setPendingNavigationTarget({
+    required String filePath,
+    required int line,
+    required int column,
+  }) {
+    _pendingNavigationTarget = NavigationTarget(
+      filePath: filePath,
+      line: line,
+      column: column,
+    );
+  }
+
+  NavigationTarget? consumePendingNavigationTarget() {
+    final target = _pendingNavigationTarget;
+    _pendingNavigationTarget = null;
+    return target;
   }
 
   void unselectFile() {
@@ -420,4 +438,17 @@ class AppState extends ChangeNotifier {
     _directoryWatcher?.cancel();
     super.dispose();
   }
+}
+
+@immutable
+class NavigationTarget {
+  const NavigationTarget({
+    required this.filePath,
+    required this.line,
+    required this.column,
+  });
+
+  final String filePath;
+  final int line;
+  final int column;
 }

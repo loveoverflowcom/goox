@@ -219,6 +219,7 @@ class ExtensionsViewState extends State<ExtensionsView> {
     final protocol = _asTrimmedString(raw['protocol']) ?? 'erp/1';
     final capabilities = _asStringList(raw['capabilities']);
     final logoPath = _resolveLogoPath(directory.path, raw['logo']);
+    final description = _asTrimmedString(raw['description']);
     final rendering = raw['rendering'] == true || extensionType == 'renderer';
     final resolvedUiMode = extensionType == 'renderer'
         ? 'webview'
@@ -240,6 +241,7 @@ class ExtensionsViewState extends State<ExtensionsView> {
       protocol: protocol,
       capabilities: capabilities,
       logoPath: logoPath,
+      description: description,
     );
   }
 
@@ -407,51 +409,112 @@ class _ExtensionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    final techInfo = [
+      'Type: ${extension.extensionType}',
+      'UI: ${extension.uiMode}',
+      'Protocol: ${extension.protocol}',
+      if (extension.webEntry != null) 'Web Entry: ${extension.webEntry}',
+      if (extension.capabilities.isNotEmpty)
+        'Capabilities: ${extension.capabilities.join(', ')}',
+      if (extension.languageId != null) 'Language: ${extension.languageId}',
+      if (extension.lspExecutable != null) 'LSP: ${extension.lspExecutable}',
+    ].join('\n');
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Row(
-        children: [
-          _ExtensionLogo(logoPath: extension.logoPath),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(extension.name, style: const TextStyle(fontSize: 12)),
-                Text(
-                  [
-                    extension.enabled ? 'enabled' : 'disabled',
-                    extension.filetypes.join(', '),
-                    'type=${extension.extensionType}',
-                    'ui=${extension.uiMode}',
-                    'protocol=${extension.protocol}',
-                    if (extension.webEntry != null) 'web=${extension.webEntry}',
-                    if (extension.capabilities.isNotEmpty)
-                      'caps=${extension.capabilities.join(',')}',
-                    if (extension.languageId != null)
-                      'language=${extension.languageId}',
-                    if (extension.lspExecutable != null)
-                      'lsp=${extension.lspExecutable}',
-                  ].join(' · '),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colorScheme.onSurfaceVariant,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Opacity(
+        opacity: extension.enabled ? 1.0 : 0.5,
+        child: Row(
+          children: [
+            _ExtensionLogo(logoPath: extension.logoPath),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Tooltip(
+                    message: techInfo,
+                    waitDuration: const Duration(milliseconds: 500),
+                    child: Text(
+                      extension.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    extension.description ??
+                        'Supports: ${extension.filetypes.join(', ')}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_horiz_rounded,
+                size: 20,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              tooltip: 'Extension actions',
+              onSelected: (value) {
+                switch (value) {
+                  case 'toggle':
+                    onToggle(!extension.enabled);
+                    break;
+                  case 'delete':
+                    onDelete();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'toggle',
+                  child: Row(
+                    children: [
+                      Icon(
+                        extension.enabled
+                            ? Icons.pause_circle_outline_rounded
+                            : Icons.play_circle_outline_rounded,
+                        size: 20,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(extension.enabled ? 'Disable' : 'Enable'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        size: 20,
+                        color: colorScheme.error.withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: colorScheme.error.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-          Switch(value: extension.enabled, onChanged: onToggle),
-          IconButton(
-            icon: Icon(
-              Icons.delete_outline_rounded,
-              size: 18,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            tooltip: 'Delete extension',
-            onPressed: onDelete,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -535,6 +598,7 @@ class _ManagedExtension {
     this.languageId,
     this.lspExecutable,
     this.logoPath,
+    this.description,
   });
 
   final String name;
@@ -550,6 +614,7 @@ class _ManagedExtension {
   final String? languageId;
   final String? lspExecutable;
   final String? logoPath;
+  final String? description;
 
   _ManagedExtension copyWith({
     String? name,
@@ -565,6 +630,7 @@ class _ManagedExtension {
     String? languageId,
     String? lspExecutable,
     String? logoPath,
+    String? description,
   }) {
     return _ManagedExtension(
       name: name ?? this.name,
@@ -580,6 +646,7 @@ class _ManagedExtension {
       languageId: languageId ?? this.languageId,
       lspExecutable: lspExecutable ?? this.lspExecutable,
       logoPath: logoPath ?? this.logoPath,
+      description: description ?? this.description,
     );
   }
 }

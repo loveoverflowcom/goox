@@ -1,0 +1,8 @@
+{
+  "name": "dart",
+  "description": "Dart language support with LSP integration.",
+  "filetypes": ["dart"],
+  "language_id": "dart",
+  "lsp_executable": "dart language-server",
+  "logo": "logo.svg"
+}

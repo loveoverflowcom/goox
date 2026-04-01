@@ -13,13 +13,16 @@ import 'raw_bridge/lsp.dart' as bridge_lsp;
 final class GooxRustBootstrap {
   static bool _initialized = false;
   static Future<void>? _initializationFuture;
+  static String? _lastWorkspaceRoot;
   static String? _nativeLibraryPath;
 
   static String? get nativeLibraryPath => _nativeLibraryPath;
 
   static Future<void> ensureInitialized({String? workspaceRoot}) async {
     if (_initialized) {
-      if (workspaceRoot != null && workspaceRoot.isNotEmpty) {
+      if (workspaceRoot != null &&
+          workspaceRoot.isNotEmpty &&
+          workspaceRoot != _lastWorkspaceRoot) {
         await refreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
       }
       return;
@@ -75,6 +78,7 @@ final class GooxRustBootstrap {
     }
 
     await bridge_api.refreshWorkspaceExtensions(workspaceRoot: workspaceRoot);
+    _lastWorkspaceRoot = workspaceRoot;
   }
 
   static Future<bool> activateExtensionForFile({

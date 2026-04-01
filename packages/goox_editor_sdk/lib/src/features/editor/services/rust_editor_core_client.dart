@@ -24,6 +24,10 @@ class RustEditorCoreClient implements EditorCoreClient {
   String? _workspaceRoot;
   String? _currentFilePath;
   Timer? _lspPollTimer;
+  bool _isDisposed = false;
+  int? _lastHoverRequestOffset;
+  int? _lastResolvedHoverOffset;
+  int _hoverRequestToken = 0;
 
   int _cursorOffset = 0;
   int _firstVisibleLine = 0;
@@ -55,12 +59,15 @@ class RustEditorCoreClient implements EditorCoreClient {
   Future<void> setActiveExtension(ActiveExtensionInfo? extension) async {
     _activeExtension = extension;
     _updateLanguageServerPolling();
+    _lastHoverRequestOffset = null;
+    _lastResolvedHoverOffset = null;
 
     // Clear stale diagnostics when the active extension changes.
     _state.value = _state.value.copyWith(
       lspStatus: 'inactive',
       lspDiagnostics: [],
       activeExtension: extension,
+      lspHover: null,
     );
 
     if (_currentFilePath == null) {
@@ -97,12 +104,15 @@ class RustEditorCoreClient implements EditorCoreClient {
     _workspaceRoot = workspaceRoot;
     _cursorOffset = 0;
     _firstVisibleLine = 0;
+    _lastHoverRequestOffset = null;
+    _lastResolvedHoverOffset = null;
     _recordEvent('Rust core loaded document');
 
     // Clear stale diagnostics immediately so they don't bleed into the new file.
     _state.value = _state.value.copyWith(
       lspStatus: 'inactive',
       lspDiagnostics: [],
+      lspHover: null,
     );
 
     _updateLanguageServerPolling();
@@ -448,9 +458,6 @@ class RustEditorCoreClient implements EditorCoreClient {
 
     await _syncLanguageServer(documentText);
     final lspSnapshot = await _refreshLanguageServerSnapshot();
-    final highlights = _canUseLanguageServer
-        ? await lspGetDocumentHighlights(charIndex: _cursorOffset)
-        : <LanguageServerDocumentHighlight>[];
 
     _state.value = EditorViewState(
       revision: snapshot.revision.toInt(),
@@ -478,7 +485,6 @@ class RustEditorCoreClient implements EditorCoreClient {
       lspDiagnostics: lspSnapshot.diagnostics
           .map(_diagnosticFromBridge)
           .toList(growable: false),
-      lspHighlights: highlights,
     );
   }
 
@@ -682,16 +688,61 @@ class RustEditorCoreClient implements EditorCoreClient {
     if (!_canUseLanguageServer) return;
 
     if (offset < 0) {
+      _hoverRequestToken++;
+      _lastHoverRequestOffset = null;
+      _lastResolvedHoverOffset = null;
       _state.value = _state.value.copyWith(lspHover: null);
       return;
     }
 
+    if (_lastHoverRequestOffset == offset && _state.value.lspHover != null) {
+      return;
+    }
+
+    _lastHoverRequestOffset = offset;
+    final requestToken = ++_hoverRequestToken;
     final hover = await lspGetHover(charIndex: offset);
+    if (_isDisposed) {
+      return;
+    }
+    if (requestToken != _hoverRequestToken ||
+        _lastHoverRequestOffset != offset) {
+      return;
+    }
+
+    if (hover == null) {
+      if (_lastResolvedHoverOffset != offset) {
+        _state.value = _state.value.copyWith(lspHover: null);
+      }
+      return;
+    }
+
+    if (_lastResolvedHoverOffset == offset &&
+        _sameHover(_state.value.lspHover, hover)) {
+      return;
+    }
+
+    _lastResolvedHoverOffset = offset;
     _state.value = _state.value.copyWith(lspHover: hover);
+  }
+
+  bool _sameHover(LanguageServerHover? left, LanguageServerHover right) {
+    if (left == null) {
+      return false;
+    }
+
+    final leftRange = left.range;
+    final rightRange = right.range;
+    return left.contents == right.contents &&
+        leftRange?.start.line == rightRange?.start.line &&
+        leftRange?.start.character == rightRange?.start.character &&
+        leftRange?.end.line == rightRange?.end.line &&
+        leftRange?.end.character == rightRange?.end.character;
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _lspPollTimer?.cancel();
     unawaited(_repository.shutdownLanguageServer());
     _state.dispose();
