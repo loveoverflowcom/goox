@@ -1,8 +1,10 @@
 {
   "name": "dart",
-  "description": "Dart language support with LSP integration.",
   "filetypes": ["dart"],
   "language_id": "dart",
-  "lsp_executable": "dart language-server",
-  "logo": "logo.svg"
+  "lsp_executable": "dart language-server --protocol=lsp",
+  "ui_mode": "none",
+  "protocol": "erp/1",
+  "capabilities": [],
+  "rendering": false
 }

@@ -37,6 +37,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtensionInfo dco_decode_box_autoadd_extension_info(dynamic raw);
 
   @protected
+  ExtensionManifest dco_decode_box_autoadd_extension_manifest(dynamic raw);
+
+  @protected
   LanguageServerHover dco_decode_box_autoadd_language_server_hover(dynamic raw);
 
   @protected
@@ -68,6 +71,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ExtensionInfo dco_decode_extension_info(dynamic raw);
+
+  @protected
+  ExtensionManifest dco_decode_extension_manifest(dynamic raw);
+
+  @protected
+  ExtensionType dco_decode_extension_type(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -187,6 +196,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_usize(dynamic raw);
 
   @protected
+  ValidationError dco_decode_validation_error(dynamic raw);
+
+  @protected
   ViewportLine dco_decode_viewport_line(dynamic raw);
 
   @protected
@@ -208,6 +220,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ExtensionInfo sse_decode_box_autoadd_extension_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ExtensionManifest sse_decode_box_autoadd_extension_manifest(
     SseDeserializer deserializer,
   );
 
@@ -249,6 +266,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ExtensionInfo sse_decode_extension_info(SseDeserializer deserializer);
+
+  @protected
+  ExtensionManifest sse_decode_extension_manifest(SseDeserializer deserializer);
+
+  @protected
+  ExtensionType sse_decode_extension_type(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -396,6 +419,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
+  ValidationError sse_decode_validation_error(SseDeserializer deserializer);
+
+  @protected
   ViewportLine sse_decode_viewport_line(SseDeserializer deserializer);
 
   @protected
@@ -419,6 +445,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_extension_info(
     ExtensionInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_extension_manifest(
+    ExtensionManifest self,
     SseSerializer serializer,
   );
 
@@ -475,6 +507,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_extension_info(ExtensionInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_extension_manifest(
+    ExtensionManifest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_extension_type(ExtensionType self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
@@ -643,6 +684,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_validation_error(
+    ValidationError self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_viewport_line(ViewportLine self, SseSerializer serializer);

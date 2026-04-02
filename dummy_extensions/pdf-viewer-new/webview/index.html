@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            overflow: hidden;
+        }
+        
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #toolbar {
+            background: #252526;
+            border-bottom: 1px solid #3e3e42;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        #toolbar button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        #toolbar button:hover {
+            background: #1177bb;
+        }
+        
+        #toolbar button:disabled {
+            background: #3e3e42;
+            color: #858585;
+            cursor: not-allowed;
+        }
+        
+        #pageInfo {
+            color: #cccccc;
+            font-size: 13px;
+        }
+        
+        #viewer {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+            background: #2d2d30;
+        }
+        
+        #pdfCanvas {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            background: white;
+        }
+        
+        #loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 14px;
+            color: #858585;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="toolbar">
+            <button id="prevBtn" disabled>Previous</button>
+            <button id="nextBtn" disabled>Next</button>
+            <span id="pageInfo">Page 0 of 0</span>
+        </div>
+        <div id="viewer">
+            <div id="loading">Loading PDF...</div>
+            <canvas id="pdfCanvas" style="display: none;"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let pdfDoc = null;
+        let currentPage = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        const scale = 1.5;
+
+        const canvas = document.getElementById('pdfCanvas');
+        const ctx = canvas.getContext('2d');
+        const loading = document.getElementById('loading');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageInfo = document.getElementById('pageInfo');
+
+        // Render page
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(page => {
+                const viewport = page.getViewport({ scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(() => {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+
+            pageInfo.textContent = `Page ${num} of ${pdfDoc.numPages}`;
+            prevBtn.disabled = num <= 1;
+            nextBtn.disabled = num >= pdfDoc.numPages;
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentPage <= 1) return;
+            currentPage--;
+            queueRenderPage(currentPage);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentPage >= pdfDoc.numPages) return;
+            currentPage++;
+            queueRenderPage(currentPage);
+        });
+
+        // Listen for file content from Goox API
+        if (window.gooxAPI) {
+            window.gooxAPI.onFileContent((content) => {
+                // content is base64 encoded PDF
+                const pdfData = atob(content);
+                const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+                
+                loadingTask.promise.then(pdf => {
+                    pdfDoc = pdf;
+                    loading.style.display = 'none';
+                    canvas.style.display = 'block';
+                    renderPage(currentPage);
+                }).catch(err => {
+                    loading.textContent = 'Error loading PDF: ' + err.message;
+                });
+            });
+
+            // Request file content
+            window.gooxAPI.requestFileContent();
+        } else {
+            loading.textContent = 'Goox API not available';
+        }
+    </script>
+</body>
+</html>

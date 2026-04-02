@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goox Extension Template</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #4ec9b0;
+      margin-bottom: 20px;
+    }
+
+    .section {
+      background: #252526;
+      border: 1px solid #3e3e42;
+      border-radius: 4px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section h2 {
+      color: #569cd6;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-right: 8px;
+    }
+
+    button:hover {
+      background: #1177bb;
+    }
+
+    pre {
+      background: #1e1e1e;
+      border: 1px solid #3e3e42;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .status {
+      color: #4ec9b0;
+      font-weight: 500;
+    }
+
+    .error {
+      color: #f48771;
+    }
+
+    #content-display {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Goox Extension API Example</h1>
+
+    <div class="section">
+      <h2>File Content</h2>
+      <button onclick="requestContent()">Request Content</button>
+      <button onclick="clearContent()">Clear</button>
+      <pre id="content-display">Waiting for content...</pre>
+    </div>
+
+    <div class="section">
+      <h2>Send Messages</h2>
+      <button onclick="sendCustomMessage()">Send Custom Message</button>
+      <button onclick="requestSave()">Request Save</button>
+      <pre id="message-log"></pre>
+    </div>
+
+    <div class="section">
+      <h2>API Status</h2>
+      <p>Extension ID: <span id="extension-id" class="status">Unknown</span></p>
+      <p>API Ready: <span id="api-status" class="status">Checking...</span></p>
+      <p>Messages Received: <span id="message-count" class="status">0</span></p>
+    </div>
+  </div>
+
+  <script>
+    // Goox Extension API
+    // This API is automatically injected by the WebviewPanel
+    window.gooxAPI = window.gooxAPI || {
+      // Get the current file content
+      getFileContent: function() {
+        return window.__fileContent || null;
+      },
+
+      // Send a message to the editor
+      sendMessage: function(type, data) {
+        if (!type) {
+          console.error('Message type is required');
+          return;
+        }
+        
+        const message = JSON.stringify({
+          type: type,
+          ...(data || {})
+        });
+        
+        if (window.gooxAPI && window.gooxAPI.postMessage) {
+          window.gooxAPI.postMessage(message);
+        } else {
+          console.warn('gooxAPI.postMessage not available');
+        }
+      },
+
+      // Request the current file content from the editor
+      requestContent: function() {
+        this.sendMessage('requestContent', {});
+      },
+
+      // Request to save content
+      requestSave: function(content) {
+        this.sendMessage('save', { content: content });
+      },
+
+      // Listen for file updates
+      onFileUpdate: function(callback) {
+        if (typeof callback !== 'function') {
+          console.error('Callback must be a function');
+          return;
+        }
+        
+        window.addEventListener('goox-message', function(event) {
+          if (event.detail && event.detail.type === 'fileUpdate') {
+            callback(event.detail.content, event.detail);
+          }
+        });
+      },
+
+      // Listen for file content messages
+      onFileContent: function(callback) {
+        if (typeof callback !== 'function') {
+          console.error('Callback must be a function');
+          return;
+        }
+        
+        window.addEventListener('goox-message', function(event) {
+          if (event.detail && event.detail.type === 'fileContent') {
+            window.__fileContent = event.detail.content;
+            callback(event.detail.content, event.detail);
+          }
+        });
+      },
+
+      // Listen for any message from the editor
+      onMessage: function(callback) {
+        if (typeof callback !== 'function') {
+          console.error('Callback must be a function');
+          return;
+        }
+        
+        window.addEventListener('goox-message', function(event) {
+          if (event.detail) {
+            callback(event.detail);
+          }
+        });
+      },
+
+      // Notify the editor that the webview is ready
+      ready: function() {
+        this.sendMessage('ready', {});
+      }
+    };
+
+    // Example usage functions
+    let messageCount = 0;
+
+    function requestContent() {
+      window.gooxAPI.requestContent();
+      logMessage('Requested file content');
+    }
+
+    function clearContent() {
+      document.getElementById('content-display').textContent = 'Content cleared';
+    }
+
+    function sendCustomMessage() {
+      window.gooxAPI.sendMessage('customAction', {
+        action: 'example',
+        timestamp: Date.now()
+      });
+      logMessage('Sent custom message');
+    }
+
+    function requestSave() {
+      const content = window.gooxAPI.getFileContent();
+      if (content) {
+        window.gooxAPI.requestSave(content + '\n// Modified by extension');
+        logMessage('Requested save');
+      } else {
+        logMessage('No content to save', true);
+      }
+    }
+
+    function logMessage(msg, isError = false) {
+      const log = document.getElementById('message-log');
+      const timestamp = new Date().toLocaleTimeString();
+      const className = isError ? 'error' : 'status';
+      log.textContent = `[${timestamp}] ${msg}\n` + log.textContent;
+    }
+
+    // Set up event listeners
+    window.gooxAPI.onFileContent(function(content, detail) {
+      document.getElementById('content-display').textContent = content;
+      document.getElementById('extension-id').textContent = detail.extensionId || 'Unknown';
+      messageCount++;
+      document.getElementById('message-count').textContent = messageCount;
+      logMessage('Received file content');
+    });
+
+    window.gooxAPI.onFileUpdate(function(content, detail) {
+      document.getElementById('content-display').textContent = content;
+      messageCount++;
+      document.getElementById('message-count').textContent = messageCount;
+      logMessage('File updated');
+    });
+
+    window.gooxAPI.onMessage(function(message) {
+      console.log('Received message:', message);
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('api-status').textContent = 'Ready';
+      
+      // Notify editor that webview is ready
+      window.gooxAPI.ready();
+      
+      logMessage('Extension initialized');
+    });
+  </script>
+</body>
+</html>

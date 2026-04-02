@@ -12,6 +12,9 @@ dependencies:
     sdk: flutter
   goox_flutter_bridge:
     path: ../../platform/flutter_bridge
+  ffi: ^2.1.0
+  path: ^1.9.0
+  toml: ^0.15.0
 
 dev_dependencies:
   flutter_test:

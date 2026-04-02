@@ -1,0 +1,10 @@
+{
+  "id": "pdf-viewer",
+  "name": "PDF Viewer",
+  "version": "1.0.0",
+  "description": "View PDF documents in the editor",
+  "author": "Goox Team",
+  "repository": "https://github.com/goox/extensions",
+  "file_types": ["pdf"],
+  "webview_entry": "webview/index.html"
+}

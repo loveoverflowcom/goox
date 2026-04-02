@@ -22,8 +22,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setEditorSettings({double? fontSize, FontWeight? fontWeight}) {
-    _settings = _settings.copyWith(fontSize: fontSize, fontWeight: fontWeight);
+  void setEditorSettings({
+    double? fontSize,
+    FontWeight? fontWeight,
+    String? fontFamily,
+  }) {
+    _settings = _settings.copyWith(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      fontFamily: fontFamily,
+    );
     _persistence.saveSettings(_settings);
     notifyListeners();
   }

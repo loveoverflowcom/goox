@@ -1,0 +1,10 @@
+{
+  "id": "image-viewer",
+  "name": "Image Viewer",
+  "version": "1.0.0",
+  "description": "View images (PNG, JPG, GIF, SVG, WebP) in the editor",
+  "author": "Goox Team",
+  "repository": "https://github.com/goox/extensions",
+  "file_types": ["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico"],
+  "webview_entry": "webview/index.html"
+}

@@ -1,0 +1,25 @@
+name = "Dart"
+grammar = "dart"
+path_suffixes = ["dart"]
+
+[line_comments]
+prefix = "//"
+
+[block_comment]
+start = "/*"
+end = "*/"
+
+[[brackets]]
+open = "("
+close = ")"
+
+[[brackets]]
+open = "{"
+close = "}"
+
+[[brackets]]
+open = "["
+close = "]"
+
+[autoclose_before]
+characters = ";,=}])> \t\n"

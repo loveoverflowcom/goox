@@ -1,0 +1,26 @@
+# Markdown Support Extension (Dual-Mode)
+
+[extension]
+id = "markdown-support"
+name = "Markdown Support"
+version = "1.0.0"
+description = "Edit and preview Markdown files with syntax highlighting"
+author = "Goox Team"
+repository = "https://github.com/goox/extensions"
+
+[extension.files]
+types = ["md", "markdown"]
+
+[language]
+id = "markdown"
+
+[webview]
+entry = "webview/index.html"
+
+[ui]
+mode = "webview"
+rendering = true
+
+[protocol]
+version = "erp/1"
+capabilities = ["render.markdown"]

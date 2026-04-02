@@ -117,6 +117,20 @@ Future<String?> validateSourceText({
 Future<List<String>> registeredExtensionCommands() =>
     RustLib.instance.api.crateApiRegisteredExtensionCommands();
 
+Future<void> validateExtensionManifest({required ExtensionManifest manifest}) =>
+    RustLib.instance.api.crateApiValidateExtensionManifest(manifest: manifest);
+
+Future<void> validateExtensionQueries({required String extensionPath}) =>
+    RustLib.instance.api.crateApiValidateExtensionQueries(
+      extensionPath: extensionPath,
+    );
+
+Future<ExtensionManifest> loadExtensionManifest({
+  required String extensionPath,
+}) => RustLib.instance.api.crateApiLoadExtensionManifest(
+  extensionPath: extensionPath,
+);
+
 Future<bool> syncLanguageServer({
   String? workspaceRoot,
   String? filePath,
@@ -188,6 +202,63 @@ Future<void> resizeTerminal({
 
 Future<void> disposeTerminal({required BigInt id}) =>
     RustLib.instance.api.crateApiDisposeTerminal(id: id);
+
+Future<void> wasmLoadModule({
+  required String extensionId,
+  required List<int> wasmBytes,
+}) => RustLib.instance.api.crateApiWasmLoadModule(
+  extensionId: extensionId,
+  wasmBytes: wasmBytes,
+);
+
+Future<void> wasmSendFileOpenedEvent({
+  required String extensionId,
+  required String path,
+  required String content,
+}) => RustLib.instance.api.crateApiWasmSendFileOpenedEvent(
+  extensionId: extensionId,
+  path: path,
+  content: content,
+);
+
+Future<void> wasmSendFileSavedEvent({
+  required String extensionId,
+  required String path,
+}) => RustLib.instance.api.crateApiWasmSendFileSavedEvent(
+  extensionId: extensionId,
+  path: path,
+);
+
+Future<void> wasmSendFileEditedEvent({
+  required String extensionId,
+  required String path,
+  required BigInt startByte,
+  required BigInt oldEndByte,
+  required BigInt newEndByte,
+}) => RustLib.instance.api.crateApiWasmSendFileEditedEvent(
+  extensionId: extensionId,
+  path: path,
+  startByte: startByte,
+  oldEndByte: oldEndByte,
+  newEndByte: newEndByte,
+);
+
+Future<void> wasmSendFileClosedEvent({
+  required String extensionId,
+  required String path,
+}) => RustLib.instance.api.crateApiWasmSendFileClosedEvent(
+  extensionId: extensionId,
+  path: path,
+);
+
+Future<bool> wasmIsLoaded({required String extensionId}) =>
+    RustLib.instance.api.crateApiWasmIsLoaded(extensionId: extensionId);
+
+Future<bool> wasmUnloadModule({required String extensionId}) =>
+    RustLib.instance.api.crateApiWasmUnloadModule(extensionId: extensionId);
+
+Future<List<String>> wasmLoadedExtensions() =>
+    RustLib.instance.api.crateApiWasmLoadedExtensions();
 
 class CursorPos {
   final BigInt line;

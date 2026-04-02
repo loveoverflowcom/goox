@@ -1,0 +1,24 @@
+# PDF Viewer Extension
+
+[extension]
+id = "pdf-viewer"
+name = "PDF Viewer"
+version = "1.0.0"
+description = "View PDF documents in the editor"
+author = "Goox Team"
+repository = "https://github.com/goox/extensions"
+type = "renderer"
+
+[extension.files]
+types = ["pdf"]
+
+[webview]
+entry = "webview/index.html"
+
+[ui]
+mode = "webview"
+rendering = true
+
+[protocol]
+version = "erp/1"
+capabilities = ["render.pdf"]

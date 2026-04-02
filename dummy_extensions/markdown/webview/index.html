@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Preview</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        
+        .markdown-body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+            background: #252526;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        @media (max-width: 767px) {
+            .markdown-body {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="content" class="markdown-body">
+        <p>Loading markdown...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        const contentDiv = document.getElementById('content');
+
+        // Configure marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: true,
+            mangle: false
+        });
+
+        // Listen for file content from Goox API
+        if (window.gooxAPI) {
+            window.gooxAPI.onFileContent((content) => {
+                try {
+                    const html = marked.parse(content);
+                    contentDiv.innerHTML = html;
+                } catch (err) {
+                    contentDiv.innerHTML = `<p style="color: #f48771;">Error rendering markdown: ${err.message}</p>`;
+                }
+            });
+
+            // Listen for file changes
+            window.gooxAPI.onFileChanged((content) => {
+                try {
+                    const html = marked.parse(content);
+                    contentDiv.innerHTML = html;
+                } catch (err) {
+                    contentDiv.innerHTML = `<p style="color: #f48771;">Error rendering markdown: ${err.message}</p>`;
+                }
+            });
+
+            // Request initial file content
+            window.gooxAPI.requestFileContent();
+        } else {
+            contentDiv.innerHTML = '<p style="color: #f48771;">Goox API not available</p>';
+        }
+    </script>
+</body>
+</html>

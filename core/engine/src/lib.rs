@@ -8,6 +8,7 @@ pub mod image_renderer;
 pub mod lsp;
 pub mod pdf_renderer;
 pub mod terminal;
+pub mod wasm_runtime;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BufferOperation {

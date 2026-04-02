@@ -18,6 +18,7 @@ class ExtensionInfo {
   final String protocol;
   final List<String> capabilities;
   final bool rendering;
+  final ExtensionType extensionType;
 
   const ExtensionInfo({
     required this.name,
@@ -31,6 +32,7 @@ class ExtensionInfo {
     required this.protocol,
     required this.capabilities,
     required this.rendering,
+    required this.extensionType,
   });
 
   @override
@@ -45,7 +47,8 @@ class ExtensionInfo {
       uiMode.hashCode ^
       protocol.hashCode ^
       capabilities.hashCode ^
-      rendering.hashCode;
+      rendering.hashCode ^
+      extensionType.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -62,5 +65,84 @@ class ExtensionInfo {
           uiMode == other.uiMode &&
           protocol == other.protocol &&
           capabilities == other.capabilities &&
-          rendering == other.rendering;
+          rendering == other.rendering &&
+          extensionType == other.extensionType;
+}
+
+/// New extension manifest structure for extension.json
+class ExtensionManifest {
+  final String id;
+  final String name;
+  final String version;
+  final String? description;
+  final String? author;
+  final String? repository;
+  final List<String> fileTypes;
+  final String? webviewEntry;
+
+  const ExtensionManifest({
+    required this.id,
+    required this.name,
+    required this.version,
+    this.description,
+    this.author,
+    this.repository,
+    required this.fileTypes,
+    this.webviewEntry,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      version.hashCode ^
+      description.hashCode ^
+      author.hashCode ^
+      repository.hashCode ^
+      fileTypes.hashCode ^
+      webviewEntry.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExtensionManifest &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          version == other.version &&
+          description == other.description &&
+          author == other.author &&
+          repository == other.repository &&
+          fileTypes == other.fileTypes &&
+          webviewEntry == other.webviewEntry;
+}
+
+/// Extension type classification based on capabilities
+enum ExtensionType {
+  /// Extension provides only language support (syntax highlighting, LSP)
+  language,
+
+  /// Extension provides only webview rendering
+  renderer,
+
+  /// Extension provides both language support and webview rendering
+  dualMode,
+}
+
+class ValidationError implements FrbException {
+  final String field;
+  final String message;
+
+  const ValidationError({required this.field, required this.message});
+
+  @override
+  int get hashCode => field.hashCode ^ message.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ValidationError &&
+          runtimeType == other.runtimeType &&
+          field == other.field &&
+          message == other.message;
 }

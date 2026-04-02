@@ -1,0 +1,25 @@
+# Dart Language Support Extension
+
+[extension]
+id = "dart-language-support"
+name = "Dart Language Support"
+version = "1.0.0"
+description = "Syntax highlighting and language support for Dart"
+author = "Goox Team"
+repository = "https://github.com/goox/extensions"
+
+[extension.files]
+types = ["dart"]
+
+[language]
+id = "dart"
+lsp_command = "dart"
+lsp_args = ["language-server", "--protocol=lsp"]
+
+[ui]
+mode = "none"
+rendering = false
+
+[protocol]
+version = "erp/1"
+capabilities = []

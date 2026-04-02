@@ -1,0 +1,10 @@
+{
+  "id": "markdown-support",
+  "name": "Markdown Support",
+  "version": "1.0.0",
+  "description": "Edit and preview Markdown files with syntax highlighting",
+  "author": "Goox Team",
+  "repository": "https://github.com/goox/extensions",
+  "file_types": ["md", "markdown"],
+  "webview_entry": "webview/index.html"
+}

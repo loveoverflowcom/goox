@@ -27,8 +27,15 @@ class _EditorPageState extends State<EditorPage> {
   String? _loadedFilePath;
   bool _isUnsupportedFile = false;
   String? _unsupportedMessage;
-  bool _isRendererFile = false;
+  TextMateGrammar? _syntaxGrammar;
+  String? _syntaxGrammarPath;
+  DateTime? _syntaxGrammarModifiedAt;
+  String? _lastSyntaxGrammarError;
+  Timer? _syntaxGrammarWatchTimer;
   final _extensionsKey = GlobalKey<ExtensionsViewState>();
+
+  // Dual-mode support
+  bool _showPreview = false;
 
   @override
   void initState() {
@@ -50,12 +57,13 @@ class _EditorPageState extends State<EditorPage> {
   Future<void> _loadFile(String? filePath) async {
     if (filePath == null) {
       await _controller.setActiveExtension(null);
+      await _configureSyntaxGrammar(null);
       await _controller.loadDocument('');
       if (mounted) {
         setState(() {
           _isUnsupportedFile = false;
           _unsupportedMessage = null;
-          _isRendererFile = false;
+          _showPreview = false;
         });
       }
       return;
@@ -75,23 +83,25 @@ class _EditorPageState extends State<EditorPage> {
         filePath: filePath,
       );
       await _controller.setActiveExtension(extension);
+      await _configureSyntaxGrammar(extension);
 
-      if (extension?.hasWebViewCapability == true) {
+      final isRendererOnly = extension?.isRendererOnly == true;
+
+      if (mounted) {
+        setState(() {
+          _showPreview = false;
+        });
+      }
+
+      if (isRendererOnly) {
         if (mounted) {
           setState(() {
             _isUnsupportedFile = false;
             _unsupportedMessage = null;
-            _isRendererFile = true;
           });
         }
         appState.markFileDirty(filePath, false);
         return;
-      } else {
-        if (mounted) {
-          setState(() {
-            _isRendererFile = false;
-          });
-        }
       }
 
       if (mounted) {
@@ -118,7 +128,6 @@ class _EditorPageState extends State<EditorPage> {
       if (mounted) {
         setState(() {
           _isUnsupportedFile = true;
-          _isRendererFile = false;
           _unsupportedMessage =
               'This file cannot be opened as plain text. Install or enable a compatible extension for ${path.basename(filePath)}.';
         });
@@ -127,7 +136,6 @@ class _EditorPageState extends State<EditorPage> {
       if (mounted) {
         setState(() {
           _isUnsupportedFile = true;
-          _isRendererFile = false;
           _unsupportedMessage =
               'Failed to open ${path.basename(filePath)}. Please try again or check the extension configuration.';
         });
@@ -229,11 +237,233 @@ class _EditorPageState extends State<EditorPage> {
     _markDirty();
   }
 
+  void _togglePreviewMode() {
+    final nextShowPreview = !_showPreview;
+    setState(() {
+      _showPreview = nextShowPreview;
+    });
+
+    if (!nextShowPreview) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _focusNode.requestFocus();
+        }
+      });
+    } else {
+      _focusNode.unfocus();
+    }
+  }
+
+  Widget _buildEditorContent(
+    EditorViewState state,
+    ActiveExtensionInfo? activeExtension,
+    String activeFile,
+    String? resolvedWebEntryPath,
+    AppState appState,
+  ) {
+    final isDualMode = activeExtension?.isDualMode == true;
+    final isRendererOnly = activeExtension?.isRendererOnly == true;
+
+    if (_isUnsupportedFile) {
+      return _UnsupportedFileView(message: _unsupportedMessage ?? '');
+    }
+
+    if (activeExtension != null && isRendererOnly) {
+      return _buildWebviewContent(
+        activeExtension: activeExtension,
+        activeFile: activeFile,
+        resolvedWebEntryPath: resolvedWebEntryPath,
+      );
+    }
+
+    final editorContent = _buildEditorCanvas(state: state, appState: appState);
+
+    if (activeExtension != null && isDualMode) {
+      return IndexedStack(
+        index: _showPreview ? 1 : 0,
+        children: [
+          editorContent,
+          _buildWebviewContent(
+            activeExtension: activeExtension,
+            activeFile: activeFile,
+            resolvedWebEntryPath: resolvedWebEntryPath,
+          ),
+        ],
+      );
+    }
+
+    return editorContent;
+  }
+
+  Widget _buildEditorCanvas({
+    required EditorViewState state,
+    required AppState appState,
+  }) {
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          _saveCurrentFile();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () {
+          _saveCurrentFile();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): () {
+          _controller.undo();
+          _markDirty();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): () {
+          _controller.undo();
+          _markDirty();
+        },
+        const SingleActivator(
+          LogicalKeyboardKey.keyZ,
+          control: true,
+          shift: true,
+        ): () {
+          _controller.redo();
+        },
+        const SingleActivator(
+          LogicalKeyboardKey.keyZ,
+          meta: true,
+          shift: true,
+        ): () {
+          _controller.redo();
+        },
+      },
+      child: GooxEditorCanvas(
+        state: state,
+        focusNode: _focusNode,
+        autofocus: true,
+        onTap: _focusNode.requestFocus,
+        onTextChanged: _handleEditorTextChanged,
+        onCursorOffsetChanged: _controller.moveCursorToOffset,
+        onGoToDefinition: _handleGoToDefinition,
+        onGoToDeclaration: _handleGoToDeclaration,
+        onGoToImplementation: _handleGoToImplementation,
+        onFindReferences: _handleFindReferences,
+        onHover: (offset) {
+          if (offset == -1) {
+            _controller.requestHover(-1);
+          } else {
+            _controller.requestHover(offset);
+          }
+        },
+        fontSize: appState.settings.fontSize,
+        fontWeight: appState.settings.fontWeight,
+        fontFamily: appState.settings.fontFamily,
+        syntaxGrammar: _syntaxGrammar,
+      ),
+    );
+  }
+
+  Widget _buildWebviewContent({
+    required ActiveExtensionInfo activeExtension,
+    required String activeFile,
+    required String? resolvedWebEntryPath,
+  }) {
+    return GooxExtensionWebViewShell(
+      extensionName: activeExtension.name,
+      filePath: activeFile,
+      fileType: activeExtension.filetypes.isNotEmpty
+          ? activeExtension.filetypes.first
+          : path.extension(activeFile).replaceFirst('.', ''),
+      webEntryPath: resolvedWebEntryPath,
+      onBridgeMessage: (message) {
+        debugPrint('WebView bridge: $message');
+      },
+    );
+  }
+
   @override
   void dispose() {
+    _syntaxGrammarWatchTimer?.cancel();
     _focusNode.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _configureSyntaxGrammar(ActiveExtensionInfo? extension) async {
+    _syntaxGrammarWatchTimer?.cancel();
+    _syntaxGrammarWatchTimer = null;
+    _syntaxGrammarPath = extension?.syntaxGrammarPath;
+    _syntaxGrammarModifiedAt = null;
+
+    if (_syntaxGrammarPath == null) {
+      if (mounted && _syntaxGrammar != null) {
+        setState(() {
+          _syntaxGrammar = null;
+        });
+      }
+      return;
+    }
+
+    await _reloadSyntaxGrammar(
+      path: _syntaxGrammarPath!,
+      replaceExisting: true,
+    );
+
+    _syntaxGrammarWatchTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => unawaited(_pollSyntaxGrammarReload()),
+    );
+  }
+
+  Future<void> _pollSyntaxGrammarReload() async {
+    final grammarPath = _syntaxGrammarPath;
+    if (grammarPath == null) {
+      return;
+    }
+
+    try {
+      final modified = await FileStat.stat(
+        grammarPath,
+      ).then((stat) => stat.modified);
+      if (_syntaxGrammarModifiedAt == null ||
+          modified.isAfter(_syntaxGrammarModifiedAt!)) {
+        await _reloadSyntaxGrammar(path: grammarPath, replaceExisting: false);
+      }
+    } catch (error) {
+      debugPrint('Failed to poll syntax grammar at $grammarPath: $error');
+    }
+  }
+
+  Future<void> _reloadSyntaxGrammar({
+    required String path,
+    required bool replaceExisting,
+  }) async {
+    try {
+      final file = File(path);
+      if (!file.existsSync()) {
+        throw FileSystemException('Missing syntax grammar file', path);
+      }
+
+      final content = await file.readAsString();
+      final grammar = const TextMateParser().parse(content);
+      final modified = await file.lastModified();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _syntaxGrammar = grammar;
+        _syntaxGrammarModifiedAt = modified;
+        _lastSyntaxGrammarError = null;
+      });
+    } catch (error) {
+      debugPrint('Failed to load syntax grammar from $path: $error');
+      if (mounted && replaceExisting) {
+        setState(() {
+          _syntaxGrammar = null;
+        });
+      }
+      final message = error.toString();
+      if (mounted && _lastSyntaxGrammarError != message) {
+        _lastSyntaxGrammarError = message;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load syntax grammar: $message')),
+        );
+      }
+    }
   }
 
   @override
@@ -297,91 +527,20 @@ class _EditorPageState extends State<EditorPage> {
               ? Column(
                   children: [
                     _LspDiagnosticsBanner(state: state),
+                    // Add Preview button for dual-mode extensions
+                    if (activeExtension?.isDualMode == true)
+                      _DualModeToolbar(
+                        showPreview: _showPreview,
+                        onToggle: _togglePreviewMode,
+                      ),
                     Expanded(
-                      child: _isRendererFile && activeExtension != null
-                          ? GooxExtensionWebViewShell(
-                              extensionName: activeExtension.name,
-                              filePath: activeFile,
-                              fileType: activeExtension.filetypes.isNotEmpty
-                                  ? activeExtension.filetypes.first
-                                  : path
-                                        .extension(activeFile)
-                                        .replaceFirst('.', ''),
-                              webEntryPath: resolvedWebEntryPath,
-                              onBridgeMessage: (message) {
-                                debugPrint('WebView bridge: $message');
-                              },
-                            )
-                          : _isUnsupportedFile
-                          ? _UnsupportedFileView(
-                              message: _unsupportedMessage ?? '',
-                            )
-                          : CallbackShortcuts(
-                              bindings: <ShortcutActivator, VoidCallback>{
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyS,
-                                  control: true,
-                                ): () {
-                                  _saveCurrentFile();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyS,
-                                  meta: true,
-                                ): () {
-                                  _saveCurrentFile();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyZ,
-                                  control: true,
-                                ): () {
-                                  _controller.undo();
-                                  _markDirty();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyZ,
-                                  meta: true,
-                                ): () {
-                                  _controller.undo();
-                                  _markDirty();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyZ,
-                                  control: true,
-                                  shift: true,
-                                ): () {
-                                  _controller.redo();
-                                },
-                                const SingleActivator(
-                                  LogicalKeyboardKey.keyZ,
-                                  meta: true,
-                                  shift: true,
-                                ): () {
-                                  _controller.redo();
-                                },
-                              },
-                              child: GooxEditorCanvas(
-                                state: state,
-                                focusNode: _focusNode,
-                                autofocus: true,
-                                onTap: _focusNode.requestFocus,
-                                onTextChanged: _handleEditorTextChanged,
-                                onCursorOffsetChanged:
-                                    _controller.moveCursorToOffset,
-                                onGoToDefinition: _handleGoToDefinition,
-                                onGoToDeclaration: _handleGoToDeclaration,
-                                onGoToImplementation: _handleGoToImplementation,
-                                onFindReferences: _handleFindReferences,
-                                onHover: (offset) {
-                                  if (offset == -1) {
-                                    _controller.requestHover(-1);
-                                  } else {
-                                    _controller.requestHover(offset);
-                                  }
-                                },
-                                fontSize: appState.settings.fontSize,
-                                fontWeight: appState.settings.fontWeight,
-                              ),
-                            ),
+                      child: _buildEditorContent(
+                        state,
+                        activeExtension,
+                        activeFile,
+                        resolvedWebEntryPath,
+                        appState,
+                      ),
                     ),
                   ],
                 )
@@ -998,6 +1157,104 @@ class _UnsupportedFileView extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DualModeToolbar extends StatelessWidget {
+  const _DualModeToolbar({required this.showPreview, required this.onToggle});
+
+  final bool showPreview;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          _ModeButton(
+            label: 'Editor',
+            icon: Icons.code,
+            isSelected: !showPreview,
+            onTap: showPreview ? onToggle : null,
+          ),
+          const SizedBox(width: 4),
+          _ModeButton(
+            label: 'Preview',
+            icon: Icons.visibility,
+            isSelected: showPreview,
+            onTap: !showPreview ? onToggle : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeButton extends StatelessWidget {
+  const _ModeButton({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Material(
+      color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: isSelected
+                      ? colorScheme.onPrimaryContainer
+                      : colorScheme.onSurfaceVariant,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

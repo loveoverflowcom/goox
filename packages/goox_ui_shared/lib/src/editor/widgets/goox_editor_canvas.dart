@@ -4,7 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:goox_editor_sdk/goox_editor_sdk.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import 'editor_fonts.dart';
+import 'goox_code_syntax_highlighter.dart';
+import 'markdown_renderer.dart';
 import 'language_definition.dart';
 
 class GooxEditorTextChange {
@@ -24,6 +28,9 @@ class GooxCodeController extends TextEditingController {
     : _languageId = _normalizeLanguageId(languageId);
 
   String? _languageId;
+  TextMateGrammar? _textMateGrammar;
+  TreeSitterHighlighter? _treeSitterHighlighter;
+  SyntaxTree? _syntaxTree;
   List<LanguageServerDocumentHighlight> _lspHighlights = [];
 
   String? get languageId => _languageId;
@@ -46,6 +53,30 @@ class GooxCodeController extends TextEditingController {
     notifyListeners();
   }
 
+  void updateTextMateGrammar(TextMateGrammar? grammar) {
+    if (_textMateGrammar == grammar) {
+      return;
+    }
+
+    _textMateGrammar = grammar;
+    notifyListeners();
+  }
+
+  void updateTreeSitterHighlighter(TreeSitterHighlighter? highlighter) {
+    if (_treeSitterHighlighter == highlighter) {
+      return;
+    }
+
+    _treeSitterHighlighter = highlighter;
+    _syntaxTree = null; // Clear cached tree when highlighter changes
+    notifyListeners();
+  }
+
+  void updateSyntaxTree(SyntaxTree? tree) {
+    _syntaxTree = tree;
+    notifyListeners();
+  }
+
   @override
   TextSpan buildTextSpan({
     required BuildContext context,
@@ -55,18 +86,41 @@ class GooxCodeController extends TextEditingController {
     final baseStyle =
         style ??
         DefaultTextStyle.of(context).style.copyWith(fontFamily: 'monospace');
-    var spans = _GooxSyntaxHighlighter(
-      languageId: _languageId,
-      theme: Theme.of(context),
-      baseStyle: baseStyle,
-    ).highlight(text);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    // Priority: Tree-sitter > TextMate > Fallback
+    List<TextSpan> spans;
+    if (_treeSitterHighlighter != null && _syntaxTree != null) {
+      // Use Tree-sitter highlighting
+      final highlightSpans = _treeSitterHighlighter!.highlight(
+        text,
+        _syntaxTree!,
+        0,
+        text.length,
+        isDark: isDark,
+      );
+      spans = _treeSitterHighlighter!.toTextSpans(text, highlightSpans, baseStyle);
+    } else if (_textMateGrammar != null) {
+      // Fall back to TextMate highlighting
+      spans = TextMateSyntaxHighlighter(
+        grammar: _textMateGrammar!,
+      ).highlight(text, theme: theme, baseStyle: baseStyle);
+    } else {
+      // Fall back to hardcoded highlighting
+      spans = GooxCodeSyntaxHighlighter(
+        languageId: _languageId,
+        theme: theme,
+        baseStyle: baseStyle,
+      ).highlight(text);
+    }
 
     if (_lspHighlights.isNotEmpty) {
       spans = _applyHighlights(
         spans,
         text,
         _lspHighlights,
-        theme: Theme.of(context),
+        theme: theme,
         baseTextStyle: baseStyle,
       );
     }
@@ -247,6 +301,10 @@ class GooxEditorCanvas extends StatefulWidget {
     this.autofocus = false,
     this.fontSize = 16.0,
     this.fontWeight = FontWeight.normal,
+    this.fontFamily,
+    this.syntaxGrammar,
+    this.treeSitterHighlighter,
+    this.syntaxTree,
   });
 
   final EditorViewState state;
@@ -264,6 +322,10 @@ class GooxEditorCanvas extends StatefulWidget {
   final bool autofocus;
   final double fontSize;
   final FontWeight fontWeight;
+  final String? fontFamily;
+  final TextMateGrammar? syntaxGrammar;
+  final TreeSitterHighlighter? treeSitterHighlighter;
+  final SyntaxTree? syntaxTree;
 
   @override
   State<GooxEditorCanvas> createState() => _GooxEditorCanvasState();
@@ -283,6 +345,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
   Offset? _lastMousePosition;
   int? _pendingHoverOffset;
   int? _lastDispatchedHoverOffset;
+  bool _hoverSuppressedUntilMove = false;
 
   @override
   void initState() {
@@ -291,6 +354,9 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
       text: widget.state.documentText,
       languageId: widget.state.activeExtension?.languageId,
     );
+    _textController.updateTextMateGrammar(widget.syntaxGrammar);
+    _textController.updateTreeSitterHighlighter(widget.treeSitterHighlighter);
+    _textController.updateSyntaxTree(widget.syntaxTree);
     _lastEditingValue = _editingValueFromState(widget.state);
     _textController.value = _lastEditingValue;
     widget.focusNode.addListener(_handleFocusChanged);
@@ -316,6 +382,9 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
     }
 
     _textController.updateLanguageId(widget.state.activeExtension?.languageId);
+    _textController.updateTextMateGrammar(widget.syntaxGrammar);
+    _textController.updateTreeSitterHighlighter(widget.treeSitterHighlighter);
+    _textController.updateSyntaxTree(widget.syntaxTree);
     _textController.updateLspHighlights(widget.state.lspHighlights);
 
     final textChanged = _textController.text != widget.state.documentText;
@@ -479,6 +548,21 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
     final isFocused = widget.focusNode.hasFocus;
     final lineCount = '\n'.allMatches(_textController.text).length + 1;
     final lineHeight = widget.fontSize * 1.35;
+    final editorBaseStyle = _resolveEditorTextStyle(
+      theme.textTheme.bodyLarge?.copyWith(
+        color: theme.colorScheme.onSurface,
+        fontSize: widget.fontSize,
+        fontWeight: widget.fontWeight,
+        height: 1.35,
+      ),
+    );
+    final lineNumberStyle = _resolveEditorTextStyle(
+      theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+        fontSize: widget.fontSize * 0.75,
+        height: 1.35 * (widget.fontSize / (widget.fontSize * 0.75)),
+      ),
+    );
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -493,6 +577,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
         children: [
           Listener(
             onPointerDown: (event) {
+              _dismissHover(suppressUntilMove: true);
               final callback = widget.onTapDown;
               if (callback == null) return;
               callback(
@@ -530,19 +615,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
                         height: lineHeight,
                         alignment: Alignment.topRight,
                         padding: const EdgeInsets.only(right: 8),
-                        child: Text(
-                          '${index + 1}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.6),
-                            fontFamily: 'monospace',
-                            fontSize:
-                                widget.fontSize * 0.75, // Scaled with main font
-                            height:
-                                1.35 *
-                                (widget.fontSize / (widget.fontSize * 0.75)),
-                          ),
-                        ),
+                        child: Text('${index + 1}', style: lineNumberStyle),
                       );
                     },
                   ),
@@ -558,13 +631,6 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
                     child: MouseRegion(
                       opaque: false,
                       onHover: _handleMouseMove,
-                      onExit: (_) {
-                        _hoverTimer?.cancel();
-                        _lastMousePosition = null;
-                        _pendingHoverOffset = null;
-                        _lastDispatchedHoverOffset = null;
-                        widget.onHover?.call(-1); // Signal to clear hover
-                      },
                       child: TextField(
                         controller: _textController,
                         scrollController: _textScrollController,
@@ -576,13 +642,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
                         keyboardType: TextInputType.multiline,
                         textInputAction: TextInputAction.newline,
                         cursorColor: theme.colorScheme.primary,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurface,
-                          fontFamily: 'monospace',
-                          fontSize: widget.fontSize,
-                          fontWeight: widget.fontWeight,
-                          height: 1.35,
-                        ),
+                        style: editorBaseStyle,
                         decoration: const InputDecoration(
                           border: InputBorder.none,
                           isCollapsed: true,
@@ -598,33 +658,103 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
             ),
           ),
           if (widget.state.lspHover != null && _lastMousePosition != null)
-            Positioned(
-              left: _lastMousePosition!.dx + 10,
-              top: _lastMousePosition!.dy + 10,
-              child: IgnorePointer(
-                child: Material(
-                  elevation: 4,
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      widget.state.lspHover!.contents,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontFamily: 'monospace',
+            Positioned.fill(
+              child: MouseRegion(
+                opaque: false,
+                onHover: (event) {
+                  // Check if mouse is outside the tooltip area
+                  final tooltipLeft = _lastMousePosition!.dx + 10;
+                  final tooltipTop = _lastMousePosition!.dy + 10;
+                  final tooltipRight = tooltipLeft + 420; // maxWidth
+                  final tooltipBottom = tooltipTop + 320; // maxHeight
+                  
+                  final mouseX = event.localPosition.dx;
+                  final mouseY = event.localPosition.dy;
+                  
+                  if (mouseX < tooltipLeft || mouseX > tooltipRight ||
+                      mouseY < tooltipTop || mouseY > tooltipBottom) {
+                    _dismissHover(suppressUntilMove: false);
+                  }
+                },
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: _lastMousePosition!.dx + 10,
+                      top: _lastMousePosition!.dy + 10,
+                      child: MouseRegion(
+                        opaque: true,
+                        onExit: (_) => _dismissHover(suppressUntilMove: false),
+                        child: Listener(
+                          behavior: HitTestBehavior.opaque,
+                          onPointerDown: (_) {
+                            _dismissHover(suppressUntilMove: true);
+                          },
+                          child: Material(
+                            elevation: 4,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                maxWidth: 420,
+                                maxHeight: 320,
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHigh,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant,
+                                  width: 1,
+                                ),
+                              ),
+                              child: SingleChildScrollView(
+                                child: MarkdownRenderer(
+                                  markdown: widget.state.lspHover!.contents,
+                                  theme: theme,
+                                  baseStyle: _resolveEditorTextStyle(
+                                    theme.textTheme.bodyMedium?.copyWith(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
         ],
       ),
     );
+  }
+
+  TextStyle _resolveEditorTextStyle(TextStyle? style) {
+    final baseStyle = style ?? const TextStyle();
+    final family = widget.fontFamily?.trim();
+    if (family == null || family.isEmpty || family == 'monospace') {
+      return baseStyle.copyWith(fontFamily: 'monospace');
+    }
+
+    if (isGoogleMonospaceFont(family)) {
+      return GoogleFonts.getFont(family, textStyle: baseStyle);
+    }
+
+    return baseStyle.copyWith(
+      fontFamily: family,
+      fontFamilyFallback: const ['monospace'],
+    );
+  }
+
+  void _dismissHover({required bool suppressUntilMove}) {
+    _hoverTimer?.cancel();
+    _pendingHoverOffset = null;
+    _lastMousePosition = null;
+    _hoverSuppressedUntilMove = suppressUntilMove;
+    widget.onHover?.call(-1);
   }
 
   void _handleMouseMove(PointerHoverEvent event) {
@@ -636,6 +766,13 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
       _hoverTimer?.cancel();
       _pendingHoverOffset = null;
       return;
+    }
+
+    if (_hoverSuppressedUntilMove) {
+      if (_lastDispatchedHoverOffset == offset) {
+        return;
+      }
+      _hoverSuppressedUntilMove = false;
     }
 
     if (_pendingHoverOffset == offset) {
@@ -655,10 +792,12 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
 
   int? _resolveHoverOffset(Offset localPosition) {
     final theme = Theme.of(context);
-    final textStyle = theme.textTheme.bodyLarge?.copyWith(
-      fontFamily: 'monospace',
-      fontSize: widget.fontSize,
-      height: 1.35,
+    final textStyle = _resolveEditorTextStyle(
+      theme.textTheme.bodyLarge?.copyWith(
+        fontSize: widget.fontSize,
+        height: 1.35,
+        color: theme.colorScheme.onSurface,
+      ),
     );
 
     final textPainter = TextPainter(
@@ -686,38 +825,40 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
     EditableTextState editableTextState,
   ) {
     final textSelectionToolbarItems = editableTextState.contextMenuButtonItems;
+    final hasLanguageSupport = widget.state.activeExtension?.languageId != null;
+    final lspReady = widget.state.lspStatus != 'inactive';
 
     return AdaptiveTextSelectionToolbar.buttonItems(
       anchors: editableTextState.contextMenuAnchors,
       buttonItems: [
         ...textSelectionToolbarItems,
-        if (widget.state.lspStatus != 'inactive') ...[
+        if (hasLanguageSupport) ...[
           ContextMenuButtonItem(
-            onPressed: () {
+            onPressed: lspReady ? () {
               editableTextState.hideToolbar();
               widget.onGoToDefinition?.call();
-            },
+            } : null,
             label: 'Go to Definition',
           ),
           ContextMenuButtonItem(
-            onPressed: () {
+            onPressed: lspReady ? () {
               editableTextState.hideToolbar();
               widget.onGoToDeclaration?.call();
-            },
+            } : null,
             label: 'Go to Declaration',
           ),
           ContextMenuButtonItem(
-            onPressed: () {
+            onPressed: lspReady ? () {
               editableTextState.hideToolbar();
               widget.onGoToImplementation?.call();
-            },
+            } : null,
             label: 'Go to Implementation',
           ),
           ContextMenuButtonItem(
-            onPressed: () {
+            onPressed: lspReady ? () {
               editableTextState.hideToolbar();
               widget.onFindReferences?.call();
-            },
+            } : null,
             label: 'Find References',
           ),
         ],
@@ -726,6 +867,7 @@ class _GooxEditorCanvasState extends State<GooxEditorCanvas> {
   }
 }
 
+// ignore: unused_element
 class _GooxSyntaxHighlighter {
   _GooxSyntaxHighlighter({
     required this.languageId,
@@ -744,69 +886,69 @@ class _GooxSyntaxHighlighter {
 
   /// Keywords: if, for, class, return — bold, blue/purple
   TextStyle get _keywordStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFFC586C0) // VS Code dark: magenta-pink
-            : const Color(0xFF0000FF), // VS Code light: blue
-        fontWeight: FontWeight.w700,
-      );
+    color: _isDark
+        ? const Color(0xFFC586C0) // VS Code dark: magenta-pink
+        : const Color(0xFF0000FF), // VS Code light: blue
+    fontWeight: FontWeight.w700,
+  );
 
   /// Built-in types: int, String, bool, List — teal/cyan
   TextStyle get _typeStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFF4EC9B0) // VS Code dark: teal
-            : const Color(0xFF267F99), // VS Code light: dark teal
-      );
+    color: _isDark
+        ? const Color(0xFF4EC9B0) // VS Code dark: teal
+        : const Color(0xFF267F99), // VS Code light: dark teal
+  );
 
   /// Constants: true, false, null — orange
   TextStyle get _constantStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFF569CD6) // VS Code dark: blue
-            : const Color(0xFF0000FF), // VS Code light: blue
-        fontWeight: FontWeight.w700,
-      );
+    color: _isDark
+        ? const Color(0xFF569CD6) // VS Code dark: blue
+        : const Color(0xFF0000FF), // VS Code light: blue
+    fontWeight: FontWeight.w700,
+  );
 
   /// Built-in functions: print, len, println — yellow/gold
   TextStyle get _builtinFuncStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFFDCDCAA) // VS Code dark: yellow
-            : const Color(0xFF795E26), // VS Code light: dark gold
-      );
+    color: _isDark
+        ? const Color(0xFFDCDCAA) // VS Code dark: yellow
+        : const Color(0xFF795E26), // VS Code light: dark gold
+  );
 
   /// Comments — grey, italic
   TextStyle get _commentStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFF6A9955) // VS Code dark: green
-            : const Color(0xFF008000), // VS Code light: green
-        fontStyle: FontStyle.italic,
-      );
+    color: _isDark
+        ? const Color(0xFF6A9955) // VS Code dark: green
+        : const Color(0xFF008000), // VS Code light: green
+    fontStyle: FontStyle.italic,
+  );
 
   /// Strings — orange-brown
   TextStyle get _stringStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFFCE9178) // VS Code dark: light brown
-            : const Color(0xFFA31515), // VS Code light: dark red
-      );
+    color: _isDark
+        ? const Color(0xFFCE9178) // VS Code dark: light brown
+        : const Color(0xFFA31515), // VS Code light: dark red
+  );
 
   /// Numbers — light green
   TextStyle get _numberStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFFB5CEA8) // VS Code dark: pale green
-            : const Color(0xFF098658), // VS Code light: dark green
-      );
+    color: _isDark
+        ? const Color(0xFFB5CEA8) // VS Code dark: pale green
+        : const Color(0xFF098658), // VS Code light: dark green
+  );
 
   /// Annotations/decorators (@override, @deprecated)
   TextStyle get _annotationStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFFDCDCAA) // VS Code dark: yellow
-            : const Color(0xFF795E26), // VS Code light: dark gold
-      );
+    color: _isDark
+        ? const Color(0xFFDCDCAA) // VS Code dark: yellow
+        : const Color(0xFF795E26), // VS Code light: dark gold
+  );
 
   /// Operators and punctuation
   TextStyle get _punctuationStyle => baseStyle.copyWith(
-        color: _isDark
-            ? const Color(0xFFD4D4D4) // VS Code dark: light grey
-            : const Color(0xFF000000), // VS Code light: black
-      );
+    color: _isDark
+        ? const Color(0xFFD4D4D4) // VS Code dark: light grey
+        : const Color(0xFF000000), // VS Code light: black
+  );
 
   bool get _isDark => theme.brightness == Brightness.dark;
 
@@ -861,10 +1003,7 @@ class _GooxSyntaxHighlighter {
       if (_isDigit(current)) {
         final numberEnd = _consumeNumber(text, index);
         spans.add(
-          TextSpan(
-            text: text.substring(index, numberEnd),
-            style: _numberStyle,
-          ),
+          TextSpan(text: text.substring(index, numberEnd), style: _numberStyle),
         );
         index = numberEnd;
         continue;
@@ -875,10 +1014,7 @@ class _GooxSyntaxHighlighter {
         final identifierEnd = _consumeIdentifier(text, index);
         final identifier = text.substring(index, identifierEnd);
         spans.add(
-          TextSpan(
-            text: identifier,
-            style: _styleForIdentifier(identifier),
-          ),
+          TextSpan(text: identifier, style: _styleForIdentifier(identifier)),
         );
         index = identifierEnd;
         continue;
@@ -1028,11 +1164,9 @@ class _GooxSyntaxHighlighter {
       }
     }
     // Exponent: e/E
-    if (index < text.length &&
-        (text[index] == 'e' || text[index] == 'E')) {
+    if (index < text.length && (text[index] == 'e' || text[index] == 'E')) {
       index++;
-      if (index < text.length &&
-          (text[index] == '+' || text[index] == '-')) {
+      if (index < text.length && (text[index] == '+' || text[index] == '-')) {
         index++;
       }
       while (index < text.length && _isDigit(text[index])) {

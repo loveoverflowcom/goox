@@ -1,0 +1,10 @@
+{
+  "name": "pdf-viewer",
+  "type": "renderer",
+  "filetypes": ["pdf"],
+  "web_entry": "webview/index.html",
+  "ui_mode": "webview",
+  "protocol": "erp/1",
+  "capabilities": ["render.pdf"],
+  "rendering": true
+}

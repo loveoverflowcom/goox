@@ -129,6 +129,24 @@ pub fn registered_extension_commands() -> Vec<String> {
     crate::extensions::registered_extension_commands()
 }
 
+pub fn validate_extension_manifest(
+    manifest: crate::extensions::ExtensionManifest,
+) -> Result<(), crate::extensions::ValidationError> {
+    crate::extensions::validate_manifest(&manifest)
+}
+
+pub fn validate_extension_queries(
+    extension_path: String,
+) -> Result<(), crate::extensions::ValidationError> {
+    crate::extensions::validate_queries(std::path::Path::new(&extension_path))
+}
+
+pub fn load_extension_manifest(
+    extension_path: String,
+) -> Result<crate::extensions::ExtensionManifest, crate::extensions::ValidationError> {
+    crate::extensions::load_extension_manifest(std::path::Path::new(&extension_path))
+}
+
 pub fn sync_language_server(
     workspace_root: Option<String>,
     file_path: Option<String>,
@@ -212,4 +230,59 @@ pub fn resize_terminal(
 
 pub fn dispose_terminal(id: TerminalId) {
     crate::terminal::dispose_terminal(id);
+}
+
+// WASM Extension API
+
+pub fn wasm_load_module(extension_id: String, wasm_bytes: Vec<u8>) -> Result<(), String> {
+    crate::wasm_runtime::load_module(&extension_id, &wasm_bytes)
+        .map_err(|e| e.to_string())
+}
+
+pub fn wasm_send_file_opened_event(
+    extension_id: String,
+    path: String,
+    content: String,
+) -> Result<(), String> {
+    crate::wasm_runtime::send_file_opened_event(&extension_id, path, content)
+        .map_err(|e| e.to_string())
+}
+
+pub fn wasm_send_file_saved_event(extension_id: String, path: String) -> Result<(), String> {
+    crate::wasm_runtime::send_file_saved_event(&extension_id, path)
+        .map_err(|e| e.to_string())
+}
+
+pub fn wasm_send_file_edited_event(
+    extension_id: String,
+    path: String,
+    start_byte: usize,
+    old_end_byte: usize,
+    new_end_byte: usize,
+) -> Result<(), String> {
+    crate::wasm_runtime::send_file_edited_event(
+        &extension_id,
+        path,
+        start_byte,
+        old_end_byte,
+        new_end_byte,
+    )
+    .map_err(|e| e.to_string())
+}
+
+pub fn wasm_send_file_closed_event(extension_id: String, path: String) -> Result<(), String> {
+    crate::wasm_runtime::send_file_closed_event(&extension_id, path)
+        .map_err(|e| e.to_string())
+}
+
+pub fn wasm_is_loaded(extension_id: String) -> bool {
+    crate::wasm_runtime::is_loaded(&extension_id)
+}
+
+pub fn wasm_unload_module(extension_id: String) -> bool {
+    crate::wasm_runtime::unload_module(&extension_id)
+}
+
+pub fn wasm_loaded_extensions() -> Vec<String> {
+    crate::wasm_runtime::loaded_extensions()
 }

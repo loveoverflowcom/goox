@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  google_fonts: ^8.0.2
   goox_editor_sdk:
     path: ../goox_editor_sdk
   goox_flutter_bridge:

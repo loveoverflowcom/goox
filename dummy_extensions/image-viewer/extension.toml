@@ -1,0 +1,24 @@
+# Image Viewer Extension
+
+[extension]
+id = "image-viewer"
+name = "Image Viewer"
+version = "1.0.0"
+description = "View images (PNG, JPG, GIF, SVG, WebP) in the editor"
+author = "Goox Team"
+repository = "https://github.com/goox/extensions"
+type = "renderer"
+
+[extension.files]
+types = ["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico"]
+
+[webview]
+entry = "webview/index.html"
+
+[ui]
+mode = "webview"
+rendering = true
+
+[protocol]
+version = "erp/1"
+capabilities = ["render.image"]

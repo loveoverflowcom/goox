@@ -1,0 +1,14 @@
+{
+  "id": "dart-language-support",
+  "name": "Dart Language Support",
+  "version": "1.0.0",
+  "description": "Syntax highlighting and language support for Dart",
+  "author": "Goox Team",
+  "repository": "https://github.com/goox/extensions",
+  "file_types": ["dart"],
+  "lsp_server": {
+    "command": "dart",
+    "args": ["language-server", "--protocol=lsp"],
+    "initialization_options": {}
+  }
+}

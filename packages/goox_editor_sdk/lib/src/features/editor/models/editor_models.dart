@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:goox_flutter_bridge/goox_flutter_bridge.dart' as bridge;
 
 enum EditorPatchKind { insert, delete }
 
@@ -52,6 +53,8 @@ class ActiveExtensionInfo {
     required this.uiMode,
     required this.protocol,
     required this.capabilities,
+    required this.extensionType,
+    this.syntaxGrammarPath,
     this.entry,
     this.webEntry,
     this.languageId,
@@ -66,6 +69,7 @@ class ActiveExtensionInfo {
     uiMode: 'none',
     protocol: 'erp/1',
     capabilities: [],
+    extensionType: bridge.ExtensionType.language,
   );
 
   final String name;
@@ -77,6 +81,8 @@ class ActiveExtensionInfo {
   final String uiMode;
   final String protocol;
   final List<String> capabilities;
+  final bridge.ExtensionType extensionType;
+  final String? syntaxGrammarPath;
   final String? languageId;
   final String? lspExecutable;
 
@@ -88,9 +94,15 @@ class ActiveExtensionInfo {
   );
   bool get hasErpCapability =>
       rendering && hasWasmEntry && hasDocumentRendering;
-  bool get hasWebViewCapability => rendering && hasWebViewUi && hasWebEntry;
+  bool get hasWebViewCapability =>
+      hasWebEntry &&
+      (extensionType == bridge.ExtensionType.renderer ||
+          extensionType == bridge.ExtensionType.dualMode ||
+          (rendering && hasWebViewUi));
   bool get hasWebViewUi => uiMode == 'webview';
   bool get hasCanvasUi => uiMode == 'canvas' || uiMode == 'native';
+  bool get isDualMode => extensionType == bridge.ExtensionType.dualMode;
+  bool get isRendererOnly => extensionType == bridge.ExtensionType.renderer;
 
   bool get isEmpty => name.isEmpty;
 }

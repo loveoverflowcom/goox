@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:goox_flutter_bridge/goox_flutter_bridge.dart';
+import 'package:path/path.dart' as p;
 
 import '../features/editor/models/editor_models.dart';
 
@@ -46,6 +49,8 @@ final class GooxEditorSdkBootstrap {
       uiMode: extension.uiMode,
       protocol: extension.protocol,
       capabilities: extension.capabilities,
+      extensionType: extension.extensionType,
+      syntaxGrammarPath: await _resolveSyntaxGrammarPath(extension.path),
     );
   }
 
@@ -119,6 +124,44 @@ final class GooxEditorSdkBootstrap {
     required String text,
   }) =>
       GooxRustBootstrap.validateSourceText(languageId: languageId, text: text);
+
+  static Future<String?> _resolveSyntaxGrammarPath(String extensionPath) async {
+    final configFile = File(p.join(extensionPath, 'config.json'));
+    if (!configFile.existsSync()) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(await configFile.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final rawPath = decoded['syntax_grammar'];
+      if (rawPath is! String) {
+        return null;
+      }
+
+      final trimmed = rawPath.trim();
+      if (trimmed.isEmpty || p.isAbsolute(trimmed)) {
+        return null;
+      }
+
+      if (p.split(trimmed).contains('..')) {
+        return null;
+      }
+
+      final resolved = p.normalize(p.join(extensionPath, trimmed));
+      final extensionRoot = p.normalize(extensionPath);
+      if (!p.isWithin(extensionRoot, resolved)) {
+        return null;
+      }
+
+      return File(resolved).existsSync() ? resolved : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   static Future<bool> syncLanguageServer({
     String? workspaceRoot,

@@ -1,4 +1,7 @@
 export 'src/editor/widgets/goox_editor_canvas.dart';
+export 'src/editor/widgets/editor_fonts.dart';
+export 'src/editor/widgets/goox_code_syntax_highlighter.dart';
+export 'src/editor/widgets/markdown_renderer.dart';
 export 'src/editor/widgets/language_definition.dart';
 export 'src/editor/widgets/goox_plugin_canvas.dart';
 export 'src/editor/widgets/status/goox_status_bar.dart';

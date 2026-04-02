@@ -1,0 +1,10 @@
+{
+  "name": "markdown",
+  "filetypes": ["md", "markdown"],
+  "language_id": "markdown",
+  "web_entry": "webview/index.html",
+  "ui_mode": "webview",
+  "protocol": "erp/1",
+  "capabilities": ["render.markdown"],
+  "rendering": true
+}
