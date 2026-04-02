@@ -1,0 +1,7 @@
+Windows WebView smoke test
+=================================
+
+If the renderer loads correctly, this text will appear in the webview.
+
+- File type: wvtest
+- Goal: verify webview_all on Windows
