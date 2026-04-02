@@ -1,0 +1,21 @@
+name: webview_all_windows_smoke
+description: "Desktop smoke test for webview_all."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  webview_all: ^1.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  webview_flutter_platform_interface: ^2.15.1
+
+flutter:
+  uses-material-design: true
