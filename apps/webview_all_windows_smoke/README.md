@@ -12,7 +12,5 @@ flutter run -d macos
 
 ## What it checks
 
-- Local HTML loading via `WebViewController.loadFile`
-- Message passing from the page to Flutter
-- Message passing from Flutter to the page
+- Remote URL loading via `WebViewController.loadRequest`
 - Basic desktop integration on Windows and macOS

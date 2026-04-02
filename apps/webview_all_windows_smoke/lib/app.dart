@@ -1,8 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_all/webview_all.dart';
 
@@ -40,9 +37,10 @@ class SmokeHomePage extends StatefulWidget {
 }
 
 class _SmokeHomePageState extends State<SmokeHomePage> {
+  static const String _targetUrl = 'https://www.google.com/?client=safari';
+
   late final WebViewController _controller;
-  File? _pageFile;
-  String _status = 'Preparing local HTML...';
+  String _status = 'Preparing remote URL...';
   final List<String> _bridgeLog = <String>[];
   int _loadToken = 0;
   bool _ready = false;
@@ -56,7 +54,11 @@ class _SmokeHomePageState extends State<SmokeHomePage> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) {
-            _injectHostPayload();
+            if (!mounted) return;
+            setState(() {
+              _ready = true;
+              _status = 'Loaded $_targetUrl';
+            });
           },
           onWebResourceError: (error) {
             if (!mounted) return;
@@ -69,53 +71,39 @@ class _SmokeHomePageState extends State<SmokeHomePage> {
       );
 
     if (widget.startAutomatically) {
-      _prepareAndLoadPage();
+      _loadTargetUrl();
     }
   }
 
-  Future<void> _prepareAndLoadPage() async {
-    final directory = await Directory.systemTemp.createTemp(
-      'webview_all_windows_smoke_',
-    );
-    final pageFile = File(
-      '${directory.path}${Platform.pathSeparator}index.html',
-    );
-    await pageFile.writeAsString(_buildHtmlPage());
-
+  Future<void> _loadTargetUrl() async {
     if (!mounted) return;
     setState(() {
-      _pageFile = pageFile;
-      _status = 'Loading local file...';
+      _status = 'Loading $_targetUrl...';
       _ready = false;
     });
 
     final loadToken = ++_loadToken;
     try {
-      await _controller.loadFile(pageFile.path);
+      await _controller.loadRequest(Uri.parse(_targetUrl));
       if (!mounted || loadToken != _loadToken) return;
       setState(() {
-        _status = 'Local page loaded';
+        _status = 'Loaded $_targetUrl';
       });
     } catch (error) {
       if (!mounted || loadToken != _loadToken) return;
       setState(() {
-        _status = 'Failed to load page: $error';
+        _status = 'Failed to load URL: $error';
       });
     }
   }
 
   Future<void> _reloadPage() async {
-    if (_pageFile == null) {
-      await _prepareAndLoadPage();
-      return;
-    }
-
     final loadToken = ++_loadToken;
     try {
-      await _controller.loadFile(_pageFile!.path);
+      await _controller.loadRequest(Uri.parse(_targetUrl));
       if (!mounted || loadToken != _loadToken) return;
       setState(() {
-        _status = 'Reloaded local page';
+        _status = 'Reloaded $_targetUrl';
       });
     } catch (error) {
       if (!mounted || loadToken != _loadToken) return;
@@ -125,56 +113,16 @@ class _SmokeHomePageState extends State<SmokeHomePage> {
     }
   }
 
-  Future<void> _injectHostPayload() async {
-    if (!mounted || _pageFile == null) return;
-
-    final payload = <String, dynamic>{
-      'type': 'host-sync',
-      'title': 'webview_all smoke test',
-      'timestamp': DateTime.now().toIso8601String(),
-      'platform': defaultTargetPlatform.name,
-      'ready': true,
-      'filePath': _pageFile!.path,
-    };
-
-    final script =
-        '''
-window.dispatchEvent(new CustomEvent('goox-smoke-host', {
-  detail: ${jsonEncode(payload)}
-}));
-''';
-
-    try {
-      await _controller.runJavaScript(script);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _status = 'Host injection failed: $error';
-      });
-    }
-  }
-
   Future<void> _sendPing() async {
-    final payload = <String, dynamic>{
-      'type': 'ping',
-      'nonce': math.Random().nextInt(1 << 31),
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
     try {
-      await _controller.runJavaScript('''
-window.dispatchEvent(new CustomEvent('goox-smoke-host', {
-  detail: ${jsonEncode(payload)}
-}));
-''');
       if (!mounted) return;
       setState(() {
-        _status = 'Sent host event to the page';
+        _status = 'Ping pressed for $_targetUrl';
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _status = 'Failed to send host event: $error';
+        _status = 'Ping failed: $error';
       });
     }
   }
@@ -208,281 +156,6 @@ window.dispatchEvent(new CustomEvent('goox-smoke-host', {
     });
   }
 
-  String _buildHtmlPage() {
-    return '''
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>webview_all Desktop Smoke</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #07111e;
-      --panel: rgba(15, 23, 42, 0.88);
-      --panel-border: rgba(148, 163, 184, 0.18);
-      --text: #e5eefc;
-      --muted: #93a4bf;
-      --accent: #12a89d;
-      --accent-2: #f59e0b;
-    }
-
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; }
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(18, 168, 157, 0.22), transparent 24%),
-        radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 28%),
-        linear-gradient(180deg, #07111e 0%, var(--bg) 100%);
-      color: var(--text);
-    }
-    .page {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 24px;
-    }
-    .hero {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      align-items: end;
-      padding: 24px;
-      border-radius: 24px;
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.76));
-      border: 1px solid var(--panel-border);
-      box-shadow: 0 24px 54px rgba(2, 6, 23, 0.42);
-    }
-    .eyebrow {
-      margin: 0 0 10px;
-      color: var(--accent-2);
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      font-size: 0.76rem;
-      font-weight: 700;
-    }
-    h1 {
-      margin: 0 0 10px;
-      font-size: clamp(2rem, 4vw, 3.4rem);
-      line-height: 1;
-    }
-    p {
-      margin: 0;
-      max-width: 72ch;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .button {
-      appearance: none;
-      border: 1px solid var(--panel-border);
-      background: rgba(15, 23, 42, 0.96);
-      color: var(--text);
-      padding: 12px 16px;
-      border-radius: 14px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .button--primary {
-      border-color: rgba(18, 168, 157, 0.35);
-      background: linear-gradient(180deg, rgba(18, 168, 157, 0.28), rgba(15, 23, 42, 0.95));
-    }
-    .status {
-      margin: 16px 0 18px;
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-      color: var(--muted);
-    }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(148, 163, 184, 0.14);
-      color: #dbeafe;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-    .layout {
-      display: grid;
-      gap: 18px;
-      grid-template-columns: 1fr 1fr;
-    }
-    .panel {
-      padding: 18px;
-      border-radius: 22px;
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      backdrop-filter: blur(12px);
-    }
-    .panel--wide {
-      grid-column: 1 / -1;
-    }
-    .title {
-      margin: 0 0 12px;
-      color: #cbd5e1;
-      font-size: 0.84rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-weight: 800;
-    }
-    .value, pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      line-height: 1.6;
-    }
-    .card {
-      display: grid;
-      gap: 8px;
-      padding: 12px;
-      border-radius: 16px;
-      background: rgba(148, 163, 184, 0.06);
-    }
-    .muted {
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-    @media (max-width: 860px) {
-      .hero { flex-direction: column; align-items: stretch; }
-      .actions { justify-content: flex-start; }
-      .layout { grid-template-columns: 1fr; }
-    }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <section class="hero">
-      <div>
-        <div class="eyebrow">webview_all smoke test</div>
-        <h1>Desktop WebView sample</h1>
-        <p>
-          This page is loaded from a local file so you can verify that
-          <code>webview_all</code> starts correctly on Windows and that the JS
-          bridge still works.
-        </p>
-      </div>
-      <div class="actions">
-        <button id="pingButton" class="button button--primary">Ping host</button>
-        <button id="clearButton" class="button">Clear log</button>
-      </div>
-    </section>
-
-    <section class="status">
-      <span id="statusPill" class="pill">Waiting for host...</span>
-      <span id="statusText">No data has been injected yet.</span>
-    </section>
-
-    <section class="layout">
-      <article class="panel">
-        <div class="title">Injected data</div>
-        <div class="card">
-          <div><strong>File path</strong></div>
-          <div id="filePath" class="value muted">-</div>
-        </div>
-        <div style="height: 10px;"></div>
-        <div class="card">
-          <div><strong>Payload</strong></div>
-          <div id="payload" class="value muted">-</div>
-        </div>
-      </article>
-
-      <article class="panel">
-        <div class="title">Bridge log</div>
-        <pre id="log">No bridge messages yet.</pre>
-      </article>
-
-      <article class="panel panel--wide">
-        <div class="title">Test notes</div>
-        <pre>1. If this view renders, the Windows plugin is alive.
-2. If you see "Bridge: ready", the page sent a message to Flutter.
-3. If you click "Ping host" and the log updates, two-way messaging works.</pre>
-      </article>
-    </section>
-  </div>
-
-  <script>
-    (function () {
-      const logEl = document.getElementById('log');
-      const statusPill = document.getElementById('statusPill');
-      const statusText = document.getElementById('statusText');
-      const filePathEl = document.getElementById('filePath');
-      const payloadEl = document.getElementById('payload');
-      const pingButton = document.getElementById('pingButton');
-      const clearButton = document.getElementById('clearButton');
-      const log = [];
-
-      function append(entry) {
-        log.unshift(entry);
-        logEl.textContent = log.slice(0, 8).join('\\n\\n');
-      }
-
-      function setStatus(label, detail) {
-        statusPill.textContent = label;
-        statusText.textContent = detail;
-      }
-
-      function send(payload) {
-        const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
-        append('-> ' + message);
-
-        if (window.host && typeof window.host.postMessage === 'function') {
-          window.host.postMessage(message);
-          return;
-        }
-        if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
-          window.chrome.webview.postMessage(message);
-          return;
-        }
-        if (window.external && typeof window.external.invoke === 'function') {
-          window.external.invoke(message);
-        }
-      }
-
-      document.addEventListener('goox-smoke-host', function (event) {
-        const detail = event.detail || {};
-        filePathEl.textContent = detail.filePath || '-';
-        payloadEl.textContent = JSON.stringify(detail, null, 2);
-        setStatus('Ready', 'Received host data from Flutter.');
-        append('<- ' + JSON.stringify(detail));
-      });
-
-      pingButton.addEventListener('click', function () {
-        send({
-          type: 'ping',
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-        });
-      });
-
-      clearButton.addEventListener('click', function () {
-        log.length = 0;
-        logEl.textContent = 'Log cleared.';
-      });
-
-      window.addEventListener('DOMContentLoaded', function () {
-        send({
-          type: 'ready',
-          platform: 'windows',
-          title: 'webview_all smoke test',
-        });
-      });
-    })();
-  </script>
-</body>
-</html>
-''';
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -495,7 +168,7 @@ window.dispatchEvent(new CustomEvent('goox-smoke-host', {
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1120;
               final infoPanel = _InfoPanel(
-                pageFile: _pageFile,
+                targetUrl: _targetUrl,
                 status: _status,
                 bridgeLog: _bridgeLog,
                 colorScheme: colorScheme,
@@ -619,13 +292,13 @@ class _HeaderBar extends StatelessWidget {
 
 class _InfoPanel extends StatelessWidget {
   const _InfoPanel({
-    required this.pageFile,
+    required this.targetUrl,
     required this.status,
     required this.bridgeLog,
     required this.colorScheme,
   });
 
-  final File? pageFile;
+  final String targetUrl;
   final String status;
   final List<String> bridgeLog;
   final ColorScheme colorScheme;
@@ -652,10 +325,7 @@ class _InfoPanel extends StatelessWidget {
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
-              _DetailCard(
-                label: 'Local file',
-                value: pageFile?.path ?? 'Not ready yet',
-              ),
+              _DetailCard(label: 'Target URL', value: targetUrl),
               const SizedBox(height: 12),
               _DetailCard(label: 'Status', value: status),
               const SizedBox(height: 16),
