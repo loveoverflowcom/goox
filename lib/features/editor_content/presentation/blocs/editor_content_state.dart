@@ -1,0 +1,56 @@
+import 'package:equatable/equatable.dart';
+import 'package:goox/features/editor_content/data/models/cursor_position.dart';
+import 'package:goox/features/editor_content/data/models/file_content.dart';
+
+enum EditorContentStatus { initial, loading, loaded, saving, saved, error }
+
+final class EditorContentState extends Equatable {
+
+  const EditorContentState({
+    this.content,
+    this.originalContent = '',
+    this.cursorPosition = const CursorPosition(line: 1, column: 1, offset: 0),
+    this.isModified = false,
+    this.status = .initial,
+    this.errorMessage,
+  });
+  final FileContent? content;
+  final String originalContent;
+  final CursorPosition cursorPosition;
+  final bool isModified;
+  final EditorContentStatus status;
+  final String? errorMessage;
+
+  EditorContentState copyWith({
+    FileContent? content,
+    String? originalContent,
+    CursorPosition? cursorPosition,
+    bool? isModified,
+    EditorContentStatus? status,
+    String? errorMessage,
+  }) {
+    return EditorContentState(
+      content: content ?? this.content,
+      originalContent: originalContent ?? this.originalContent,
+      cursorPosition: cursorPosition ?? this.cursorPosition,
+      isModified: isModified ?? this.isModified,
+      status: status ?? this.status,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+
+  int get totalLines {
+    if (content == null) return 0;
+    return content!.content.split('\n').length;
+  }
+
+  @override
+  List<Object?> get props => [
+        content,
+        originalContent,
+        cursorPosition,
+        isModified,
+        status,
+        errorMessage,
+      ];
+}

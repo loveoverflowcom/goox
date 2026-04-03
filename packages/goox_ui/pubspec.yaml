@@ -1,0 +1,16 @@
+name: goox_ui
+description: UI components and theme for Goox editor
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^6.0.0
