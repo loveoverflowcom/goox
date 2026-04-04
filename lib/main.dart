@@ -3,39 +3,64 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:goox/features/editor_content/data.dart';
 import 'package:goox/features/editor_layout/presentation.dart';
 import 'package:goox/features/file_explorer/data.dart';
+import 'package:goox/features/theme.dart';
 import 'package:goox_ui/goox_ui.dart';
+import 'package:native_splash_screen/native_splash_screen.dart' as nss;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Delay to show native splash screen
-  await Future<void>.delayed(const Duration(milliseconds: 1500));
-  
   runApp(const MyApp());
 }
 
 /// Main application widget.
-final class MyApp extends StatelessWidget {
+final class MyApp extends StatefulWidget {
   /// Creates the main app.
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Close splash screen after first frame renders
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      nss.close(animation: nss.CloseAnimation.fade);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
+    return MultiBlocProvider(
       providers: [
-        RepositoryProvider<WorkspaceRepository>(
-          create: (context) => WorkspaceRepositoryImpl(),
-        ),
-        RepositoryProvider<FileRepository>(
-          create: (context) => FileRepositoryImpl(),
+        BlocProvider<ThemeBloc>(
+          create: (context) => ThemeBloc(
+            repository: ThemeRepositoryImpl(),
+          )..add(const LoadThemePreferenceEvent()),
         ),
       ],
-      child: MaterialApp(
-        title: 'Goox Editor',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
-        home: const EditorLayoutView(
-          workspacePath: '', // Empty path - user will open folder via UI
+      child: MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<WorkspaceRepository>(
+            create: (context) => WorkspaceRepositoryImpl(),
+          ),
+          RepositoryProvider<FileRepository>(
+            create: (context) => FileRepositoryImpl(),
+          ),
+        ],
+        child: BlocBuilder<ThemeBloc, ThemeState>(
+          builder: (context, themeState) {
+            return MaterialApp(
+              title: 'Goox Editor',
+              debugShowCheckedModeBanner: false,
+              theme: themeState.themeData,
+              home: const EditorLayoutView(
+                workspacePath: '', // Empty path - user will open folder via UI
+              ),
+            );
+          },
         ),
       ),
     );

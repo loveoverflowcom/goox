@@ -23,4 +23,22 @@ final class AppTheme {
       ),
     );
   }
+
+  /// Light theme matching VSCode light theme.
+  static ThemeData get light {
+    return ThemeData.light().copyWith(
+      scaffoldBackgroundColor: AppColors.lightEditorBackground,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.lightStatusBarBackground,
+        surface: AppColors.lightEditorBackground,
+        error: AppColors.errorColor,
+      ),
+      textTheme: const TextTheme(
+        bodyMedium: TextStyle(
+          color: AppColors.lightTextColor,
+          fontFamily: 'monospace',
+        ),
+      ),
+    );
+  }
 }

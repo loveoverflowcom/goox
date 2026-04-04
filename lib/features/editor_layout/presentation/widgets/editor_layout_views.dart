@@ -8,6 +8,8 @@ import 'package:goox/features/file_explorer/data.dart';
 import 'package:goox/features/file_explorer/presentation.dart';
 import 'package:goox/features/status_bar/presentation.dart';
 import 'package:goox/features/tab_manager/presentation.dart';
+import 'package:goox/features/terminal.dart';
+import 'package:goox/features/theme.dart';
 import 'package:goox_ui/goox_ui.dart';
 
 /// Main editor layout page.
@@ -48,6 +50,11 @@ final class EditorLayoutView extends StatelessWidget {
           create: (context) => EditorContentBloc(
             repository: context.read<FileRepository>(),
           ),
+        ),
+        BlocProvider(
+          create: (context) => TerminalBloc(
+            repository: TerminalRepositoryImpl(),
+          )..add(const InitializeTerminalEvent()),
         ),
       ],
       child: MultiBlocListener(
@@ -108,7 +115,19 @@ final class _EditorLayoutView extends StatelessWidget {
                           ],
                         ),
                       Expanded(
-                        child: _buildEditorArea(),
+                        child: Column(
+                          children: [
+                            Expanded(child: _buildEditorArea()),
+                            BlocBuilder<TerminalBloc, TerminalState>(
+                              builder: (context, terminalState) {
+                                if (!terminalState.isVisible) {
+                                  return const SizedBox.shrink();
+                                }
+                                return const TerminalPanelWidget();
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -249,11 +268,22 @@ final class _EditorLayoutView extends StatelessWidget {
                   right: BorderSide(color: AppColors.borderColor),
                 ),
               ),
-              child: const Center(
-                child: Text(
-                  'Settings',
-                  style: TextStyle(color: AppColors.textColor),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    child: const Text(
+                      'SETTINGS',
+                      style: TextStyle(
+                        color: AppColors.textColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const ThemeSelectorWidget(),
+                ],
               ),
             ),
           ),
@@ -300,6 +330,13 @@ final class _EditorLayoutView extends StatelessWidget {
     // Ctrl/Cmd + B: Toggle sidebar
     if (isCtrlOrCmd && event.logicalKey == LogicalKeyboardKey.keyB) {
       context.read<EditorLayoutBloc>().add(const ToggleSidebarEvent());
+      return KeyEventResult.handled;
+    }
+
+    // Ctrl + ` (backtick): Toggle terminal
+    if (HardwareKeyboard.instance.isControlPressed &&
+        event.logicalKey == LogicalKeyboardKey.backquote) {
+      context.read<TerminalBloc>().add(const ToggleTerminalEvent());
       return KeyEventResult.handled;
     }
 
