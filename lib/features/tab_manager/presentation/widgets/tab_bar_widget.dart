@@ -10,21 +10,26 @@ final class TabBarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return BlocBuilder<TabManagerBloc, TabManagerState>(
       builder: (context, state) {
         if (state.tabs.isEmpty) {
           return Container(
             height: AppSpacing.tabHeight,
-            color: AppColors.tabBarBackground,
+            color: colorScheme.surface,
           );
         }
 
         return Container(
           height: AppSpacing.tabHeight,
-          decoration: const BoxDecoration(
-            color: AppColors.tabBarBackground,
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
             border: Border(
-              bottom: BorderSide(color: AppColors.borderColor),
+              bottom: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
             ),
           ),
           child: ListView(
@@ -35,12 +40,12 @@ final class TabBarWidget extends StatelessWidget {
                   fileName: tab.fileName,
                   isActive: tab.id == state.activeTabId,
                   isModified: tab.isModified,
-                  onTap: () {
-                    context.read<TabManagerBloc>().add(ActivateTabEvent(tab.id));
-                  },
-                  onClose: () {
-                    context.read<TabManagerBloc>().add(CloseTabEvent(tab.id));
-                  },
+                  onTap: () => context
+                      .read<TabManagerBloc>()
+                      .add(ActivateTabEvent(tab.id)),
+                  onClose: () => context
+                      .read<TabManagerBloc>()
+                      .add(CloseTabEvent(tab.id)),
                 ),
             ],
           ),
@@ -51,7 +56,6 @@ final class TabBarWidget extends StatelessWidget {
 }
 
 final class _TabItem extends StatefulWidget {
-
   const _TabItem({
     required this.fileName,
     required this.isActive,
@@ -59,6 +63,7 @@ final class _TabItem extends StatefulWidget {
     required this.onTap,
     required this.onClose,
   });
+  
   final String fileName;
   final bool isActive;
   final bool isModified;
@@ -74,6 +79,9 @@ final class _TabItemState extends State<_TabItem> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return MouseRegion(
       onEnter: (_) => setState(() => isHovered = true),
       onExit: (_) => setState(() => isHovered = false),
@@ -86,10 +94,12 @@ final class _TabItemState extends State<_TabItem> {
           ),
           decoration: BoxDecoration(
             color: widget.isActive
-                ? AppColors.activeTabBackground
-                : AppColors.inactiveTabBackground,
-            border: const Border(
-              right: BorderSide(color: AppColors.borderColor),
+                ? colorScheme.surface
+                : colorScheme.surfaceContainerHighest,
+            border: Border(
+              right: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
             ),
           ),
           padding: const EdgeInsets.symmetric(
@@ -101,16 +111,17 @@ final class _TabItemState extends State<_TabItem> {
               Icon(
                 _getFileIcon(widget.fileName),
                 size: 14,
-                color: AppColors.textColor,
+                color: colorScheme.onSurface,
               ),
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
                   widget.fileName,
-                  style: TextStyle(
-                    color: AppColors.textColor,
-                    fontSize: 13,
-                    fontWeight: widget.isActive ? FontWeight.w500 : FontWeight.normal,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: widget.isActive
+                        ? FontWeight.w500
+                        : FontWeight.normal,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -120,8 +131,8 @@ final class _TabItemState extends State<_TabItem> {
                   width: 8,
                   height: 8,
                   margin: const EdgeInsets.only(left: AppSpacing.xs),
-                  decoration: const BoxDecoration(
-                    color: AppColors.modifiedIndicator,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -130,10 +141,10 @@ final class _TabItemState extends State<_TabItem> {
                   onTap: widget.onClose,
                   child: Container(
                     margin: const EdgeInsets.only(left: AppSpacing.xs),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close,
                       size: 16,
-                      color: AppColors.textColor,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -146,18 +157,12 @@ final class _TabItemState extends State<_TabItem> {
 
   IconData _getFileIcon(String fileName) {
     final extension = fileName.split('.').last.toLowerCase();
-    switch (extension) {
-      case 'dart':
-        return Icons.code;
-      case 'json':
-        return Icons.data_object;
-      case 'yaml':
-      case 'yml':
-        return Icons.settings;
-      case 'md':
-        return Icons.description;
-      default:
-        return Icons.insert_drive_file;
-    }
+    return switch (extension) {
+      'dart' => Icons.code,
+      'json' => Icons.data_object,
+      'yaml' || 'yml' => Icons.settings,
+      'md' => Icons.description,
+      _ => Icons.insert_drive_file,
+    };
   }
 }

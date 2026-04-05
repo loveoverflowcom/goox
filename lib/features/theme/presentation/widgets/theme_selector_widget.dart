@@ -10,6 +10,8 @@ final class ThemeSelectorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    
     return BlocBuilder<ThemeBloc, ThemeState>(
       builder: (context, state) {
         return ExpansionTile(
@@ -18,16 +20,16 @@ final class ThemeSelectorWidget extends StatelessWidget {
           ),
           expansionAnimationStyle: const AnimationStyle(duration: .zero),
           childrenPadding: EdgeInsets.zero,
-          title: const Text(
+          title: Text(
             'Theme',
             style: TextStyle(
-              color: AppColors.textColor,
+              color: editorTheme.textColor,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
-          iconColor: AppColors.textColor,
-          collapsedIconColor: AppColors.textColor,
+          iconColor: editorTheme.textColor,
+          collapsedIconColor: editorTheme.textColor,
           children: [
             for (final mode in <AppThemeMode>[
               .system,
@@ -73,7 +75,6 @@ final class _ThemeOption extends StatelessWidget {
         mode.displayName,
         style: TextStyle(
           color: isSelected ? selectedColor : unselectedColor,
-          fontSize: 13,
         ),
       ),
       onTap: () {

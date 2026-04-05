@@ -40,16 +40,19 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
       final column = lines.last.length + 1;
 
       context.read<EditorContentBloc>().add(
-            UpdateCursorPositionEvent(line: line, column: column),
-          );
+        UpdateCursorPositionEvent(line: line, column: column),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+
     return BlocConsumer<EditorContentBloc, EditorContentState>(
       listener: (context, state) {
-        if (state.content != null && _controller.text != state.content!.content) {
+        if (state.content != null &&
+            _controller.text != state.content!.content) {
           _controller.text = state.content!.content;
         }
       },
@@ -59,28 +62,28 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
         }
 
         if (state.content == null) {
-          return const Center(
+          return Center(
             child: Column(
               mainAxisAlignment: .center,
               children: [
                 Icon(
                   Icons.code,
                   size: AppSpacing.xxxlg,
-                  color: AppColors.textColor,
+                  color: editorTheme.textColor,
                 ),
-                SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   'No file open',
                   style: TextStyle(
-                    color: AppColors.textColor,
+                    color: editorTheme.textColor,
                     fontSize: 16,
                   ),
                 ),
-                SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   'Select a file from the explorer to start editing',
                   style: TextStyle(
-                    color: AppColors.textColorDimmed,
+                    color: editorTheme.textColorDimmed,
                     fontSize: 12,
                   ),
                 ),
@@ -93,14 +96,14 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
         final lineCount = lines.length;
 
         return ColoredBox(
-          color: AppColors.editorBackground,
+          color: editorTheme.editorBackground,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Line numbers
               Container(
                 width: AppSpacing.lineNumberWidth,
-                color: AppColors.editorBackground,
+                color: editorTheme.editorBackground,
                 padding: const EdgeInsets.only(
                   right: AppSpacing.editorPadding,
                   top: AppSpacing.editorPadding,
@@ -111,8 +114,8 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
                     for (var i = 0; i < lineCount; i++)
                       Text(
                         '${i + 1}',
-                        style: const TextStyle(
-                          color: AppColors.textColorDimmed,
+                        style: TextStyle(
+                          color: editorTheme.textColorDimmed,
                           fontSize: AppSpacing.fontSize,
                           fontFamily: 'monospace',
                           height: AppSpacing.lineHeight,
@@ -130,18 +133,22 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
                     child: TextField(
                       controller: _controller,
                       maxLines: null,
-                      style: const TextStyle(
-                        color: AppColors.textColor,
+                      style: TextStyle(
+                        color: editorTheme.textColor,
                         fontSize: AppSpacing.fontSize,
                         fontFamily: 'monospace',
                         height: AppSpacing.lineHeight,
                       ),
                       decoration: const InputDecoration(
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(AppSpacing.editorPadding),
+                        contentPadding: EdgeInsets.all(
+                          AppSpacing.editorPadding,
+                        ),
                       ),
                       onChanged: (value) {
-                        context.read<EditorContentBloc>().add(UpdateContentEvent(value));
+                        context.read<EditorContentBloc>().add(
+                          UpdateContentEvent(value),
+                        );
                         _updateCursorPosition();
                       },
                       onTap: _updateCursorPosition,

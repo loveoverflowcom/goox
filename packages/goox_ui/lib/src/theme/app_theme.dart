@@ -1,44 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:goox_ui/src/colors/app_colors.dart';
+import 'package:goox_ui/src/theme/editor_theme_extension.dart';
 
 /// App theme for Goox editor.
 final class AppTheme {
   /// Private constructor to prevent instantiation.
   const AppTheme._();
 
-  /// Dark theme matching VSCode.
+  /// Brand color from logo (blue)
+  static const Color _brandColor = Color(0xFF007ACC);
+
+  /// Dark theme matching VSCode with color seed from logo.
   static ThemeData get dark {
-    return ThemeData.dark().copyWith(
-      scaffoldBackgroundColor: AppColors.editorBackground,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.statusBarBackground,
+    final baseTheme = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: _brandColor,
+        brightness: Brightness.dark,
         surface: AppColors.editorBackground,
         error: AppColors.errorColor,
       ),
-      textTheme: const TextTheme(
-        bodyMedium: TextStyle(
-          color: AppColors.textColor,
-          fontFamily: 'monospace',
-        ),
-      ),
+      scaffoldBackgroundColor: AppColors.editorBackground,
+      extensions: [EditorThemeExtension.dark()],
+    );
+
+    return baseTheme.copyWith(
+      textTheme: GoogleFonts.jetBrainsMonoTextTheme(baseTheme.textTheme),
     );
   }
 
-  /// Light theme matching VSCode light theme.
+  /// Light theme matching VSCode light theme with color seed from logo.
   static ThemeData get light {
-    return ThemeData.light().copyWith(
-      scaffoldBackgroundColor: AppColors.lightEditorBackground,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.lightStatusBarBackground,
+    final baseTheme = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: _brandColor,
+        brightness: Brightness.light,
         surface: AppColors.lightEditorBackground,
         error: AppColors.errorColor,
       ),
-      textTheme: const TextTheme(
-        bodyMedium: TextStyle(
-          color: AppColors.lightTextColor,
-          fontFamily: 'monospace',
-        ),
-      ),
+      scaffoldBackgroundColor: AppColors.lightEditorBackground,
+      extensions: [EditorThemeExtension.light()],
+    );
+
+    return baseTheme.copyWith(
+      textTheme: GoogleFonts.jetBrainsMonoTextTheme(baseTheme.textTheme),
     );
   }
 }

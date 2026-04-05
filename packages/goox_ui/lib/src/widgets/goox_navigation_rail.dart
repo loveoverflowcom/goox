@@ -71,6 +71,9 @@ final class _GooxNavigationRailState extends State<GooxNavigationRail> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final editorTheme = theme.extension<EditorThemeExtension>()!;
+    
     final topDestinations = widget.destinations
         .where((d) => d.alignment == GooxTabAlignment.top)
         .toList();
@@ -87,10 +90,10 @@ final class _GooxNavigationRailState extends State<GooxNavigationRail> {
         // Navigation rail
         Container(
           width: AppSpacing.activityBarWidth,
-          decoration: const BoxDecoration(
-            color: AppColors.activityBarBackground,
+          decoration: BoxDecoration(
+            color: editorTheme.activityBarBackground,
             border: Border(
-              right: BorderSide(color: AppColors.borderColor),
+              right: BorderSide(color: editorTheme.borderColor),
             ),
           ),
           child: Column(
@@ -130,7 +133,7 @@ final class _GooxNavigationRailState extends State<GooxNavigationRail> {
               bottom: 0,
               child: Container(
                 width: 2,
-                color: AppColors.accentColor,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           // Button
@@ -157,8 +160,8 @@ final class _GooxNavigationRailState extends State<GooxNavigationRail> {
                     Icon(
                       destination.icon,
                       color: isSelected
-                          ? AppColors.textColor
-                          : AppColors.textColorDimmed,
+                          ? Theme.of(context).extension<EditorThemeExtension>()!.textColor
+                          : Theme.of(context).extension<EditorThemeExtension>()!.textColorDimmed,
                       size: AppSpacing.xlg,
                     ),
                     if (destination.trailing != null)

@@ -19,7 +19,8 @@ final class ThemeState extends Equatable {
     this.themeMode = AppThemeMode.dark,
     this.resolvedBrightness = Brightness.dark,
     this.status = ThemeStatus.initial,
-  });
+    ThemeData? themeData,
+  }) : _themeData = themeData;
 
   /// User's selected theme mode (dark/light/system)
   final AppThemeMode themeMode;
@@ -30,8 +31,15 @@ final class ThemeState extends Equatable {
   /// Loading status
   final ThemeStatus status;
 
+  /// Cached theme data
+  final ThemeData? _themeData;
+
   /// Get the ThemeData based on resolved brightness
   ThemeData get themeData {
+    // Return cached theme data if available, otherwise compute from brightness
+    if (_themeData != null) {
+      return _themeData;
+    }
     return resolvedBrightness == Brightness.dark
         ? AppTheme.dark
         : AppTheme.light;
@@ -42,14 +50,21 @@ final class ThemeState extends Equatable {
     AppThemeMode? themeMode,
     Brightness? resolvedBrightness,
     ThemeStatus? status,
+    ThemeData? themeData,
   }) {
     return ThemeState(
       themeMode: themeMode ?? this.themeMode,
       resolvedBrightness: resolvedBrightness ?? this.resolvedBrightness,
       status: status ?? this.status,
+      themeData: themeData ?? _themeData,
     );
   }
 
   @override
-  List<Object?> get props => [themeMode, resolvedBrightness, status];
+  List<Object?> get props => [
+    themeMode,
+    resolvedBrightness,
+    status,
+    _themeData,
+  ];
 }

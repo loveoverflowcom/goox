@@ -95,8 +95,10 @@ final class _EditorLayoutView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    
     return Scaffold(
-      backgroundColor: AppColors.editorBackground,
+      backgroundColor: editorTheme.editorBackground,
       body: Focus(
         autofocus: true,
         onKeyEvent: (node, event) => _handleKeyEvent(context, event),
@@ -142,6 +144,8 @@ final class _EditorLayoutView extends StatelessWidget {
   }
 
   Widget _buildSidebar(BuildContext context, double width) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    
     // Width includes activity bar + content area
     final contentWidth = width - AppSpacing.activityBarWidth;
     
@@ -156,10 +160,10 @@ final class _EditorLayoutView extends StatelessWidget {
             icon: Icons.copy_rounded,
             builder: (context) => Container(
               width: contentWidth,
-              decoration: const BoxDecoration(
-                color: AppColors.sidebarBackground,
+              decoration: BoxDecoration(
+                color: editorTheme.sidebarBackground,
                 border: Border(
-                  right: BorderSide(color: AppColors.borderColor),
+                  right: BorderSide(color: editorTheme.borderColor),
                 ),
               ),
               child: Column(
@@ -167,10 +171,10 @@ final class _EditorLayoutView extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: const Text(
+                    child: Text(
                       'EXPLORER',
                       style: TextStyle(
-                        color: AppColors.textColor,
+                        color: editorTheme.textColor,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
@@ -199,93 +203,105 @@ final class _EditorLayoutView extends StatelessWidget {
             id: 'search',
             title: 'Search',
             icon: Icons.search,
-            builder: (context) => Container(
-              width: contentWidth,
-              decoration: const BoxDecoration(
-                color: AppColors.sidebarBackground,
-                border: Border(
-                  right: BorderSide(color: AppColors.borderColor),
+            builder: (context) {
+              final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+              return Container(
+                width: contentWidth,
+                decoration: BoxDecoration(
+                  color: editorTheme.sidebarBackground,
+                  border: Border(
+                    right: BorderSide(color: editorTheme.borderColor),
+                  ),
                 ),
-              ),
-              child: const Center(
-                child: Text(
-                  'Search',
-                  style: TextStyle(color: AppColors.textColor),
+                child: Center(
+                  child: Text(
+                    'Search',
+                    style: TextStyle(color: editorTheme.textColor),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           GooxDestinationTab(
             id: 'source-control',
             title: 'Source Control',
             icon: Icons.account_tree_outlined,
-            builder: (context) => Container(
-              width: contentWidth,
-              decoration: const BoxDecoration(
-                color: AppColors.sidebarBackground,
-                border: Border(
-                  right: BorderSide(color: AppColors.borderColor),
+            builder: (context) {
+              final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+              return Container(
+                width: contentWidth,
+                decoration: BoxDecoration(
+                  color: editorTheme.sidebarBackground,
+                  border: Border(
+                    right: BorderSide(color: editorTheme.borderColor),
+                  ),
                 ),
-              ),
-              child: const Center(
-                child: Text(
-                  'Source Control',
-                  style: TextStyle(color: AppColors.textColor),
+                child: Center(
+                  child: Text(
+                    'Source Control',
+                    style: TextStyle(color: editorTheme.textColor),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           GooxDestinationTab(
             id: 'extensions',
             title: 'Extensions',
             icon: Icons.extension_outlined,
-            builder: (context) => Container(
-              width: contentWidth,
-              decoration: const BoxDecoration(
-                color: AppColors.sidebarBackground,
-                border: Border(
-                  right: BorderSide(color: AppColors.borderColor),
+            builder: (context) {
+              final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+              return Container(
+                width: contentWidth,
+                decoration: BoxDecoration(
+                  color: editorTheme.sidebarBackground,
+                  border: Border(
+                    right: BorderSide(color: editorTheme.borderColor),
+                  ),
                 ),
-              ),
-              child: const Center(
-                child: Text(
-                  'Extensions',
-                  style: TextStyle(color: AppColors.textColor),
+                child: Center(
+                  child: Text(
+                    'Extensions',
+                    style: TextStyle(color: editorTheme.textColor),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           GooxDestinationTab(
             id: 'settings',
             title: 'Settings',
             icon: Icons.settings_outlined,
             alignment: GooxTabAlignment.bottom,
-            builder: (context) => Container(
-              width: contentWidth,
-              decoration: const BoxDecoration(
-                color: AppColors.sidebarBackground,
-                border: Border(
-                  right: BorderSide(color: AppColors.borderColor),
+            builder: (context) {
+              final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+              return Container(
+                width: contentWidth,
+                decoration: BoxDecoration(
+                  color: editorTheme.sidebarBackground,
+                  border: Border(
+                    right: BorderSide(color: editorTheme.borderColor),
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: const Text(
-                      'SETTINGS',
-                      style: TextStyle(
-                        color: AppColors.textColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      child: Text(
+                        'SETTINGS',
+                        style: TextStyle(
+                          color: editorTheme.textColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                  const ThemeSelectorWidget(),
-                ],
-              ),
-            ),
+                    const ThemeSelectorWidget(),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -293,6 +309,8 @@ final class _EditorLayoutView extends StatelessWidget {
   }
 
   Widget _buildResizeHandle(BuildContext context) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    
     return GestureDetector(
       onHorizontalDragUpdate: (details) {
         final layoutBloc = context.read<EditorLayoutBloc>();
@@ -303,21 +321,26 @@ final class _EditorLayoutView extends StatelessWidget {
         cursor: SystemMouseCursors.resizeColumn,
         child: Container(
           width: AppSpacing.resizeHandleWidth,
-          color: AppColors.borderColor,
+          color: editorTheme.borderColor,
         ),
       ),
     );
   }
 
   Widget _buildEditorArea() {
-    return const ColoredBox(
-      color: AppColors.editorBackground,
-      child: Column(
-        children: [
-          TabBarWidget(),
-          Expanded(child: TextEditorWidget()),
-        ],
-      ),
+    return Builder(
+      builder: (context) {
+        final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+        return ColoredBox(
+          color: editorTheme.editorBackground,
+          child: const Column(
+            children: [
+              TabBarWidget(),
+              Expanded(child: TextEditorWidget()),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -18,6 +18,8 @@ class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    
     return BlocBuilder<TerminalBloc, TerminalState>(
       builder: (context, terminalState) {
         final windowHeight = MediaQuery.of(context).size.height;
@@ -29,10 +31,10 @@ class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
 
         return Container(
           height: constrainedHeight,
-          decoration: const BoxDecoration(
-            color: AppColors.editorBackground,
+          decoration: BoxDecoration(
+            color: editorTheme.editorBackground,
             border: Border(
-              top: BorderSide(color: AppColors.borderColor),
+              top: BorderSide(color: editorTheme.borderColor),
             ),
           ),
           child: Column(
@@ -41,11 +43,11 @@ class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
               _buildResizeHandle(context, terminalState.height),
 
               // Header
-              _buildHeader(),
+              _buildHeader(context),
 
               // Content area
               Expanded(
-                child: _buildContent(),
+                child: _buildContent(context),
               ),
             ],
           ),
@@ -55,6 +57,8 @@ class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
   }
 
   Widget _buildResizeHandle(BuildContext context, double currentHeight) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    
     return GestureDetector(
       onVerticalDragStart: (details) {
         _dragStartHeight = currentHeight;
@@ -76,7 +80,7 @@ class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
           child: Center(
             child: Container(
               height: 1,
-              color: AppColors.borderColor,
+              color: editorTheme.borderColor,
             ),
           ),
         ),
@@ -84,24 +88,26 @@ class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.tabBarBackground,
+      decoration: BoxDecoration(
+        color: editorTheme.tabBarBackground,
         border: Border(
-          bottom: BorderSide(color: AppColors.borderColor),
+          bottom: BorderSide(color: editorTheme.borderColor),
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Text(
             'TERMINAL',
             style: TextStyle(
-              color: AppColors.textColor,
+              color: editorTheme.textColor,
               fontSize: 11,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
@@ -112,15 +118,17 @@ class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(BuildContext context) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
-      child: const Align(
+      child: Align(
         alignment: Alignment.topLeft,
         child: Text(
           'Terminal (dummy version - PTY not implemented)',
           style: TextStyle(
-            color: AppColors.textColorDimmed,
+            color: editorTheme.textColorDimmed,
             fontSize: 13,
             fontFamily: 'monospace',
           ),

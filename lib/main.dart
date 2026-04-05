@@ -7,7 +7,6 @@ import 'package:goox/features/theme.dart';
 import 'package:native_splash_screen/native_splash_screen.dart' as nss;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
   runApp(const App());
 }
 
@@ -17,16 +16,16 @@ final class App extends StatefulWidget {
   const App({super.key});
 
   @override
-  State<App> createState() => _MyAppState();
+  State<App> createState() => _AppState();
 }
 
-class _MyAppState extends State<App> {
+final class _AppState extends State<App> {
   @override
   void initState() {
     super.initState();
     // Close splash screen after first frame renders
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      nss.close(animation: nss.CloseAnimation.fade);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await nss.close(animation: nss.CloseAnimation.fade);
     });
   }
 
@@ -50,6 +49,8 @@ class _MyAppState extends State<App> {
           ),
         ],
         child: BlocBuilder<ThemeBloc, ThemeState>(
+          buildWhen: (previous, current) =>
+              previous.themeMode != current.themeMode,
           builder: (context, themeState) {
             return MaterialApp(
               title: 'Goox Editor',

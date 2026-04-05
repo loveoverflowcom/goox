@@ -13,26 +13,27 @@ final class StatusBarWidget extends StatelessWidget {
       builder: (context, state) {
         return Container(
           height: AppSpacing.statusBarHeight,
-          color: AppColors.statusBarBackground,
+          color: Theme.of(context).extension<EditorThemeExtension>()!.statusBarBackground,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: [
               if (state.content != null) ...[
                 _buildStatusItem(
+                  context,
                   'Ln ${state.cursorPosition.line}, Col ${state.cursorPosition.column}',
                 ),
                 const SizedBox(width: AppSpacing.lg),
-                _buildStatusItem(state.content!.language),
+                _buildStatusItem(context, state.content!.language),
                 const SizedBox(width: AppSpacing.lg),
-                _buildStatusItem(state.content!.encoding),
+                _buildStatusItem(context, state.content!.encoding),
                 const Spacer(),
-                _buildStatusItem('${state.totalLines} lines'),
+                _buildStatusItem(context, '${state.totalLines} lines'),
                 if (state.isModified) ...[
                   const SizedBox(width: AppSpacing.lg),
-                  _buildStatusItem('Modified'),
+                  _buildStatusItem(context, 'Modified'),
                 ],
               ] else
-                _buildStatusItem('Ready'),
+                _buildStatusItem(context, 'Ready'),
             ],
           ),
         );
@@ -40,11 +41,11 @@ final class StatusBarWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusItem(String text) {
+  Widget _buildStatusItem(BuildContext context, String text) {
     return Text(
       text,
-      style: const TextStyle(
-        color: Colors.white,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onPrimary,
         fontSize: 12,
       ),
     );

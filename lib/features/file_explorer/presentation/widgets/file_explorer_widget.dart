@@ -31,7 +31,7 @@ final class FileExplorerWidget extends StatelessWidget {
               children: [
                 Text(
                   state.errorMessage ?? 'Error loading workspace',
-                  style: const TextStyle(color: AppColors.errorColor),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -50,24 +50,24 @@ final class FileExplorerWidget extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.folder_open,
                   size: AppSpacing.xxxlg,
-                  color: AppColors.textColorDimmed,
+                  color: Theme.of(context).extension<EditorThemeExtension>()!.textColorDimmed,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                const Text(
+                Text(
                   'No folder opened',
                   style: TextStyle(
-                    color: AppColors.textColor,
+                    color: Theme.of(context).extension<EditorThemeExtension>()!.textColor,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                const Text(
+                Text(
                   'Open a folder to start editing',
                   style: TextStyle(
-                    color: AppColors.textColorDimmed,
+                    color: Theme.of(context).extension<EditorThemeExtension>()!.textColorDimmed,
                     fontSize: 12,
                   ),
                 ),
@@ -118,7 +118,7 @@ final class _OpenFolderButton extends StatelessWidget {
       icon: const Icon(Icons.folder_open),
       label: const Text('Open Folder'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.statusBarBackground,
+        backgroundColor: Theme.of(context).extension<EditorThemeExtension>()!.statusBarBackground,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
@@ -161,7 +161,7 @@ final class _FileNodeWidget extends StatelessWidget {
               onFileSelected(node.path, node.name);
             }
           },
-          hoverColor: AppColors.hoverColor,
+          hoverColor: Theme.of(context).extension<EditorThemeExtension>()!.hoverColor,
           child: Container(
             padding: EdgeInsets.only(
               left: 8.0 + (depth * AppSpacing.fileItemIndent),
@@ -169,13 +169,13 @@ final class _FileNodeWidget extends StatelessWidget {
               bottom: 4,
               right: 8,
             ),
-            color: isSelected ? AppColors.selectedItemColor : null,
+            color: isSelected ? Theme.of(context).extension<EditorThemeExtension>()!.selectedItemColor : null,
             child: Row(
               children: [
                 Icon(
                   _getIcon(node, isExpanded),
                   size: AppSpacing.iconSize,
-                  color: AppColors.textColor,
+                  color: Theme.of(context).extension<EditorThemeExtension>()!.textColor,
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(

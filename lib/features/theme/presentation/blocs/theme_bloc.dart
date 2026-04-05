@@ -45,11 +45,15 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
 
     final mode = await _repository.loadThemeMode();
     final brightness = _resolveBrightness(mode);
+    final themeData = brightness == Brightness.dark 
+        ? AppTheme.dark 
+        : AppTheme.light;
 
     emit(
       state.copyWith(
         themeMode: mode,
         resolvedBrightness: brightness,
+        themeData: themeData,
         status: ThemeStatus.loaded,
       ),
     );
@@ -65,11 +69,15 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
 
     // Resolve brightness
     final brightness = _resolveBrightness(event.mode);
+    final themeData = brightness == Brightness.dark 
+        ? AppTheme.dark 
+        : AppTheme.light;
 
     emit(
       state.copyWith(
         themeMode: event.mode,
         resolvedBrightness: brightness,
+        themeData: themeData,
         status: ThemeStatus.loaded,
       ),
     );
@@ -82,9 +90,14 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
   ) {
     // Only update if current mode is system
     if (state.themeMode == AppThemeMode.system) {
+      final themeData = event.brightness == Brightness.dark 
+          ? AppTheme.dark 
+          : AppTheme.light;
+      
       emit(
         state.copyWith(
           resolvedBrightness: event.brightness,
+          themeData: themeData,
         ),
       );
     }
