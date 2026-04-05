@@ -11,7 +11,7 @@ platforms:
     enabled: true
     fallback: true
 
-release:
+debug:
   linux:
     window_width: 500
     window_height: 300
@@ -21,7 +21,7 @@ release:
     background_width: 500
     background_height: 300
     background_border_radius: 0.0
-    image_path: "assets/images/splash_logo.png"
+    image_path: "launch_assets/goox_icon.png"
     image_width: 200
     image_height: 200
     image_scaling: false
@@ -34,7 +34,7 @@ release:
     window_height: 300
     window_title: "Goox"
     background_color: "#1E1E1E"
-    image_path: "assets/images/splash_logo.png"
+    image_path: "launch_assets/goox_icon.png"
     image_width: 200
     image_height: 200
 
@@ -43,7 +43,87 @@ release:
     window_height: 300
     window_title: "Goox"
     background_color: "#1E1E1E"
-    image_path: "assets/images/splash_logo.png"
+    image_path: "launch_assets/goox_icon.png"
+    image_width: 200
+    image_height: 200
+    image_scaling: false
+    image_border_radius: 0.0
+    blur_radius: 0.0
+    with_animation: true
+
+profile:
+  linux:
+    window_width: 500
+    window_height: 300
+    window_title: "Goox"
+    window_color: "#1E1E1E"
+    background_color: "#1E1E1E"
+    background_width: 500
+    background_height: 300
+    background_border_radius: 0.0
+    image_path: "launch_assets/goox_icon.png"
+    image_width: 200
+    image_height: 200
+    image_scaling: false
+    image_border_radius: 0.0
+    blur_radius: 0.0
+    with_animation: true
+
+  windows:
+    window_width: 500
+    window_height: 300
+    window_title: "Goox"
+    background_color: "#1E1E1E"
+    image_path: "launch_assets/goox_icon.png"
+    image_width: 200
+    image_height: 200
+
+  macos:
+    window_width: 500
+    window_height: 300
+    window_title: "Goox"
+    background_color: "#1E1E1E"
+    image_path: "launch_assets/goox_icon.png"
+    image_width: 200
+    image_height: 200
+    image_scaling: false
+    image_border_radius: 0.0
+    blur_radius: 0.0
+    with_animation: true
+
+release:
+  linux:
+    window_width: 500
+    window_height: 300
+    window_title: "Goox"
+    window_color: "#1E1E1E"
+    background_color: "#1E1E1E"
+    background_width: 500
+    background_height: 300
+    background_border_radius: 0.0
+    image_path: "launch_assets/goox_icon.png"
+    image_width: 200
+    image_height: 200
+    image_scaling: false
+    image_border_radius: 0.0
+    blur_radius: 0.0
+    with_animation: true
+
+  windows:
+    window_width: 500
+    window_height: 300
+    window_title: "Goox"
+    background_color: "#1E1E1E"
+    image_path: "launch_assets/goox_icon.png"
+    image_width: 200
+    image_height: 200
+
+  macos:
+    window_width: 500
+    window_height: 300
+    window_title: "Goox"
+    background_color: "#1E1E1E"
+    image_path: "launch_assets/goox_icon.png"
     image_width: 200
     image_height: 200
     image_scaling: false

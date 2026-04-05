@@ -5,119 +5,80 @@ import 'package:goox/features/theme/presentation/blocs/theme_bloc.dart';
 import 'package:goox_ui/goox_ui.dart';
 
 /// Widget for selecting theme mode
-class ThemeSelectorWidget extends StatefulWidget {
-  /// Constructor
+final class ThemeSelectorWidget extends StatelessWidget {
   const ThemeSelectorWidget({super.key});
-
-  @override
-  State<ThemeSelectorWidget> createState() => _ThemeSelectorWidgetState();
-}
-
-class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
-  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ThemeBloc, ThemeState>(
       builder: (context, state) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            InkWell(
-              onTap: () {
-                setState(() {
-                  _isExpanded = !_isExpanded;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _isExpanded
-                          ? Icons.keyboard_arrow_down
-                          : Icons.keyboard_arrow_right,
-                      size: 16,
-                      color: AppColors.textColor,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    const Text(
-                      'Theme',
-                      style: TextStyle(
-                        color: AppColors.textColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        return ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+          ),
+          expansionAnimationStyle: const AnimationStyle(duration: .zero),
+          childrenPadding: EdgeInsets.zero,
+          title: const Text(
+            'Theme',
+            style: TextStyle(
+              color: AppColors.textColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
-
-            // Options (when expanded)
-            if (_isExpanded) ...[
-              _buildThemeOption(
-                context,
-                AppThemeMode.dark,
-                state.themeMode,
+          ),
+          iconColor: AppColors.textColor,
+          collapsedIconColor: AppColors.textColor,
+          children: [
+            for (final mode in <AppThemeMode>[
+              .system,
+              .light,
+              .dark,
+            ])
+              _ThemeOption(
+                mode: mode,
+                currentMode: state.themeMode,
               ),
-              _buildThemeOption(
-                context,
-                AppThemeMode.light,
-                state.themeMode,
-              ),
-              _buildThemeOption(
-                context,
-                AppThemeMode.system,
-                state.themeMode,
-              ),
-            ],
           ],
         );
       },
     );
   }
+}
 
-  Widget _buildThemeOption(
-    BuildContext context,
-    AppThemeMode mode,
-    AppThemeMode currentMode,
-  ) {
+final class _ThemeOption extends StatelessWidget {
+  const _ThemeOption({
+    required this.mode,
+    required this.currentMode,
+  });
+
+  final AppThemeMode mode;
+  final AppThemeMode currentMode;
+
+  @override
+  Widget build(BuildContext context) {
     final isSelected = mode == currentMode;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return InkWell(
+    final selectedColor = colorScheme.primary;
+    final unselectedColor = colorScheme.onSurfaceVariant;
+
+    return ListTile(
+      dense: true,
+      leading: Icon(
+        isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+        size: 16,
+        color: isSelected ? selectedColor : unselectedColor,
+      ),
+      title: Text(
+        mode.displayName,
+        style: TextStyle(
+          color: isSelected ? selectedColor : unselectedColor,
+          fontSize: 13,
+        ),
+      ),
       onTap: () {
         context.read<ThemeBloc>().add(SelectThemeEvent(mode));
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xs,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_unchecked,
-              size: 16,
-              color: isSelected ? AppColors.accentColor : AppColors.textColor,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              mode.displayName,
-              style: TextStyle(
-                color: isSelected ? AppColors.accentColor : AppColors.textColor,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

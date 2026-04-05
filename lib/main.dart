@@ -4,24 +4,23 @@ import 'package:goox/features/editor_content/data.dart';
 import 'package:goox/features/editor_layout/presentation.dart';
 import 'package:goox/features/file_explorer/data.dart';
 import 'package:goox/features/theme.dart';
-import 'package:goox_ui/goox_ui.dart';
 import 'package:native_splash_screen/native_splash_screen.dart' as nss;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  runApp(const App());
 }
 
 /// Main application widget.
-final class MyApp extends StatefulWidget {
+final class App extends StatefulWidget {
   /// Creates the main app.
-  const MyApp({super.key});
+  const App({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<App> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<App> {
   @override
   void initState() {
     super.initState();

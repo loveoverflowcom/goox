@@ -79,5 +79,5 @@ final class _AppInitializer extends StatefulWidget {
 - Màu #1E1E1E được định nghĩa trong `packages/goox_ui/lib/src/colors/app_colors.dart` là `AppColors.editorBackground`
 - Nếu thay đổi màu splash screen trong Flutter, cần update màu ở cả 3 native platforms
 - Có thể điều chỉnh thời gian delay trong `_AppInitializer._initialize()` (hiện tại là 1500ms)
-- Logo splash screen nằm ở `assets/images/splash_logo.png`
+- Logo splash screen nằm ở `launch_assets/splash_logo.png`
 
