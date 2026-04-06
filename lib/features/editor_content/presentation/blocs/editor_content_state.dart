@@ -1,6 +1,4 @@
-import 'package:equatable/equatable.dart';
-import 'package:goox/features/editor_content/data/models/cursor_position.dart';
-import 'package:goox/features/editor_content/data/models/file_content.dart';
+part of 'editor_content_bloc.dart';
 
 enum EditorContentStatus { initial, loading, loaded, saving, saved, error }
 

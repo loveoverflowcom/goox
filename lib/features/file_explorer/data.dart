@@ -1,6 +1,8 @@
+/// Data layer exports for file explorer feature
+library;
+
 // Models
-export 'data/models/file_node.dart';
+export 'data/models.dart';
 
 // Repositories
-export 'data/repositories/workspace_repository.dart';
-export 'data/repositories/workspace_repository_impl.dart';
+export 'data/repositories.dart';

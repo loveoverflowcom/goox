@@ -35,10 +35,8 @@ final class AppTheme {
   static ThemeData get light {
     final baseTheme = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         seedColor: _brandColor,
-        brightness: Brightness.light,
         surface: AppColors.lightEditorBackground,
         error: AppColors.errorColor,
       ),

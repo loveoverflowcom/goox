@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:goox/features/editor_content/presentation/blocs/editor_content_bloc.dart';
-import 'package:goox/features/editor_content/presentation/blocs/editor_content_state.dart';
 import 'package:goox_ui/goox_ui.dart';
 
 final class StatusBarWidget extends StatelessWidget {

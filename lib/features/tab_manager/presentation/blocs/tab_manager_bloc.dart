@@ -1,8 +1,10 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:goox/features/tab_manager/data/models/editor_tab.dart';
-import 'package:goox/features/tab_manager/presentation/blocs/tab_manager_event.dart';
-import 'package:goox/features/tab_manager/presentation/blocs/tab_manager_state.dart';
 import 'package:uuid/uuid.dart';
+
+part 'tab_manager_event.dart';
+part 'tab_manager_state.dart';
 
 final class TabManagerBloc extends Bloc<TabManagerEvent, TabManagerState> {
   TabManagerBloc() : super(const TabManagerState()) {

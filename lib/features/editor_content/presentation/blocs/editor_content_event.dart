@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+part of 'editor_content_bloc.dart';
 
 abstract class EditorContentEvent extends Equatable {
   const EditorContentEvent();

@@ -1,7 +1,8 @@
+/// Presentation layer exports for tab manager feature
+library;
+
 // BLoC
-export 'presentation/blocs/tab_manager_bloc.dart';
-export 'presentation/blocs/tab_manager_event.dart';
-export 'presentation/blocs/tab_manager_state.dart';
+export 'presentation/blocs.dart';
 
 // Widgets
-export 'presentation/widgets/tab_bar_widget.dart';
+export 'presentation/widgets.dart';

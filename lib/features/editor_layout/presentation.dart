@@ -1,7 +1,5 @@
-// BLoC
-export 'presentation/blocs/editor_layout_bloc.dart';
-export 'presentation/blocs/editor_layout_event.dart';
-export 'presentation/blocs/editor_layout_state.dart';
+/// Presentation layer exports for editor layout feature
+library;
 
-// Pages
-export 'presentation/widgets/editor_layout_views.dart';
+export 'presentation/blocs.dart';
+export 'presentation/widgets.dart';

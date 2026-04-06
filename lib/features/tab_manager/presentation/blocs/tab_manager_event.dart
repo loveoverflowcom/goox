@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+part of 'tab_manager_bloc.dart';
 
 abstract class TabManagerEvent extends Equatable {
   const TabManagerEvent();

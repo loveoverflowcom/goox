@@ -1,7 +1,9 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:goox/features/editor_layout/presentation/blocs/editor_layout_event.dart';
-import 'package:goox/features/editor_layout/presentation/blocs/editor_layout_state.dart';
 import 'package:goox_ui/goox_ui.dart';
+
+part 'editor_layout_event.dart';
+part 'editor_layout_state.dart';
 
 final class EditorLayoutBloc extends Bloc<EditorLayoutEvent, EditorLayoutState> {
   EditorLayoutBloc() : super(const EditorLayoutState()) {

@@ -16,18 +16,18 @@ class TerminalRepositoryImpl implements TerminalRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(_visibilityKey) ?? false; // Default to hidden
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Error loading terminal visibility: $e');
       return false;
     }
   }
 
   @override
-  Future<void> saveVisibility(bool isVisible) async {
+  Future<void> saveVisibility({required bool isVisible}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_visibilityKey, isVisible);
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Error saving terminal visibility: $e');
     }
   }
@@ -37,7 +37,7 @@ class TerminalRepositoryImpl implements TerminalRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getDouble(_heightKey) ?? TerminalConfig.defaultHeight;
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Error loading terminal height: $e');
       return TerminalConfig.defaultHeight;
     }
@@ -48,7 +48,7 @@ class TerminalRepositoryImpl implements TerminalRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble(_heightKey, height);
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Error saving terminal height: $e');
     }
   }

@@ -4,7 +4,7 @@ abstract class TerminalRepository {
   Future<bool> loadVisibility();
 
   /// Save terminal visibility state
-  Future<void> saveVisibility(bool isVisible);
+  Future<void> saveVisibility({required bool isVisible});
 
   /// Load saved terminal panel height
   Future<double> loadHeight();

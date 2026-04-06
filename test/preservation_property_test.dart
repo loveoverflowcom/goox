@@ -9,16 +9,16 @@
 // and that non-widget code (theme definitions, AppColors usage) remains unchanged
 
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:goox/features/status_bar/presentation/widgets/status_bar_widget.dart';
-import 'package:goox/features/file_explorer/presentation/widgets/file_explorer_widget.dart';
-import 'package:goox/features/file_explorer/presentation/blocs/file_explorer_bloc.dart';
-import 'package:goox/features/file_explorer/data/repositories/workspace_repository.dart';
-import 'package:goox/features/editor_content/presentation/blocs/editor_content_bloc.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:goox/features/editor_content/data/repositories/file_repository.dart';
+import 'package:goox/features/editor_content/presentation/blocs/editor_content_bloc.dart';
+import 'package:goox/features/file_explorer/data/repositories/workspace_repository.dart';
+import 'package:goox/features/file_explorer/presentation/blocs/file_explorer_bloc.dart';
+import 'package:goox/features/file_explorer/presentation/widgets/file_explorer_widget.dart';
+import 'package:goox/features/status_bar/presentation/widgets/status_bar_widget.dart';
 import 'package:goox_ui/goox_ui.dart';
+import 'package:mocktail/mocktail.dart';
 
 // Mock repositories for testing
 class MockFileRepository extends Mock implements FileRepository {}
@@ -111,7 +111,7 @@ void main() {
               body: BlocProvider(
                 create: (_) => FileExplorerBloc(repository: mockWorkspaceRepository),
                 child: FileExplorerWidget(
-                  onFileSelected: (_, __) {},
+                  onFileSelected: (path, isDirectory) {},
                 ),
               ),
             ),
@@ -178,7 +178,7 @@ void main() {
               body: BlocProvider(
                 create: (_) => FileExplorerBloc(repository: mockWorkspaceRepository),
                 child: FileExplorerWidget(
-                  onFileSelected: (_, __) {},
+                  onFileSelected: (path, isDirectory) {},
                 ),
               ),
             ),
@@ -223,7 +223,7 @@ void main() {
               body: BlocProvider(
                 create: (_) => FileExplorerBloc(repository: mockWorkspaceRepository),
                 child: FileExplorerWidget(
-                  onFileSelected: (_, __) {},
+                  onFileSelected: (path, isDirectory) {},
                 ),
               ),
             ),
@@ -502,7 +502,7 @@ void main() {
               body: BlocProvider(
                 create: (_) => FileExplorerBloc(repository: mockWorkspaceRepository),
                 child: FileExplorerWidget(
-                  onFileSelected: (_, __) {},
+                  onFileSelected: (path, isDirectory) {},
                 ),
               ),
             ),

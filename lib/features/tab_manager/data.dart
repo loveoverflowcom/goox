@@ -1,2 +1,5 @@
+/// Data layer exports for tab manager feature
+library;
+
 // Models
-export 'data/models/editor_tab.dart';
+export 'data/models.dart';

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:goox/features/tab_manager/presentation/blocs/tab_manager_bloc.dart';
-import 'package:goox/features/tab_manager/presentation/blocs/tab_manager_event.dart';
-import 'package:goox/features/tab_manager/presentation/blocs/tab_manager_state.dart';
 import 'package:goox_ui/goox_ui.dart';
 
 final class TabBarWidget extends StatelessWidget {
@@ -28,7 +26,7 @@ final class TabBarWidget extends StatelessWidget {
             color: colorScheme.surface,
             border: Border(
               bottom: BorderSide(
-                color: colorScheme.outline.withOpacity(0.2),
+                color: colorScheme.outline.withValues(alpha: 0.2),
               ),
             ),
           ),
@@ -98,7 +96,7 @@ final class _TabItemState extends State<_TabItem> {
                 : colorScheme.surfaceContainerHighest,
             border: Border(
               right: BorderSide(
-                color: colorScheme.outline.withOpacity(0.2),
+                color: colorScheme.outline.withValues(alpha: 0.2),
               ),
             ),
           ),

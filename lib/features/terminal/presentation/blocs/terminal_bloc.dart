@@ -48,7 +48,7 @@ class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
     final newVisibility = !state.isVisible;
 
     // Save to repository
-    await _repository.saveVisibility(newVisibility);
+    await _repository.saveVisibility(isVisible: newVisibility);
 
     emit(
       state.copyWith(

@@ -160,8 +160,12 @@ final class _GooxNavigationRailState extends State<GooxNavigationRail> {
                     Icon(
                       destination.icon,
                       color: isSelected
-                          ? Theme.of(context).extension<EditorThemeExtension>()!.textColor
-                          : Theme.of(context).extension<EditorThemeExtension>()!.textColorDimmed,
+                          ? Theme.of(context)
+                              .extension<EditorThemeExtension>()!
+                              .textColor
+                          : Theme.of(context)
+                              .extension<EditorThemeExtension>()!
+                              .textColorDimmed,
                       size: AppSpacing.xlg,
                     ),
                     if (destination.trailing != null)

@@ -1,5 +1,8 @@
+/// Presentation layer exports for file explorer feature
+library;
+
 // BLoC
-export 'presentation/blocs/file_explorer_bloc.dart';
+export 'presentation/blocs.dart';
 
 // Widgets
-export 'presentation/widgets/file_explorer_widget.dart';
+export 'presentation/widgets.dart';

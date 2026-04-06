@@ -1,7 +1,8 @@
+/// Presentation layer exports for editor content feature
+library;
+
 // BLoC
-export 'presentation/blocs/editor_content_bloc.dart';
-export 'presentation/blocs/editor_content_event.dart';
-export 'presentation/blocs/editor_content_state.dart';
+export 'presentation/blocs.dart';
 
 // Widgets
-export 'presentation/widgets/text_editor_widget.dart';
+export 'presentation/widgets.dart';

@@ -1,2 +1,5 @@
+/// Presentation layer exports for status bar feature
+library;
+
 // Widgets
-export 'presentation/widgets/status_bar_widget.dart';
+export 'presentation/widgets.dart';

@@ -1,0 +1,20 @@
+name: goox_editor_engine
+description: Core editor functionality and Rust backend communication
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  equatable: ^2.0.5
+  flutter:
+    sdk: flutter
+  flutter_rust_bridge: ^2.0.0
+  meta: ^1.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.1
+  very_good_analysis: ^10.2.0

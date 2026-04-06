@@ -26,7 +26,6 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  native_splash_screen: ^3.0.0
   cupertino_icons: ^1.0.8
   equatable: ^2.0.5
   file_picker: ^8.1.6
@@ -35,8 +34,11 @@ dependencies:
   flutter_bloc: ^9.1.1
   fpdart: ^1.2.0
   google_fonts: ^8.0.2
+  goox_editor_engine:
+    path: packages/goox_editor_engine
   goox_ui:
     path: packages/goox_ui
+  native_splash_screen: ^3.0.0
   path: ^1.8.3
   shared_preferences: ^2.2.2
   uuid: ^4.1.0
@@ -44,12 +46,12 @@ dependencies:
 dev_dependencies:
   bloc_test: ^10.0.0
   flutter_launcher_icons: ^0.14.4
-  native_splash_screen_cli: ^3.0.0
   flutter_lints: ^6.0.0
   flutter_native_splash: ^2.4.3
   flutter_test:
     sdk: flutter
   mocktail: ^1.0.1
+  native_splash_screen_cli: ^3.0.0
   very_good_analysis: ^10.2.0
 
 # For information on the generic Dart part of this file, see the

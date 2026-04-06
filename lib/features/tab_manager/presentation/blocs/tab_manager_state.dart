@@ -1,5 +1,4 @@
-import 'package:equatable/equatable.dart';
-import 'package:goox/features/tab_manager/data/models/editor_tab.dart';
+part of 'tab_manager_bloc.dart';
 
 enum TabManagerStatus { initial, loaded }
 

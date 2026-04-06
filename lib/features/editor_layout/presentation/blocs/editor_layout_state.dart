@@ -1,5 +1,4 @@
-import 'package:equatable/equatable.dart';
-import 'package:goox_ui/goox_ui.dart';
+part of 'editor_layout_bloc.dart';
 
 enum LayoutStatus { initial, loaded }
 

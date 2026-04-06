@@ -1,8 +1,11 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:goox/features/editor_content/data/models/cursor_position.dart';
+import 'package:goox/features/editor_content/data/models/file_content.dart';
 import 'package:goox/features/editor_content/data/repositories/file_repository.dart';
-import 'package:goox/features/editor_content/presentation/blocs/editor_content_event.dart';
-import 'package:goox/features/editor_content/presentation/blocs/editor_content_state.dart';
+import 'package:goox_editor_engine/goox_editor_engine.dart';
+
+part 'editor_content_event.dart';
+part 'editor_content_state.dart';
 
 final class EditorContentBloc extends Bloc<EditorContentEvent, EditorContentState> {
 

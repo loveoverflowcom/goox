@@ -13,10 +13,10 @@ class TerminalConfig {
   final double height;
 
   /// Default height for terminal panel
-  static const double defaultHeight = 200.0;
+  static const double defaultHeight = 200;
 
   /// Minimum height for terminal panel
-  static const double minHeight = 100.0;
+  static const double minHeight = 100;
 
   /// Maximum height ratio (80% of window height)
   static const double maxHeightRatio = 0.8;

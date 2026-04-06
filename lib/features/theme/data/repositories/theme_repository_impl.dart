@@ -19,7 +19,7 @@ class ThemeRepositoryImpl implements ThemeRepository {
       }
 
       return AppThemeModeExtension.fromPersistenceKey(savedKey);
-    } catch (e) {
+    } on Exception catch (e) {
       // Log error and return default
       debugPrint('Error loading theme mode: $e');
       return AppThemeMode.dark;
@@ -31,7 +31,7 @@ class ThemeRepositoryImpl implements ThemeRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_themeKey, mode.persistenceKey);
-    } catch (e) {
+    } on Exception catch (e) {
       // Log error but don't throw
       debugPrint('Error saving theme mode: $e');
     }
@@ -41,7 +41,7 @@ class ThemeRepositoryImpl implements ThemeRepository {
   Brightness getSystemBrightness() {
     try {
       return WidgetsBinding.instance.platformDispatcher.platformBrightness;
-    } catch (e) {
+    } on Exception catch (e) {
       // Log error and return default
       debugPrint('Error getting system brightness: $e');
       return Brightness.dark;
