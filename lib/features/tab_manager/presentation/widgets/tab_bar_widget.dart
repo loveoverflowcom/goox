@@ -95,6 +95,12 @@ final class _TabItemState extends State<_TabItem> {
                 ? colorScheme.surface
                 : colorScheme.surfaceContainerHighest,
             border: Border(
+              top: BorderSide(
+                color: widget.isActive
+                    ? colorScheme.primary
+                    : Colors.transparent,
+                width: 2,
+              ),
               right: BorderSide(
                 color: colorScheme.outline.withValues(alpha: 0.2),
               ),

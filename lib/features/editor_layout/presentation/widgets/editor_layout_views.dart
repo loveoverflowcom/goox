@@ -79,30 +79,15 @@ final class EditorLayoutView extends StatelessWidget {
             },
           ),
           BlocListener<TabManagerBloc, TabManagerState>(
-            listenWhen: (previous, current) {
-              // Thêm log ở đây
-              print('--- Bloc ListenWhen ---');
-              print('Previous Tab ID: ${previous.activeTabId}');
-              print('Current Tab ID: ${current.activeTabId}');
-              
-              final shouldRebuild = previous.activeTabId != current.activeTabId;
-              
-              print('Should trigger listener: $shouldRebuild');
-              print('-----------------------');
-
-              return shouldRebuild;
-            },
-            listener: (context, state) => state.activeTabId != null 
-            ? context
-              .read<EditorContentBloc>()
-              .add(
-                LoadFileContentEvent(state.activeTab!.filePath),
-              )
-              :
-            context.read<EditorContentBloc>()
-              .add(
-                const CloseContentEvent(),
-              ),
+            listenWhen: (previous, current) => previous.activeTabId != current.activeTabId,
+            listener: (context, state) {
+              final noTabOpened = state.activeTabId == null;
+              context.read<EditorContentBloc>()
+                .add(noTabOpened 
+                  ? const CloseContentEvent() 
+                  : LoadFileContentEvent(state.activeTab!.filePath)
+                );
+            }
           ),
         ],
         child: const _EditorLayoutView(),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:goox/features/editor_content/presentation/blocs/editor_content_bloc.dart';
 import 'package:goox_ui/goox_ui.dart';
@@ -47,115 +48,161 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
   Widget build(BuildContext context) {
     final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
 
-    return BlocConsumer<EditorContentBloc, EditorContentState>(
-      listenWhen: (_, current) => current.fileContent != null && current.fileContent!.content != _controller.text,
-      listener: (context, state) {
-        _controller.text = state.fileContent!.content;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          context.read<EditorContentBloc>().add(const SaveFileEvent());
+        },
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () {
+          context.read<EditorContentBloc>().add(const SaveFileEvent());
+        },
       },
-      builder: (context, state) {
-        if (state.status == .loading) {
-          return const Center(child: CircularProgressIndicator());
-        }
+      child: Focus(
+        autofocus: true,
+        child: BlocConsumer<EditorContentBloc, EditorContentState>(
+          listenWhen: (_, current) => current.fileContent != null && current.fileContent!.content != _controller.text,
+          listener: (context, state) {
+            _controller.text = state.fileContent!.content;
+          },
+          builder: (context, state) {
+            if (state.status == .loading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        if (state.fileContent == null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: .center,
-              children: [
-                Icon(
-                  Icons.code,
-                  size: AppSpacing.xxxlg,
-                  color: editorTheme.textColor,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'No file open',
-                  style: TextStyle(
-                    color: editorTheme.textColor,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Select a file from the explorer to start editing',
-                  style: TextStyle(
-                    color: editorTheme.textColorDimmed,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final lines = state.fileContent!.content.split('\n');
-        final lineCount = lines.length;
-
-        return ColoredBox(
-          color: editorTheme.editorBackground,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Line numbers
-              Container(
-                width: AppSpacing.lineNumberWidth,
-                color: editorTheme.editorBackground,
-                padding: const EdgeInsets.only(
-                  right: AppSpacing.editorPadding,
-                  top: AppSpacing.editorPadding,
-                ),
+            if (state.status == .error) {
+              return Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: .center,
                   children: [
-                    for (var i = 0; i < lineCount; i++)
-                      Text(
-                        '${i + 1}',
-                        style: TextStyle(
-                          color: editorTheme.textColorDimmed,
-                          fontSize: AppSpacing.fontSize,
-                          fontFamily: 'monospace',
-                          height: AppSpacing.lineHeight,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Editor content
-              Expanded(
-                child: Scrollbar(
-                  controller: _scrollController,
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    child: TextField(
-                      controller: _controller,
-                      maxLines: null,
+                    Icon(
+                      Icons.error_outline,
+                      size: AppSpacing.xxxlg,
+                      color: editorTheme.textColor,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Error loading file',
                       style: TextStyle(
                         color: editorTheme.textColor,
-                        fontSize: AppSpacing.fontSize,
-                        fontFamily: 'monospace',
-                        height: AppSpacing.lineHeight,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(
-                          AppSpacing.editorPadding,
-                        ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      state.errorMessage ?? 'Unknown error occurred',
+                      style: TextStyle(
+                        color: editorTheme.textColorDimmed,
+                        fontSize: 12,
                       ),
-                      onChanged: (value) {
-                        context.read<EditorContentBloc>().add(
-                          UpdateContentEvent(value),
-                        );
-                        _updateCursorPosition();
-                      },
-                      onTap: _updateCursorPosition,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (state.fileContent == null) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: .center,
+                  children: [
+                    Icon(
+                      Icons.code,
+                      size: AppSpacing.xxxlg,
+                      color: editorTheme.textColor,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'No file open',
+                      style: TextStyle(
+                        color: editorTheme.textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Select a file from the explorer to start editing',
+                      style: TextStyle(
+                        color: editorTheme.textColorDimmed,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final lines = state.fileContent!.content.split('\n');
+            final lineCount = lines.length;
+
+            return ColoredBox(
+              color: editorTheme.editorBackground,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Line numbers
+                  Container(
+                    width: AppSpacing.lineNumberWidth,
+                    color: editorTheme.editorBackground,
+                    padding: const EdgeInsets.only(
+                      right: AppSpacing.editorPadding,
+                      top: AppSpacing.editorPadding,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (var i = 0; i < lineCount; i++)
+                          Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              color: editorTheme.textColorDimmed,
+                              fontSize: AppSpacing.fontSize,
+                              fontFamily: 'monospace',
+                              height: AppSpacing.lineHeight,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                ),
+                  // Editor content
+                  Expanded(
+                    child: Scrollbar(
+                      controller: _scrollController,
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        child: TextField(
+                          controller: _controller,
+                          maxLines: null,
+                          style: TextStyle(
+                            color: editorTheme.textColor,
+                            fontSize: AppSpacing.fontSize,
+                            fontFamily: 'monospace',
+                            height: AppSpacing.lineHeight,
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(
+                              AppSpacing.editorPadding,
+                            ),
+                          ),
+                          onChanged: (value) {
+                            context.read<EditorContentBloc>().add(
+                              UpdateContentEvent(value),
+                            );
+                            _updateCursorPosition();
+                          },
+                          onTap: _updateCursorPosition,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }
