@@ -8,12 +8,12 @@ part 'editor_content_event.dart';
 part 'editor_content_state.dart';
 
 final class EditorContentBloc extends Bloc<EditorContentEvent, EditorContentState> {
-
   EditorContentBloc({required this.repository}) : super(const EditorContentState()) {
     on<LoadFileContentEvent>(_onLoadFileContent);
     on<UpdateContentEvent>(_onUpdateContent);
     on<UpdateCursorPositionEvent>(_onUpdateCursorPosition);
     on<SaveFileEvent>(_onSaveFile);
+    on<CloseContentEvent>(_onCloseContent);
   }
   final FileRepository repository;
 
@@ -47,12 +47,12 @@ final class EditorContentBloc extends Bloc<EditorContentEvent, EditorContentStat
     UpdateContentEvent event,
     Emitter<EditorContentState> emit,
   ) {
-    if (state.content == null) return;
+    if (state.fileContent == null) return;
 
     final isModified = event.content != state.originalContent;
     
     emit(state.copyWith(
-      content: state.content!.copyWith(content: event.content),
+      content: state.fileContent!.copyWith(content: event.content),
       isModified: isModified,
     ));
   }
@@ -74,13 +74,13 @@ final class EditorContentBloc extends Bloc<EditorContentEvent, EditorContentStat
     SaveFileEvent event,
     Emitter<EditorContentState> emit,
   ) async {
-    if (state.content == null) return;
+    if (state.fileContent == null) return;
 
     emit(state.copyWith(status: .saving));
 
     final result = await repository.writeFile(
-      state.content!.path,
-      state.content!.content,
+      state.fileContent!.path,
+      state.fileContent!.content,
     ).run();
 
     result.fold(
@@ -92,11 +92,18 @@ final class EditorContentBloc extends Bloc<EditorContentEvent, EditorContentStat
       ),
       (_) => emit(
         state.copyWith(
-          originalContent: state.content!.content,
+          originalContent: state.fileContent!.content,
           isModified: false,
           status: .saved,
         ),
       ),
     );
   }
+}
+
+void _onCloseContent(
+  CloseContentEvent event,
+  Emitter<EditorContentState> emit,
+) {
+  emit(const EditorContentState());
 }

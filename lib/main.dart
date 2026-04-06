@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:goox/features/editor_content/data.dart';
 import 'package:goox/features/editor_layout/presentation.dart';
 import 'package:goox/features/file_explorer/data.dart';
+import 'package:goox/features/terminal.dart' show TerminalRepository, TerminalRepositoryImpl;
 import 'package:goox/features/theme.dart';
 import 'package:native_splash_screen/native_splash_screen.dart' as nss;
 
@@ -46,6 +47,9 @@ final class _AppState extends State<App> {
           ),
           RepositoryProvider<FileRepository>(
             create: (context) => FileRepositoryImpl(),
+          ),
+          RepositoryProvider<TerminalRepository>(
+            create: (context) => TerminalRepositoryImpl(),
           ),
         ],
         child: BlocBuilder<ThemeBloc, ThemeState>(

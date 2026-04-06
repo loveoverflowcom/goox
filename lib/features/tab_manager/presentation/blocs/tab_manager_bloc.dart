@@ -16,19 +16,21 @@ final class TabManagerBloc extends Bloc<TabManagerEvent, TabManagerState> {
     on<PreviousTabEvent>(_onPreviousTab);
   }
 
+  final Uuid _uuid = const Uuid();
+
   void _onOpenTab(OpenTabEvent event, Emitter<TabManagerState> emit) {
     // Check if tab already exists
     final existingTab = state.tabs.where((tab) => tab.filePath == event.filePath).firstOrNull;
-    
+
     if (existingTab != null) {
       // Activate existing tab
-      emit(state.copyWith(activeTabId: existingTab.id));
+      emit(state.copyWith(activeTabId: () => existingTab.id));
       return;
     }
 
     // Create new tab
     final newTab = EditorTab(
-      id: const Uuid().v4(),
+      id: _uuid.v4(),
       filePath: event.filePath,
       fileName: event.fileName,
       openedAt: DateTime.now(),
@@ -38,7 +40,8 @@ final class TabManagerBloc extends Bloc<TabManagerEvent, TabManagerState> {
     
     emit(state.copyWith(
       tabs: updatedTabs,
-      activeTabId: newTab.id,
+      activeTabId: () => newTab.id,
+      
       status: .loaded,
     ));
   }
@@ -52,25 +55,29 @@ final class TabManagerBloc extends Bloc<TabManagerEvent, TabManagerState> {
     
     String? newActiveTabId;
     
-    if (updatedTabs.isNotEmpty && state.activeTabId == event.tabId) {
-      // Determine next active tab
+    if (updatedTabs.isEmpty) {
+      // Không còn tab nào, set activeTabId = null
+      newActiveTabId = null;
+    } else if (state.activeTabId == event.tabId) {
+      // Tab đang active bị đóng, chọn tab tiếp theo
       if (tabIndex < updatedTabs.length) {
         newActiveTabId = updatedTabs[tabIndex].id;
       } else {
         newActiveTabId = updatedTabs.last.id;
       }
-    } else if (state.activeTabId != event.tabId) {
+    } else {
+      // Tab khác bị đóng, giữ nguyên activeTabId
       newActiveTabId = state.activeTabId;
     }
 
     emit(state.copyWith(
       tabs: updatedTabs,
-      activeTabId: newActiveTabId,
+      activeTabId: () => newActiveTabId,
     ));
   }
 
   void _onActivateTab(ActivateTabEvent event, Emitter<TabManagerState> emit) {
-    emit(state.copyWith(activeTabId: event.tabId));
+    emit(state.copyWith(activeTabId: () => event.tabId));
   }
 
   void _onUpdateTabModified(UpdateTabModifiedEvent event, Emitter<TabManagerState> emit) {
@@ -90,7 +97,7 @@ final class TabManagerBloc extends Bloc<TabManagerEvent, TabManagerState> {
     final currentIndex = state.tabs.indexWhere((tab) => tab.id == state.activeTabId);
     final nextIndex = (currentIndex + 1) % state.tabs.length;
     
-    emit(state.copyWith(activeTabId: state.tabs[nextIndex].id));
+    emit(state.copyWith(activeTabId: () => state.tabs[nextIndex].id));
   }
 
   void _onPreviousTab(PreviousTabEvent event, Emitter<TabManagerState> emit) {
@@ -99,6 +106,6 @@ final class TabManagerBloc extends Bloc<TabManagerEvent, TabManagerState> {
     final currentIndex = state.tabs.indexWhere((tab) => tab.id == state.activeTabId);
     final previousIndex = (currentIndex - 1 + state.tabs.length) % state.tabs.length;
     
-    emit(state.copyWith(activeTabId: state.tabs[previousIndex].id));
+    emit(state.copyWith(activeTabId: () => state.tabs[previousIndex].id));
   }
 }

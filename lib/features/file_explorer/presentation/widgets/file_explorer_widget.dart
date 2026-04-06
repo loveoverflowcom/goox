@@ -27,12 +27,12 @@ final class FileExplorerWidget extends StatelessWidget {
         if (state.status == .error) {
           return Center(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: .center,
               children: [
                 Text(
                   state.errorMessage ?? 'Error loading workspace',
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  textAlign: TextAlign.center,
+                  textAlign: .center,
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 _OpenFolderButton(
@@ -48,7 +48,7 @@ final class FileExplorerWidget extends StatelessWidget {
         if (state.rootNodes.isEmpty) {
           return Center(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: .center,
               children: [
                 Icon(
                   Icons.folder_open,

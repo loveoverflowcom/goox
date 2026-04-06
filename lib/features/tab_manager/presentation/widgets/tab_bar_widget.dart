@@ -40,7 +40,7 @@ final class TabBarWidget extends StatelessWidget {
                   isModified: tab.isModified,
                   onTap: () => context
                       .read<TabManagerBloc>()
-                      .add(ActivateTabEvent(tab.id)),
+                      .add(ActivateTabEvent(tabId: tab.id)),
                   onClose: () => context
                       .read<TabManagerBloc>()
                       .add(CloseTabEvent(tab.id)),

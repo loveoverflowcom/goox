@@ -8,11 +8,11 @@ abstract class TabManagerEvent extends Equatable {
 }
 
 final class OpenTabEvent extends TabManagerEvent {
-
   const OpenTabEvent({
     required this.filePath,
     required this.fileName,
   });
+
   final String filePath;
   final String fileName;
 
@@ -31,7 +31,9 @@ final class CloseTabEvent extends TabManagerEvent {
 
 final class ActivateTabEvent extends TabManagerEvent {
 
-  const ActivateTabEvent(this.tabId);
+  const ActivateTabEvent({
+    required this.tabId,
+  });
   final String tabId;
 
   @override

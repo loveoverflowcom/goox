@@ -11,7 +11,7 @@ final class TextEditorWidget extends StatefulWidget {
 }
 
 final class _TextEditorWidgetState extends State<TextEditorWidget> {
-  late TextEditingController _controller;
+  late final TextEditingController _controller;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -48,18 +48,16 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
     final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
 
     return BlocConsumer<EditorContentBloc, EditorContentState>(
+      listenWhen: (_, current) => current.fileContent != null && current.fileContent!.content != _controller.text,
       listener: (context, state) {
-        if (state.content != null &&
-            _controller.text != state.content!.content) {
-          _controller.text = state.content!.content;
-        }
+        _controller.text = state.fileContent!.content;
       },
       builder: (context, state) {
         if (state.status == .loading) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (state.content == null) {
+        if (state.fileContent == null) {
           return Center(
             child: Column(
               mainAxisAlignment: .center,
@@ -90,7 +88,7 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
           );
         }
 
-        final lines = state.content!.content.split('\n');
+        final lines = state.fileContent!.content.split('\n');
         final lineCount = lines.length;
 
         return ColoredBox(

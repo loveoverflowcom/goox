@@ -41,3 +41,7 @@ final class UpdateCursorPositionEvent extends EditorContentEvent {
 final class SaveFileEvent extends EditorContentEvent {
   const SaveFileEvent();
 }
+
+final class CloseContentEvent extends EditorContentEvent {
+  const CloseContentEvent();
+}

@@ -5,14 +5,14 @@ enum EditorContentStatus { initial, loading, loaded, saving, saved, error }
 final class EditorContentState extends Equatable {
 
   const EditorContentState({
-    this.content,
+    this.fileContent,
     this.originalContent = '',
     this.cursorPosition = const CursorPosition(line: 1, column: 1, offset: 0),
     this.isModified = false,
     this.status = .initial,
     this.errorMessage,
   });
-  final FileContent? content;
+  final FileContent? fileContent;
   final String originalContent;
   final CursorPosition cursorPosition;
   final bool isModified;
@@ -28,7 +28,7 @@ final class EditorContentState extends Equatable {
     String? errorMessage,
   }) {
     return EditorContentState(
-      content: content ?? this.content,
+      fileContent: content ?? fileContent,
       originalContent: originalContent ?? this.originalContent,
       cursorPosition: cursorPosition ?? this.cursorPosition,
       isModified: isModified ?? this.isModified,
@@ -38,13 +38,13 @@ final class EditorContentState extends Equatable {
   }
 
   int get totalLines {
-    if (content == null) return 0;
-    return content!.content.split('\n').length;
+    if (fileContent == null) return 0;
+    return fileContent!.content.split('\n').length;
   }
 
   @override
   List<Object?> get props => [
-        content,
+        fileContent,
         originalContent,
         cursorPosition,
         isModified,

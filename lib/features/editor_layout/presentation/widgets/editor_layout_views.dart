@@ -12,6 +12,11 @@ import 'package:goox/features/terminal.dart';
 import 'package:goox/features/theme.dart';
 import 'package:goox_ui/goox_ui.dart';
 
+part 'editor_layout_views_resize_handle.dart';
+part 'editor_layout_views_sidebar.dart';
+part 'editor_layout_views_editor_area.dart';
+part 'editor_layout_views_tab_contents.dart';
+
 /// Main editor layout page.
 final class EditorLayoutView extends StatelessWidget {
   /// Creates an editor layout page.
@@ -53,7 +58,7 @@ final class EditorLayoutView extends StatelessWidget {
         ),
         BlocProvider(
           create: (context) => TerminalBloc(
-            repository: TerminalRepositoryImpl(),
+            repository: context.read<TerminalRepository>(),
           )..add(const InitializeTerminalEvent()),
         ),
       ],
@@ -74,14 +79,30 @@ final class EditorLayoutView extends StatelessWidget {
             },
           ),
           BlocListener<TabManagerBloc, TabManagerState>(
-            listener: (context, state) {
-              // Load content when active tab changes
-              if (state.activeTab != null) {
-                context.read<EditorContentBloc>().add(
-                      LoadFileContentEvent(state.activeTab!.filePath),
-                    );
-              }
+            listenWhen: (previous, current) {
+              // Thêm log ở đây
+              print('--- Bloc ListenWhen ---');
+              print('Previous Tab ID: ${previous.activeTabId}');
+              print('Current Tab ID: ${current.activeTabId}');
+              
+              final shouldRebuild = previous.activeTabId != current.activeTabId;
+              
+              print('Should trigger listener: $shouldRebuild');
+              print('-----------------------');
+
+              return shouldRebuild;
             },
+            listener: (context, state) => state.activeTabId != null 
+            ? context
+              .read<EditorContentBloc>()
+              .add(
+                LoadFileContentEvent(state.activeTab!.filePath),
+              )
+              :
+            context.read<EditorContentBloc>()
+              .add(
+                const CloseContentEvent(),
+              ),
           ),
         ],
         child: const _EditorLayoutView(),
@@ -112,14 +133,22 @@ final class _EditorLayoutView extends StatelessWidget {
                       if (layoutState.sidebarVisible)
                         Row(
                           children: [
-                            _buildSidebar(context, layoutState.sidebarWidth),
-                            _buildResizeHandle(context),
+                            _SidebarWidget(
+                              width: layoutState.sidebarWidth,
+                              theme: editorTheme,
+                            ),
+                            _ResizeHandleWidget(
+                              currentWidth: layoutState.sidebarWidth,
+                              theme: editorTheme,
+                            ),
                           ],
                         ),
                       Expanded(
                         child: Column(
                           children: [
-                            Expanded(child: _buildEditorArea()),
+                            Expanded(
+                              child: _EditorAreaWidget(theme: editorTheme),
+                            ),
                             BlocBuilder<TerminalBloc, TerminalState>(
                               builder: (context, terminalState) {
                                 if (!terminalState.isVisible) {
@@ -140,207 +169,6 @@ final class _EditorLayoutView extends StatelessWidget {
           },
         ),
       ),
-    );
-  }
-
-  Widget _buildSidebar(BuildContext context, double width) {
-    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
-    
-    // Width includes activity bar + content area
-    final contentWidth = width - AppSpacing.activityBarWidth;
-    
-    return SizedBox(
-      width: width,
-      child: GooxNavigationRail(
-        initialSelectedId: 'explorer',
-        destinations: [
-          GooxDestinationTab(
-            id: 'explorer',
-            title: 'Explorer',
-            icon: Icons.copy_rounded,
-            builder: (context) => Container(
-              width: contentWidth,
-              decoration: BoxDecoration(
-                color: editorTheme.sidebarBackground,
-                border: Border(
-                  right: BorderSide(color: editorTheme.borderColor),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: Text(
-                      'EXPLORER',
-                      style: TextStyle(
-                        color: editorTheme.textColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: FileExplorerWidget(
-                      onFileSelected: (filePath, fileName) {
-                        context.read<TabManagerBloc>().add(
-                              OpenTabEvent(
-                                filePath: filePath,
-                                fileName: fileName,
-                              ),
-                            );
-                        context.read<EditorContentBloc>().add(
-                              LoadFileContentEvent(filePath),
-                            );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          GooxDestinationTab(
-            id: 'search',
-            title: 'Search',
-            icon: Icons.search,
-            builder: (context) {
-              final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
-              return Container(
-                width: contentWidth,
-                decoration: BoxDecoration(
-                  color: editorTheme.sidebarBackground,
-                  border: Border(
-                    right: BorderSide(color: editorTheme.borderColor),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    'Search',
-                    style: TextStyle(color: editorTheme.textColor),
-                  ),
-                ),
-              );
-            },
-          ),
-          GooxDestinationTab(
-            id: 'source-control',
-            title: 'Source Control',
-            icon: Icons.account_tree_outlined,
-            builder: (context) {
-              final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
-              return Container(
-                width: contentWidth,
-                decoration: BoxDecoration(
-                  color: editorTheme.sidebarBackground,
-                  border: Border(
-                    right: BorderSide(color: editorTheme.borderColor),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    'Source Control',
-                    style: TextStyle(color: editorTheme.textColor),
-                  ),
-                ),
-              );
-            },
-          ),
-          GooxDestinationTab(
-            id: 'extensions',
-            title: 'Extensions',
-            icon: Icons.extension_outlined,
-            builder: (context) {
-              final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
-              return Container(
-                width: contentWidth,
-                decoration: BoxDecoration(
-                  color: editorTheme.sidebarBackground,
-                  border: Border(
-                    right: BorderSide(color: editorTheme.borderColor),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    'Extensions',
-                    style: TextStyle(color: editorTheme.textColor),
-                  ),
-                ),
-              );
-            },
-          ),
-          GooxDestinationTab(
-            id: 'settings',
-            title: 'Settings',
-            icon: Icons.settings_outlined,
-            alignment: GooxTabAlignment.bottom,
-            builder: (context) {
-              final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
-              return Container(
-                width: contentWidth,
-                decoration: BoxDecoration(
-                  color: editorTheme.sidebarBackground,
-                  border: Border(
-                    right: BorderSide(color: editorTheme.borderColor),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      child: Text(
-                        'SETTINGS',
-                        style: TextStyle(
-                          color: editorTheme.textColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const ThemeSelectorWidget(),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResizeHandle(BuildContext context) {
-    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
-    
-    return GestureDetector(
-      onHorizontalDragUpdate: (details) {
-        final layoutBloc = context.read<EditorLayoutBloc>();
-        final currentWidth = layoutBloc.state.sidebarWidth;
-        layoutBloc.add(ResizeSidebarEvent(currentWidth + details.delta.dx));
-      },
-      child: MouseRegion(
-        cursor: SystemMouseCursors.resizeColumn,
-        child: Container(
-          width: AppSpacing.resizeHandleWidth,
-          color: editorTheme.borderColor,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEditorArea() {
-    return Builder(
-      builder: (context) {
-        final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
-        return ColoredBox(
-          color: editorTheme.editorBackground,
-          child: const Column(
-            children: [
-              TabBarWidget(),
-              Expanded(child: TextEditorWidget()),
-            ],
-          ),
-        );
-      },
     );
   }
 

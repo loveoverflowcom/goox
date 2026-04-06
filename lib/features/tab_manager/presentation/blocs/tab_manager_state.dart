@@ -15,12 +15,12 @@ final class TabManagerState extends Equatable {
 
   TabManagerState copyWith({
     List<EditorTab>? tabs,
-    String? activeTabId,
+    String? Function()? activeTabId,
     TabManagerStatus? status,
   }) {
     return TabManagerState(
       tabs: tabs ?? this.tabs,
-      activeTabId: activeTabId ?? this.activeTabId,
+      activeTabId: activeTabId != null ? activeTabId() : this.activeTabId,
       status: status ?? this.status,
     );
   }

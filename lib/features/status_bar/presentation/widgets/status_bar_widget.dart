@@ -16,15 +16,15 @@ final class StatusBarWidget extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: [
-              if (state.content != null) ...[
+              if (state.fileContent != null) ...[
                 _buildStatusItem(
                   context,
                   'Ln ${state.cursorPosition.line}, Col ${state.cursorPosition.column}',
                 ),
                 const SizedBox(width: AppSpacing.lg),
-                _buildStatusItem(context, state.content!.language),
+                _buildStatusItem(context, state.fileContent!.language),
                 const SizedBox(width: AppSpacing.lg),
-                _buildStatusItem(context, state.content!.encoding),
+                _buildStatusItem(context, state.fileContent!.encoding),
                 const Spacer(),
                 _buildStatusItem(context, '${state.totalLines} lines'),
                 if (state.isModified) ...[
