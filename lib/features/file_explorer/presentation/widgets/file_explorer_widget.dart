@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:goox/features/file_explorer/data/models/file_node.dart';
 import 'package:goox/features/file_explorer/presentation/blocs/file_explorer_bloc.dart';
+import 'package:goox/features/file_explorer/presentation/widgets/file_explorer_toolbar.dart';
+import 'package:goox/features/file_explorer/presentation/widgets/file_explorer_toolbar_callbacks.dart';
+import 'package:goox/features/file_explorer/presentation/widgets/helpers/context_menu_action_handler.dart';
 import 'package:goox_ui/goox_ui.dart';
 
 /// Widget for displaying file explorer tree.
@@ -16,9 +21,227 @@ final class FileExplorerWidget extends StatelessWidget {
   /// Callback when a file is selected.
   final void Function(String filePath, String fileName) onFileSelected;
 
+  /// Shows error message in a SnackBar.
+  void _showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Dismiss',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Shows success message in a SnackBar.
+  void _showSuccessSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// Shows context menu at the specified position.
+  void _showContextMenu({
+    required BuildContext context,
+    required Offset position,
+    required FileNode? node,
+    required String workspacePath,
+  }) {
+    final handler = ContextMenuActionHandler(
+      context: context,
+      workspacePath: workspacePath,
+    );
+    final callbacks = handler.getCallbacks(node: node);
+
+    unawaited(
+      showMenu(
+        context: context,
+        position: RelativeRect.fromLTRB(
+          position.dx,
+          position.dy,
+          position.dx,
+          position.dy,
+        ),
+        items: _buildContextMenuItems(node, callbacks),
+      ),
+    );
+  }
+
+  /// Builds context menu items based on node type.
+  List<PopupMenuEntry<String>> _buildContextMenuItems(
+    FileNode? node,
+    ContextMenuCallbacks callbacks,
+  ) {
+    if (node == null) {
+      // Empty area menu
+      return [
+        PopupMenuItem<String>(
+          onTap: callbacks.onNewFile,
+          child: const Row(
+            children: [
+              Icon(Icons.insert_drive_file_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('New File'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          onTap: callbacks.onNewFolder,
+          child: const Row(
+            children: [
+              Icon(Icons.create_new_folder_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('New Folder'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onRefresh,
+          child: const Row(
+            children: [
+              Icon(Icons.refresh, size: 18),
+              SizedBox(width: 8),
+              Text('Refresh'),
+            ],
+          ),
+        ),
+      ];
+    } else if (node.type == FileNodeType.directory) {
+      // Folder menu
+      return [
+        PopupMenuItem<String>(
+          onTap: callbacks.onNewFile,
+          child: const Row(
+            children: [
+              Icon(Icons.insert_drive_file_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('New File'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          onTap: callbacks.onNewFolder,
+          child: const Row(
+            children: [
+              Icon(Icons.create_new_folder_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('New Folder'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onRename,
+          child: const Row(
+            children: [
+              Icon(Icons.edit_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('Rename'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          onTap: callbacks.onDelete,
+          child: const Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18),
+              SizedBox(width: 8),
+              Text('Delete'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onCopyPath,
+          child: const Row(
+            children: [
+              Icon(Icons.content_copy, size: 18),
+              SizedBox(width: 8),
+              Text('Copy Path'),
+            ],
+          ),
+        ),
+      ];
+    } else {
+      // File menu
+      return [
+        PopupMenuItem<String>(
+          onTap: callbacks.onRename,
+          child: const Row(
+            children: [
+              Icon(Icons.edit_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('Rename'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          onTap: callbacks.onDelete,
+          child: const Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18),
+              SizedBox(width: 8),
+              Text('Delete'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onCopyPath,
+          child: const Row(
+            children: [
+              Icon(Icons.content_copy, size: 18),
+              SizedBox(width: 8),
+              Text('Copy Path'),
+            ],
+          ),
+        ),
+      ];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<FileExplorerBloc, FileExplorerState>(
+    return BlocConsumer<FileExplorerBloc, FileExplorerState>(
+      listener: (context, state) {
+        // Auto-open file in editor when fileToOpen is set
+        if (state.fileToOpen != null) {
+          final fileNode = state.fileToOpen!;
+          onFileSelected(fileNode.path, fileNode.name);
+          
+          // Clear the fileToOpen flag after opening
+          context.read<FileExplorerBloc>().add(
+            const ClearFileToOpenEvent(),
+          );
+        }
+
+        // Show error messages
+        if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+          _showErrorSnackBar(context, state.errorMessage!);
+          // Clear messages after showing
+          context.read<FileExplorerBloc>().add(const ClearMessagesEvent());
+        }
+
+        // Show success messages
+        if (state.successMessage != null && state.successMessage!.isNotEmpty) {
+          _showSuccessSnackBar(context, state.successMessage!);
+          // Clear messages after showing
+          context.read<FileExplorerBloc>().add(const ClearMessagesEvent());
+        }
+      },
       builder: (context, state) {
         if (state.status == .loading) {
           return const Center(child: CircularProgressIndicator());
@@ -82,15 +305,36 @@ final class FileExplorerWidget extends StatelessWidget {
           );
         }
 
-        return ListView(
+        return Column(
           children: [
-            for (final node in state.rootNodes)
-              _FileNodeWidget(
-                node: node,
-                depth: 0,
-                state: state,
-                onFileSelected: onFileSelected,
+            FileExplorerToolbar(
+              onNewFile: () => FileExplorerToolbarCallbacks.handleNewFile(context),
+              onNewFolder: () => FileExplorerToolbarCallbacks.handleNewFolder(context),
+            ),
+            Expanded(
+              child: GestureDetector(
+                onSecondaryTapDown: (details) {
+                  _showContextMenu(
+                    context: context,
+                    position: details.globalPosition,
+                    node: null,
+                    workspacePath: state.workspacePath ?? '',
+                  );
+                },
+                child: ListView(
+                  children: [
+                    for (final node in state.rootNodes)
+                      _FileNodeWidget(
+                        node: node,
+                        depth: 0,
+                        state: state,
+                        onFileSelected: onFileSelected,
+                        workspacePath: state.workspacePath ?? '',
+                      ),
+                  ],
+                ),
               ),
+            ),
           ],
         );
       },
@@ -136,12 +380,14 @@ final class _FileNodeWidget extends StatelessWidget {
     required this.depth,
     required this.state,
     required this.onFileSelected,
+    required this.workspacePath,
   });
 
   final FileNode node;
   final int depth;
   final FileExplorerState state;
   final void Function(String filePath, String fileName) onFileSelected;
+  final String workspacePath;
 
   @override
   Widget build(BuildContext context) {
@@ -153,48 +399,58 @@ final class _FileNodeWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
-          onTap: () {
-            if (node.type == .directory) {
-              context.read<FileExplorerBloc>().add(ToggleFolderEvent(node.path));
-            } else {
-              context.read<FileExplorerBloc>().add(SelectFileEvent(node.path));
-              onFileSelected(node.path, node.name);
-            }
+        GestureDetector(
+          onSecondaryTapDown: (details) {
+            _showNodeContextMenu(
+              context: context,
+              position: details.globalPosition,
+              node: node,
+              workspacePath: workspacePath,
+            );
           },
-          hoverColor: editorTheme.hoverColor,
-          child: ColoredBox(
-            color: isSelected ? editorTheme.selectedItemColor : Colors.transparent,
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: 8.0 + (depth * AppSpacing.fileItemIndent),
-                top: 4,
-                bottom: 4,
-                right: 8,
-              ),
-              child: Row(
-                children: [
-                  if (node.type == .directory)
-                    Icon(
-                      isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
-                      size: 18,
-                      color: editorTheme.textColor,
-                    )
-                  else
-                    Icon(
-                      _getFileIcon(node.name),
-                      size: AppSpacing.iconSize,
-                      color: editorTheme.textColor,
+          child: InkWell(
+            onTap: () {
+              if (node.type == .directory) {
+                context.read<FileExplorerBloc>().add(ToggleFolderEvent(node.path));
+              } else {
+                context.read<FileExplorerBloc>().add(SelectFileEvent(node.path));
+                onFileSelected(node.path, node.name);
+              }
+            },
+            hoverColor: editorTheme.hoverColor,
+            child: ColoredBox(
+              color: isSelected ? editorTheme.selectedItemColor : Colors.transparent,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 8.0 + (depth * AppSpacing.fileItemIndent),
+                  top: 4,
+                  bottom: 4,
+                  right: 8,
+                ),
+                child: Row(
+                  children: [
+                    if (node.type == .directory)
+                      Icon(
+                        isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                        size: 18,
+                        color: editorTheme.textColor,
+                      )
+                    else
+                      Icon(
+                        _getFileIcon(node.name),
+                        size: AppSpacing.iconSize,
+                        color: editorTheme.textColor,
+                      ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        node.name,
+                        style: AppTextStyles.fileExplorer,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      node.name,
-                      style: AppTextStyles.fileExplorer,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -206,9 +462,136 @@ final class _FileNodeWidget extends StatelessWidget {
               depth: depth + 1,
               state: state,
               onFileSelected: onFileSelected,
+              workspacePath: workspacePath,
             ),
       ],
     );
+  }
+
+  /// Shows context menu for this node.
+  void _showNodeContextMenu({
+    required BuildContext context,
+    required Offset position,
+    required FileNode node,
+    required String workspacePath,
+  }) {
+    final handler = ContextMenuActionHandler(
+      context: context,
+      workspacePath: workspacePath,
+    );
+    final callbacks = handler.getCallbacks(node: node);
+
+    unawaited(
+      showMenu(
+        context: context,
+        position: RelativeRect.fromLTRB(
+          position.dx,
+          position.dy,
+          position.dx,
+          position.dy,
+        ),
+        items: _buildContextMenuItems(node, callbacks),
+      ),
+    );
+  }
+
+  /// Builds context menu items based on node type.
+  List<PopupMenuEntry<String>> _buildContextMenuItems(
+    FileNode node,
+    ContextMenuCallbacks callbacks,
+  ) {
+    if (node.type == FileNodeType.directory) {
+      // Folder menu
+      return [
+        PopupMenuItem<String>(
+          onTap: callbacks.onNewFile,
+          child: const Row(
+            children: [
+              Icon(Icons.insert_drive_file_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('New File'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          onTap: callbacks.onNewFolder,
+          child: const Row(
+            children: [
+              Icon(Icons.create_new_folder_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('New Folder'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onRename,
+          child: const Row(
+            children: [
+              Icon(Icons.edit_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('Rename'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          onTap: callbacks.onDelete,
+          child: const Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18),
+              SizedBox(width: 8),
+              Text('Delete'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onCopyPath,
+          child: const Row(
+            children: [
+              Icon(Icons.content_copy, size: 18),
+              SizedBox(width: 8),
+              Text('Copy Path'),
+            ],
+          ),
+        ),
+      ];
+    } else {
+      // File menu
+      return [
+        PopupMenuItem<String>(
+          onTap: callbacks.onRename,
+          child: const Row(
+            children: [
+              Icon(Icons.edit_outlined, size: 18),
+              SizedBox(width: 8),
+              Text('Rename'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          onTap: callbacks.onDelete,
+          child: const Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18),
+              SizedBox(width: 8),
+              Text('Delete'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onCopyPath,
+          child: const Row(
+            children: [
+              Icon(Icons.content_copy, size: 18),
+              SizedBox(width: 8),
+              Text('Copy Path'),
+            ],
+          ),
+        ),
+      ];
+    }
   }
 
   IconData _getFileIcon(String fileName) {

@@ -37,8 +37,22 @@
 library;
 
 // Models and Exceptions (via module exports)
+export 'src/backend/terminal_backend.dart';
+// Lifecycle helpers
+export 'src/bootstrap.dart' show disposeGooxTerminal, initializeGooxTerminal;
 export 'src/exceptions.dart';
 export 'src/models.dart';
 // Core API
 export 'src/pty_manager.dart';
 export 'src/pty_session.dart';
+// UI Components
+export 'src/ui/ui.dart';
+// Terminal Models
+export 'src/models/ansi_style.dart';
+export 'src/models/shell_config.dart';
+export 'src/models/terminal_output.dart';
+// Terminal Services
+export 'src/services/ansi_parser.dart';
+export 'src/services/pty_service.dart';
+export 'src/services/pty_service_impl.dart';
+export 'src/services/shell_detector.dart';

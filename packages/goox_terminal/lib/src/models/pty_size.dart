@@ -1,6 +1,8 @@
 /// Terminal size model
 library;
 
+import 'package:flutter/foundation.dart';
+
 /// Represents the size of a terminal in rows and columns
 ///
 /// This class is used to specify the dimensions of a pseudo-terminal.
@@ -10,7 +12,16 @@ library;
 /// ```dart
 /// final size = PtySize(rows: 24, cols: 80);
 /// ```
+@immutable
 class PtySize {
+  /// Creates a new terminal size
+  ///
+  /// Throws [ArgumentError] if rows or cols are out of valid range.
+  const PtySize({
+    required this.rows,
+    required this.cols,
+  });
+
   /// Number of rows (lines) in the terminal
   ///
   /// Must be between 1 and 1000.
@@ -21,21 +32,18 @@ class PtySize {
   /// Must be between 1 and 1000.
   final int cols;
 
-  /// Creates a new terminal size
-  ///
-  /// Throws [ArgumentError] if rows or cols are out of valid range.
-  const PtySize({
-    required this.rows,
-    required this.cols,
-  });
-
   /// Minimum valid size (1x1)
   static const PtySize min = PtySize(rows: 1, cols: 1);
 
   /// Maximum valid size (1000x1000)
   static const PtySize max = PtySize(rows: 1000, cols: 1000);
 
-  /// Standard 80x24 terminal size
+  /// Default terminal size (24x80)
+  ///
+  /// This is the standard default size for terminal sessions.
+  static const PtySize defaultSize = PtySize(rows: 24, cols: 80);
+
+  /// Standard 80x24 terminal size (same as defaultSize)
   static const PtySize standard = PtySize(rows: 24, cols: 80);
 
   /// Large terminal size (40x120)

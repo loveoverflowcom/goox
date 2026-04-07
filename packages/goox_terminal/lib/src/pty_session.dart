@@ -1,167 +1,363 @@
-/// PTY Session - Represents an active PTY session
+/// PTY session wrapper.
 library;
 
-import 'dart:typed_data';
+import 'dart:async';
+import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:goox_terminal/src/backend/terminal_backend.dart';
+import 'package:goox_terminal/src/exceptions.dart';
 import 'package:goox_terminal/src/models.dart';
 
-/// Represents an active PTY session
+/// Represents an active PTY session.
 ///
-/// A [PtySession] provides methods to interact with a running pseudo-terminal,
-/// including writing input, reading output, resizing, and sending signals.
-///
-/// Do not create instances directly. Use [PtyManager.createSession] instead.
-class PtySession {
-  /// Unique session identifier
-  final String id;
-
-  /// Configuration used to create this session
-  final PtyConfig config;
-
-  /// Creates a new PTY session
+/// The session attaches to the Rust PTY output stream on creation so output is
+/// drained even when no UI listener is present yet. The UI can subscribe to
+/// [outputStream] and listen to [notifyListeners] for status updates.
+class PtySession extends ChangeNotifier {
+  /// Creates a terminal session wrapper.
   ///
-  /// This constructor is internal. Use [PtyManager.createSession] to create sessions.
+  /// This is intended for internal use by [PtyManager].
   PtySession({
     required this.id,
     required this.config,
-  });
+    required TerminalBackend backend,
+    required TerminalSessionInfo info,
+    VoidCallback? onClosed,
+  })  : _backend = backend,
+        _info = info,
+        _onClosed = onClosed;
 
-  /// Write string data to the PTY
-  ///
-  /// Writes the given [data] string to the PTY input.
-  /// Returns the number of bytes written.
-  ///
-  /// Example:
-  /// ```dart
-  /// await session.write('ls -la\n');
-  /// ```
-  ///
-  /// Throws [PtyIOException] if write fails.
-  Future<int> write(String data) async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('write not yet implemented');
+  /// Unique session identifier.
+  final String id;
+
+  /// Configuration used to create this session.
+  final PtyConfig config;
+
+  final TerminalBackend _backend;
+  final VoidCallback? _onClosed;
+
+  final StreamController<Uint8List> _outputController =
+      StreamController<Uint8List>.broadcast(sync: true);
+  final StringBuffer _transcriptBuffer = StringBuffer();
+  late final ByteConversionSink _transcriptSink = const Utf8Decoder(
+    allowMalformed: true,
+  ).startChunkedConversion(
+      StringConversionSink.fromStringSink(_transcriptBuffer));
+
+  StreamSubscription<Uint8List>? _outputSubscription;
+
+  TerminalSessionInfo _info;
+  bool _attached = false;
+  bool _closed = false;
+  bool _disposed = false;
+
+  /// Current session metadata.
+  TerminalSessionInfo get info => _info;
+
+  /// Current lifecycle status.
+  TerminalStatus get status => _info.status;
+
+  /// Process identifier, if available.
+  int? get pid => _info.pid;
+
+  /// Exit code if the process has already terminated.
+  int? get exitCode => _info.exitCode;
+
+  /// True if the output stream is attached.
+  bool get isAttached => _attached;
+
+  /// True if the session has been closed locally.
+  bool get isClosed => _closed;
+
+  /// Current transcript accumulated from terminal output.
+  String get transcript => _transcriptBuffer.toString();
+
+  /// Broadcast output stream for UI listeners.
+  Stream<Uint8List> get outputStream => _outputController.stream;
+
+  /// Replaces the cached snapshot with a fresh value.
+  void syncInfo(TerminalSessionInfo info) {
+    _syncInfo(info);
   }
 
-  /// Write binary data to the PTY
-  ///
-  /// Writes the given binary [data] to the PTY input.
-  /// Returns the number of bytes written.
-  ///
-  /// Example:
-  /// ```dart
-  /// // Send Ctrl+C
-  /// await session.writeBytes(Uint8List.fromList([0x03]));
-  /// ```
-  ///
-  /// Throws [PtyIOException] if write fails.
+  /// Attaches the terminal output stream if it is not already active.
+  Future<void> attach() async {
+    if (_disposed || _closed) {
+      throw PtyException('Session is closed', sessionId: id);
+    }
+    if (_attached) {
+      return;
+    }
+
+    await _backend.ensureInitialized();
+    try {
+      final stream = _backend.observeOutput(id);
+      _outputSubscription = stream.listen(
+        _handleOutput,
+        onError: _handleOutputError,
+        onDone: _handleOutputDone,
+        cancelOnError: false,
+      );
+      _attached = true;
+      _syncInfo(_info.copyWith(attached: true));
+    } on Object catch (error, _) {
+      throw PtyIOException(
+        'Failed to attach terminal output',
+        sessionId: id,
+        cause: error,
+      );
+    }
+  }
+
+  /// Refreshes the snapshot from the backend.
+  Future<TerminalSessionInfo> refresh() async {
+    if (_disposed) {
+      throw PtyException('Session has been disposed', sessionId: id);
+    }
+    final info = await _backend.sessionInfo(id);
+    _syncInfo(info);
+    return info;
+  }
+
+  /// Write string data to the PTY.
+  Future<int> write(String data) =>
+      writeBytes(Uint8List.fromList(utf8.encode(data)));
+
+  /// Write binary data to the PTY.
   Future<int> writeBytes(Uint8List data) async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('writeBytes not yet implemented');
+    _ensureWritable();
+    try {
+      final written = await _backend.writeInput(id, data);
+      _syncInfo(
+        _info.copyWith(
+          lastActivityAt: DateTime.now(),
+          attached: true,
+          status: TerminalStatus.running,
+        ),
+      );
+      return written;
+    } on Object catch (error, _) {
+      throw PtyIOException(
+        'Failed to write to session',
+        sessionId: id,
+        cause: error,
+      );
+    }
   }
 
-  /// Get the output stream
-  ///
-  /// Returns a broadcast stream that emits output data from the PTY.
-  /// The stream emits [Uint8List] chunks as they become available.
-  ///
-  /// Example:
-  /// ```dart
-  /// session.outputStream.listen((data) {
-  ///   print(utf8.decode(data));
-  /// });
-  /// ```
-  Stream<Uint8List> get outputStream {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('outputStream not yet implemented');
-  }
-
-  /// Resize the terminal
-  ///
-  /// Changes the terminal size to [rows] rows and [cols] columns.
-  /// This sends a SIGWINCH signal to the child process.
-  ///
-  /// Example:
-  /// ```dart
-  /// await session.resize(30, 100);
-  /// ```
-  ///
-  /// Throws [PtyException] if resize fails.
+  /// Resize the terminal.
   Future<void> resize(int rows, int cols) async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('resize not yet implemented');
+    _ensureWritable();
+    try {
+      await _backend.resizeSession(id, PtySize(rows: rows, cols: cols));
+      _syncInfo(
+        _info.copyWith(
+          size: PtySize(rows: rows, cols: cols),
+          lastActivityAt: DateTime.now(),
+        ),
+      );
+    } on Object catch (error, _) {
+      throw PtyResizeException(
+        'Failed to resize session',
+        sessionId: id,
+        cause: error,
+      );
+    }
   }
 
-  /// Get current terminal size
-  ///
-  /// Returns the current size of the terminal.
-  ///
-  /// Example:
-  /// ```dart
-  /// final size = await session.getSize();
-  /// print('Terminal: ${size.rows}x${size.cols}');
-  /// ```
+  /// Returns the current terminal size.
   Future<PtySize> getSize() async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('getSize not yet implemented');
+    final updated = await refresh();
+    return updated.size;
   }
 
-  /// Send a signal to the process
-  ///
-  /// Sends the given [signal] to the child process.
-  ///
-  /// Example:
-  /// ```dart
-  /// // Send Ctrl+C
-  /// await session.sendSignal(PtySignal.sigint);
-  /// ```
-  ///
-  /// Throws [PtyException] if signal sending fails.
+  /// Send a signal to the process.
   Future<void> sendSignal(PtySignal signal) async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('sendSignal not yet implemented');
+    _ensureWritable();
+    try {
+      await _backend.sendSignal(id, signal);
+      _syncInfo(_info.copyWith(lastActivityAt: DateTime.now()));
+    } on Object catch (error, _) {
+      throw SignalSendException(
+        'Failed to send ${signal.signalName}',
+        sessionId: id,
+        cause: error,
+      );
+    }
   }
 
-  /// Get process ID
-  ///
-  /// Returns the PID of the child process, or null if not available.
-  int? get pid {
-    // TODO: Implement using Rust FFI
-    return null;
-  }
-
-  /// Get exit code
-  ///
-  /// Returns the exit code of the process if it has exited, or null if still running.
-  int? get exitCode {
-    // TODO: Implement using Rust FFI
-    return null;
-  }
-
-  /// Wait for the process to exit
-  ///
-  /// Waits for the child process to exit and returns its exit code.
-  ///
-  /// Example:
-  /// ```dart
-  /// final exitCode = await session.waitForExit();
-  /// print('Process exited with code: $exitCode');
-  /// ```
+  /// Wait for the process to exit.
   Future<int> waitForExit() async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('waitForExit not yet implemented');
+    if (_info.exitCode != null) {
+      return _info.exitCode!;
+    }
+    try {
+      final exitCode = await _backend.waitForExit(id);
+      _syncInfo(
+        _info.copyWith(
+          exitCode: exitCode,
+          status: TerminalStatus.exited,
+          lastActivityAt: DateTime.now(),
+        ),
+      );
+      return exitCode;
+    } on Object catch (error, _) {
+      throw PtyException(
+        'Failed to wait for exit',
+        sessionId: id,
+        cause: error,
+      );
+    }
   }
 
-  /// Close the session
-  ///
-  /// Closes this PTY session and cleans up all resources.
-  /// This will terminate the child process if still running.
-  ///
-  /// Example:
-  /// ```dart
-  /// await session.close();
-  /// ```
+  /// Close the session and release native resources.
   Future<void> close() async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('close not yet implemented');
+    if (_closed) {
+      return;
+    }
+    _closed = true;
+    _attached = false;
+
+    await _outputSubscription?.cancel();
+    _outputSubscription = null;
+    _closeTranscriber();
+    if (!_outputController.isClosed) {
+      await _outputController.close();
+    }
+
+    try {
+      await _backend.closeSession(id);
+    } on Object catch (error, _) {
+      _syncInfo(
+        _info.copyWith(
+          status: TerminalStatus.closed,
+          attached: false,
+          lastActivityAt: DateTime.now(),
+        ),
+      );
+      _onClosed?.call();
+      throw PtyException(
+        'Failed to close session',
+        sessionId: id,
+        cause: error,
+      );
+    }
+
+    _syncInfo(
+      _info.copyWith(
+        status: TerminalStatus.closed,
+        attached: false,
+        lastActivityAt: DateTime.now(),
+      ),
+    );
+    _onClosed?.call();
+  }
+
+  /// Releases local resources without closing the backend session.
+  @override
+  void dispose() {
+    if (_disposed) {
+      return;
+    }
+    _disposed = true;
+    final subscription = _outputSubscription;
+    _outputSubscription = null;
+    if (subscription != null) {
+      unawaited(subscription.cancel());
+    }
+    _closeTranscriber();
+    if (!_outputController.isClosed) {
+      _outputController.close();
+    }
+    super.dispose();
+  }
+
+  void _ensureWritable() {
+    if (_disposed) {
+      throw PtyException('Session has been disposed', sessionId: id);
+    }
+    if (_closed) {
+      throw PtyException('Session is closed', sessionId: id);
+    }
+    if (!_info.canSendInput) {
+      throw PtyException('Session is not ready for input', sessionId: id);
+    }
+  }
+
+  void _handleOutput(Uint8List data) {
+    if (_disposed || _closed) {
+      return;
+    }
+    _transcriptSink.add(data);
+    _outputController.add(data);
+    _syncInfo(
+      _info.copyWith(
+        lastActivityAt: DateTime.now(),
+        status: TerminalStatus.running,
+        attached: true,
+      ),
+    );
+  }
+
+  void _handleOutputError(Object error, StackTrace stackTrace) {
+    if (_disposed || _closed) {
+      return;
+    }
+    _syncInfo(
+      _info.copyWith(
+        status: TerminalStatus.failed,
+        lastActivityAt: DateTime.now(),
+      ),
+    );
+    if (!_outputController.isClosed) {
+      _outputController.addError(error, stackTrace);
+    }
+    notifyListeners();
+  }
+
+  void _handleOutputDone() {
+    if (_disposed) {
+      return;
+    }
+    _attached = false;
+    _closeTranscriber();
+    if (!_outputController.isClosed) {
+      _outputController.close();
+    }
+    if (_closed) {
+      notifyListeners();
+      return;
+    }
+
+    unawaited(_refreshAfterOutputDone());
+  }
+
+  Future<void> _refreshAfterOutputDone() async {
+    try {
+      await refresh();
+    } on Object {
+      _syncInfo(
+        _info.copyWith(
+          status: TerminalStatus.exited,
+          lastActivityAt: DateTime.now(),
+          attached: false,
+        ),
+      );
+    }
+    notifyListeners();
+  }
+
+  void _syncInfo(TerminalSessionInfo info) {
+    _info = info;
+    notifyListeners();
+  }
+
+  void _closeTranscriber() {
+    try {
+      _transcriptSink.close();
+    } on Object {
+      // The sink is best-effort; it can already be closed when output ends.
+    }
   }
 }

@@ -1,100 +1,167 @@
-/// PTY Manager - Main entry point for PTY operations
+/// Session registry and lifecycle helper.
 library;
 
+import 'package:goox_terminal/src/backend/rust_terminal_backend.dart';
+import 'package:goox_terminal/src/backend/terminal_backend.dart';
+import 'package:goox_terminal/src/exceptions.dart';
 import 'package:goox_terminal/src/models.dart';
 import 'package:goox_terminal/src/pty_session.dart';
 
-/// Main entry point for PTY operations
-///
-/// This class manages all PTY sessions and provides methods to create,
-/// close, and query sessions.
-///
-/// Use the singleton [instance] to access the manager:
-/// ```dart
-/// final manager = PtyManager.instance;
-/// ```
+/// Registry and lifecycle helper for PTY sessions.
 class PtyManager {
-  /// Singleton instance
-  static final PtyManager instance = PtyManager._();
+  /// Singleton instance using the Rust backend.
+  static final PtyManager instance = PtyManager._(
+    backend: RustTerminalBackend.instance,
+  );
 
-  /// Private constructor for singleton
-  PtyManager._();
+  /// Creates a test-friendly manager with a custom backend.
+  PtyManager.test({required TerminalBackend backend})
+      : this._(backend: backend);
 
-  /// Internal session registry
+  PtyManager._({required TerminalBackend backend}) : _backend = backend;
+
+  final TerminalBackend _backend;
   final Map<String, PtySession> _sessions = {};
 
-  /// Create a new PTY session
-  ///
-  /// Creates a new pseudo-terminal session with the given [config].
-  /// Returns a unique session ID that can be used to retrieve the session.
-  ///
-  /// Example:
-  /// ```dart
-  /// final config = PtyConfig(shell: '/bin/bash');
-  /// final sessionId = await PtyManager.instance.createSession(config);
-  /// ```
-  ///
-  /// Throws [PtyException] if session creation fails.
+  /// Creates a new PTY session and returns its session identifier.
   Future<String> createSession(PtyConfig config) async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('createSession not yet implemented');
+    final session = await createSessionHandle(config);
+    return session.id;
   }
 
-  /// Close a PTY session
-  ///
-  /// Closes the session with the given [sessionId] and cleans up resources.
-  /// This will terminate the child process and close all I/O streams.
-  ///
-  /// Example:
-  /// ```dart
-  /// await PtyManager.instance.closeSession(sessionId);
-  /// ```
-  ///
-  /// Throws [SessionNotFoundException] if session doesn't exist.
-  Future<void> closeSession(String sessionId) async {
-    // TODO: Implement using Rust FFI
-    throw UnimplementedError('closeSession not yet implemented');
+  /// Creates a new PTY session and returns the wrapper directly.
+  Future<PtySession> createSessionHandle(PtyConfig config) async {
+    config.validate();
+    await _backend.ensureInitialized();
+
+    String? sessionId;
+    try {
+      sessionId = await _backend.createSession(config);
+      final info = await _backend.sessionInfo(sessionId);
+      final session = _createSession(
+        sessionId: sessionId,
+        config: config,
+        info: info,
+      );
+      _sessions[sessionId] = session;
+      await session.attach();
+      return session;
+    } on Object catch (error, _) {
+      if (sessionId != null) {
+        _sessions.remove(sessionId);
+        try {
+          await _backend.closeSession(sessionId);
+        } on Object {
+          // Best-effort cleanup.
+        }
+      }
+      throw SessionCreationException(
+        'Failed to create terminal session',
+        cause: error,
+      );
+    }
   }
 
-  /// Get a PTY session by ID
-  ///
-  /// Returns the [PtySession] with the given [sessionId], or null if not found.
-  ///
-  /// Example:
-  /// ```dart
-  /// final session = PtyManager.instance.getSession(sessionId);
-  /// if (session != null) {
-  ///   await session.write('ls\n');
-  /// }
-  /// ```
-  PtySession? getSession(String sessionId) {
-    return _sessions[sessionId];
+  /// Opens an existing session or restores a local wrapper around it.
+  Future<PtySession> openSession(String sessionId) async {
+    final existing = _sessions[sessionId];
+    if (existing != null) {
+      try {
+        await existing.refresh();
+        return existing;
+      } on Object {
+        _sessions.remove(sessionId);
+        throw SessionNotFoundException(sessionId);
+      }
+    }
+
+    await _backend.ensureInitialized();
+    try {
+      final info = await _backend.sessionInfo(sessionId);
+      final session = _createSession(
+        sessionId: sessionId,
+        config: info.toConfig(),
+        info: info,
+      );
+      _sessions[sessionId] = session;
+      await session.attach();
+      return session;
+    } on Object {
+      throw SessionNotFoundException(sessionId);
+    }
   }
 
-  /// List all active session IDs
-  ///
-  /// Returns a list of all currently active session IDs.
-  ///
-  /// Example:
-  /// ```dart
-  /// final sessions = PtyManager.instance.listSessions();
-  /// print('Active sessions: ${sessions.length}');
-  /// ```
-  List<String> listSessions() {
-    return _sessions.keys.toList();
+  /// Refreshes and returns the latest snapshot for a managed session.
+  Future<TerminalSessionInfo> refreshSession(String sessionId) async {
+    final session = _sessions[sessionId];
+    if (session != null) {
+      try {
+        return await session.refresh();
+      } on Object {
+        _sessions.remove(sessionId);
+        throw SessionNotFoundException(sessionId);
+      }
+    }
+
+    await _backend.ensureInitialized();
+    return _backend.sessionInfo(sessionId);
   }
 
-  /// Check if a session is running
-  ///
-  /// Returns true if the session with [sessionId] exists and is running.
-  ///
-  /// Example:
-  /// ```dart
-  /// if (PtyManager.instance.isSessionRunning(sessionId)) {
-  ///   print('Session is active');
-  /// }
-  /// ```
+  /// Returns a managed session wrapper if one exists.
+  PtySession? getSession(String sessionId) => _sessions[sessionId];
+
+  /// Returns all managed session ids.
+  List<String> listSessions() => _sessions.keys.toList(growable: false);
+
+  /// Returns a backend snapshot for every managed session.
+  Future<List<TerminalSessionInfo>> listSessionInfos() async {
+    await _backend.ensureInitialized();
+    final infos = await _backend.listSessions();
+    for (final info in infos) {
+      _sessions[info.id]?.syncInfo(info);
+    }
+    return infos;
+  }
+
+  /// Checks whether the session is still running.
   bool isSessionRunning(String sessionId) {
-    return _sessions.containsKey(sessionId);
+    return _sessions[sessionId]?.status.isActive ?? false;
+  }
+
+  /// Closes a managed session.
+  Future<void> closeSession(String sessionId) async {
+    final session = _sessions[sessionId];
+    if (session == null) {
+      throw SessionNotFoundException(sessionId);
+    }
+
+    await session.close();
+    _sessions.remove(sessionId);
+  }
+
+  /// Closes every managed session.
+  Future<void> closeAllSessions() async {
+    final ids = listSessions();
+    for (final sessionId in ids) {
+      try {
+        await closeSession(sessionId);
+      } on Object {
+        // Best-effort cleanup for shutdown paths.
+      }
+    }
+  }
+
+  PtySession _createSession({
+    required String sessionId,
+    required PtyConfig config,
+    required TerminalSessionInfo info,
+  }) {
+    return PtySession(
+      id: sessionId,
+      config: config,
+      backend: _backend,
+      info: info,
+      onClosed: () => _sessions.remove(sessionId),
+    );
   }
 }

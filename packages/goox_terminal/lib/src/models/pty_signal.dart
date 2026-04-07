@@ -1,6 +1,8 @@
 /// Unix signal types for PTY sessions
 library;
 
+import 'dart:io' show Platform;
+
 /// Unix signals that can be sent to a PTY session
 ///
 /// These signals are used to control the behavior of the child process
@@ -83,9 +85,10 @@ enum PtySignal {
   ///
   /// Windows has limited signal support compared to Unix systems.
   bool get isSupportedOnCurrentPlatform {
-    // On Windows, only SIGINT and SIGKILL are reliably supported
-    // TODO: Implement platform detection
-    return true; // Assume Unix for now
+    if (Platform.isWindows) {
+      return this == PtySignal.sigint || this == PtySignal.sigkill;
+    }
+    return true;
   }
 
   @override

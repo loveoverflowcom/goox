@@ -53,3 +53,15 @@ final class WorkspaceLoadFailure extends Failure {
   /// Creates a workspace load failure.
   const WorkspaceLoadFailure([super.message = 'Failed to load workspace']);
 }
+
+/// Failure when validation fails.
+final class ValidationFailure extends Failure {
+  /// Creates a validation failure.
+  const ValidationFailure(super.message);
+}
+
+/// Failure when file system operations fail.
+final class FileSystemFailure extends Failure {
+  /// Creates a file system failure.
+  const FileSystemFailure(super.message);
+}

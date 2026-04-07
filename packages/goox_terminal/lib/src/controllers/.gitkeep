@@ -1,0 +1,4 @@
+# Controllers directory
+# This directory will contain:
+# - terminal_controller.dart
+# - terminal_session_manager.dart

@@ -162,6 +162,7 @@ final class _EditorLayoutView extends StatelessWidget {
 
     final isCtrlOrCmd = HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
+    final isShift = HardwareKeyboard.instance.isShiftPressed;
 
     // Ctrl/Cmd + B: Toggle sidebar
     if (isCtrlOrCmd && event.logicalKey == LogicalKeyboardKey.keyB) {
@@ -171,13 +172,49 @@ final class _EditorLayoutView extends StatelessWidget {
 
     // Ctrl + ` (backtick): Toggle terminal
     if (HardwareKeyboard.instance.isControlPressed &&
-        event.logicalKey == LogicalKeyboardKey.backquote) {
+        event.logicalKey == LogicalKeyboardKey.backquote &&
+        !isShift) {
       context.read<TerminalBloc>().add(const ToggleTerminalEvent());
       return KeyEventResult.handled;
     }
 
+    // Ctrl + Shift + ` (backtick): Create new terminal
+    if (HardwareKeyboard.instance.isControlPressed &&
+        isShift &&
+        event.logicalKey == LogicalKeyboardKey.backquote) {
+      context.read<TerminalBloc>().add(const CreateTerminalEvent());
+      return KeyEventResult.handled;
+    }
+
+    // Ctrl + PageUp: Cycle to previous terminal
+    if (HardwareKeyboard.instance.isControlPressed &&
+        event.logicalKey == LogicalKeyboardKey.pageUp) {
+      context.read<TerminalBloc>().add(const CycleTerminalEvent(forward: false));
+      return KeyEventResult.handled;
+    }
+
+    // Ctrl + PageDown: Cycle to next terminal
+    if (HardwareKeyboard.instance.isControlPressed &&
+        event.logicalKey == LogicalKeyboardKey.pageDown) {
+      context.read<TerminalBloc>().add(const CycleTerminalEvent(forward: true));
+      return KeyEventResult.handled;
+    }
+
+    // Ctrl + Shift + W: Close active terminal
+    if (HardwareKeyboard.instance.isControlPressed &&
+        isShift &&
+        event.logicalKey == LogicalKeyboardKey.keyW) {
+      final terminalState = context.read<TerminalBloc>().state;
+      if (terminalState.activeTerminalId != null) {
+        context.read<TerminalBloc>().add(
+              CloseTerminalEvent(terminalState.activeTerminalId!),
+            );
+      }
+      return KeyEventResult.handled;
+    }
+
     // Ctrl/Cmd + W: Close active tab
-    if (isCtrlOrCmd && event.logicalKey == LogicalKeyboardKey.keyW) {
+    if (isCtrlOrCmd && event.logicalKey == LogicalKeyboardKey.keyW && !isShift) {
       final tabState = context.read<TabManagerBloc>().state;
       if (tabState.activeTabId != null) {
         context
@@ -190,14 +227,14 @@ final class _EditorLayoutView extends StatelessWidget {
     // Ctrl + Tab: Next tab
     if (HardwareKeyboard.instance.isControlPressed &&
         event.logicalKey == LogicalKeyboardKey.tab &&
-        !HardwareKeyboard.instance.isShiftPressed) {
+        !isShift) {
       context.read<TabManagerBloc>().add(const NextTabEvent());
       return KeyEventResult.handled;
     }
 
     // Ctrl + Shift + Tab: Previous tab
     if (HardwareKeyboard.instance.isControlPressed &&
-        HardwareKeyboard.instance.isShiftPressed &&
+        isShift &&
         event.logicalKey == LogicalKeyboardKey.tab) {
       context.read<TabManagerBloc>().add(const PreviousTabEvent());
       return KeyEventResult.handled;

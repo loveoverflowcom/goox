@@ -10,21 +10,13 @@ license = "MIT"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-flutter_rust_bridge = "2.0"
+anyhow = "1"
+flutter_rust_bridge = "=2.11.1"
 portable-pty = "0.8"
-tokio = { version = "1.35", features = ["full"] }
-tokio-stream = "0.1"
-lazy_static = "1.4"
-thiserror = "1.0"
+uuid = { version = "1", features = ["v4"] }
 
-[target.'cfg(windows)'.dependencies]
-windows = { version = "0.52", features = [
-    "Win32_System_Console",
-    "Win32_Foundation",
-] }
-
-[build-dependencies]
-flutter_rust_bridge_codegen = "2.0"
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
 
 [profile.release]
 opt-level = 3

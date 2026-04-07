@@ -14,6 +14,7 @@ final class TextEditorWidget extends StatefulWidget {
 final class _TextEditorWidgetState extends State<TextEditorWidget> {
   late final TextEditingController _controller;
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -25,6 +26,7 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -41,6 +43,28 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
       context.read<EditorContentBloc>().add(
         UpdateCursorPositionEvent(line: line, column: column),
       );
+    }
+  }
+
+  void _handleTapInEmptyArea(TapDownDetails details) {
+    // Calculate text height based on number of lines and line height
+    final lines = _controller.text.split('\n').length;
+    const lineHeight = AppSpacing.fontSize * AppSpacing.lineHeight;
+    final textHeight = lines * lineHeight + AppSpacing.editorPadding * 2;
+
+    // Detect tap below content area
+    final tapY = details.localPosition.dy;
+    
+    if (tapY > textHeight) {
+      // Move cursor to end of last line
+      final endPosition = _controller.text.length;
+      _controller.selection = TextSelection.collapsed(offset: endPosition);
+      
+      // Request focus for text field
+      _focusNode.requestFocus();
+      
+      // Update cursor position in bloc
+      _updateCursorPosition();
     }
   }
 
@@ -171,28 +195,33 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
                       controller: _scrollController,
                       child: SingleChildScrollView(
                         controller: _scrollController,
-                        child: TextField(
-                          controller: _controller,
-                          maxLines: null,
-                          style: TextStyle(
-                            color: editorTheme.textColor,
-                            fontSize: AppSpacing.fontSize,
-                            fontFamily: 'monospace',
-                            height: AppSpacing.lineHeight,
-                          ),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.all(
-                              AppSpacing.editorPadding,
+                        child: GestureDetector(
+                          onTapDown: _handleTapInEmptyArea,
+                          behavior: HitTestBehavior.translucent,
+                          child: TextField(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            maxLines: null,
+                            style: TextStyle(
+                              color: editorTheme.textColor,
+                              fontSize: AppSpacing.fontSize,
+                              fontFamily: 'monospace',
+                              height: AppSpacing.lineHeight,
                             ),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.all(
+                                AppSpacing.editorPadding,
+                              ),
+                            ),
+                            onChanged: (value) {
+                              context.read<EditorContentBloc>().add(
+                                UpdateContentEvent(value),
+                              );
+                              _updateCursorPosition();
+                            },
+                            onTap: _updateCursorPosition,
                           ),
-                          onChanged: (value) {
-                            context.read<EditorContentBloc>().add(
-                              UpdateContentEvent(value),
-                            );
-                            _updateCursorPosition();
-                          },
-                          onTap: _updateCursorPosition,
                         ),
                       ),
                     ),
