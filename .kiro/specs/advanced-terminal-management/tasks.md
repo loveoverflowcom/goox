@@ -296,7 +296,7 @@ This plan transforms the existing dummy terminal panel into a fully functional t
     - _Requirements: 13.1-13.7_
 
 - [ ] 15. Implement performance optimizations
-  - [~] 15.1 Add output batching and frame rate limiting
+  - [ ] 15.1 Add output batching and frame rate limiting
     - Update TerminalBloc to batch output events within 16ms window
     - Limit state emissions to max 60 FPS for terminal output
     - Implement virtualized scrolling in TerminalEmulator (render only visible lines + buffer)
@@ -304,7 +304,7 @@ This plan transforms the existing dummy terminal panel into a fully functional t
     - Add line length limit (max 10,000 characters per line)
     - _Requirements: 14.1-14.7_
 
-  - [~] 15.2 Write performance tests
+  - [ ] 15.2 Write performance tests
     - Test output batching combines multiple chunks
     - Test scrollback buffer trims to 1000 lines
     - Test line length limit truncates long lines
