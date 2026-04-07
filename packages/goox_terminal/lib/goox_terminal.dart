@@ -36,10 +36,9 @@
 /// ```
 library;
 
-// Core API
-export 'src/pty_manager.dart';
-export 'src/pty_session.dart';
-
 // Models and Exceptions (via module exports)
 export 'src/exceptions.dart';
 export 'src/models.dart';
+// Core API
+export 'src/pty_manager.dart';
+export 'src/pty_session.dart';

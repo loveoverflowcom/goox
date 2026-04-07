@@ -33,4 +33,10 @@ linter:
     # Disable some rules that conflict with project style
     public_member_api_docs: false
     lines_longer_than_80_chars: false
+    
+    # Performance and best practices
+    use_decorated_box: true
+    use_colored_box: true
+    sized_box_for_whitespace: true
+    use_key_in_widget_constructors: true
 

@@ -5,7 +5,7 @@ import 'package:goox/features/terminal/presentation/blocs/terminal_bloc.dart';
 import 'package:goox_ui/goox_ui.dart';
 
 /// Widget for terminal panel UI
-class TerminalPanelWidget extends StatefulWidget {
+final class TerminalPanelWidget extends StatefulWidget {
   /// Constructor
   const TerminalPanelWidget({super.key});
 
@@ -13,9 +13,7 @@ class TerminalPanelWidget extends StatefulWidget {
   State<TerminalPanelWidget> createState() => _TerminalPanelWidgetState();
 }
 
-class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
-  double? _dragStartHeight;
-
+final class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
   @override
   Widget build(BuildContext context) {
     final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
@@ -29,99 +27,143 @@ class _TerminalPanelWidgetState extends State<TerminalPanelWidget> {
           maxHeight,
         );
 
-        return Container(
-          height: constrainedHeight,
+        return DecoratedBox(
           decoration: BoxDecoration(
             color: editorTheme.editorBackground,
             border: Border(
               top: BorderSide(color: editorTheme.borderColor),
             ),
           ),
-          child: Column(
-            children: [
-              // Resize handle
-              _buildResizeHandle(context, terminalState.height),
-
-              // Header
-              _buildHeader(context),
-
-              // Content area
-              Expanded(
-                child: _buildContent(context),
-              ),
-            ],
+          child: SizedBox(
+            height: constrainedHeight,
+            child: Column(
+              children: [
+                _ResizeHandle(currentHeight: terminalState.height),
+                const _TerminalHeader(),
+                const Expanded(child: _TerminalContent()),
+              ],
+            ),
           ),
         );
       },
     );
   }
+}
 
-  Widget _buildResizeHandle(BuildContext context, double currentHeight) {
+final class _ResizeHandle extends StatefulWidget {
+  const _ResizeHandle({required this.currentHeight});
+
+  final double currentHeight;
+
+  @override
+  State<_ResizeHandle> createState() => _ResizeHandleState();
+}
+
+final class _ResizeHandleState extends State<_ResizeHandle> {
+  double? _dragStartHeight;
+  double? _dragStartY;
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
     final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
     
     return GestureDetector(
       onVerticalDragStart: (details) {
-        _dragStartHeight = currentHeight;
+        setState(() {
+          _dragStartHeight = widget.currentHeight;
+          _dragStartY = details.globalPosition.dy;
+        });
       },
       onVerticalDragUpdate: (details) {
-        if (_dragStartHeight != null) {
-          final newHeight = _dragStartHeight! - details.delta.dy;
+        if (_dragStartHeight != null && _dragStartY != null) {
+          final deltaY = _dragStartY! - details.globalPosition.dy;
+          final newHeight = _dragStartHeight! + deltaY;
           context.read<TerminalBloc>().add(ResizeTerminalEvent(newHeight));
         }
       },
       onVerticalDragEnd: (details) {
-        _dragStartHeight = null;
+        setState(() {
+          _dragStartHeight = null;
+          _dragStartY = null;
+        });
       },
       child: MouseRegion(
         cursor: SystemMouseCursors.resizeRow,
-        child: Container(
-          height: 4,
-          color: Colors.transparent,
-          child: Center(
-            child: Container(
-              height: 1,
-              color: editorTheme.borderColor,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: ColoredBox(
+          color: _isHovered 
+            ? editorTheme.borderColor.withValues(alpha: 0.3)
+            : Colors.transparent,
+          child: SizedBox(
+            height: 8,
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(1),
+                child: ColoredBox(
+                  color: _isHovered 
+                    ? editorTheme.borderColor.withValues(alpha: 0.8)
+                    : editorTheme.borderColor,
+                  child: const SizedBox(
+                    height: 2,
+                    width: double.infinity,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildHeader(BuildContext context) {
+final class _TerminalHeader extends StatelessWidget {
+  const _TerminalHeader();
+
+  @override
+  Widget build(BuildContext context) {
     final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
     
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: editorTheme.tabBarBackground,
         border: Border(
           bottom: BorderSide(color: editorTheme.borderColor),
         ),
       ),
-      child: Row(
-        children: [
-          Text(
-            'TERMINAL',
-            style: TextStyle(
-              color: editorTheme.textColor,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          children: [
+            Text(
+              'TERMINAL',
+              style: TextStyle(
+                color: editorTheme.textColor,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildContent(BuildContext context) {
+final class _TerminalContent extends StatelessWidget {
+  const _TerminalContent();
+
+  @override
+  Widget build(BuildContext context) {
     final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
     
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Align(
         alignment: Alignment.topLeft,

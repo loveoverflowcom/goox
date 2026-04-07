@@ -148,6 +148,7 @@ final class _FileNodeWidget extends StatelessWidget {
     final isSelected = state.selectedPath == node.path;
     final isExpanded = state.expandedFolders.containsKey(node.path);
     final children = state.expandedFolders[node.path] ?? [];
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,31 +162,40 @@ final class _FileNodeWidget extends StatelessWidget {
               onFileSelected(node.path, node.name);
             }
           },
-          hoverColor: Theme.of(context).extension<EditorThemeExtension>()!.hoverColor,
-          child: Container(
-            padding: EdgeInsets.only(
-              left: 8.0 + (depth * AppSpacing.fileItemIndent),
-              top: 4,
-              bottom: 4,
-              right: 8,
-            ),
-            color: isSelected ? Theme.of(context).extension<EditorThemeExtension>()!.selectedItemColor : null,
-            child: Row(
-              children: [
-                Icon(
-                  _getIcon(node, isExpanded),
-                  size: AppSpacing.iconSize,
-                  color: Theme.of(context).extension<EditorThemeExtension>()!.textColor,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    node.name,
-                    style: AppTextStyles.fileExplorer,
-                    overflow: TextOverflow.ellipsis,
+          hoverColor: editorTheme.hoverColor,
+          child: ColoredBox(
+            color: isSelected ? editorTheme.selectedItemColor : Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: 8.0 + (depth * AppSpacing.fileItemIndent),
+                top: 4,
+                bottom: 4,
+                right: 8,
+              ),
+              child: Row(
+                children: [
+                  if (node.type == .directory)
+                    Icon(
+                      isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                      size: 18,
+                      color: editorTheme.textColor,
+                    )
+                  else
+                    Icon(
+                      _getFileIcon(node.name),
+                      size: AppSpacing.iconSize,
+                      color: editorTheme.textColor,
+                    ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      node.name,
+                      style: AppTextStyles.fileExplorer,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -201,24 +211,17 @@ final class _FileNodeWidget extends StatelessWidget {
     );
   }
 
-  IconData _getIcon(FileNode node, bool isExpanded) {
-    if (node.type == .directory) {
-      return isExpanded ? Icons.folder_open : Icons.folder;
-    }
-
-    final extension = node.name.split('.').last.toLowerCase();
-    switch (extension) {
-      case 'dart':
-        return Icons.code;
-      case 'json':
-        return Icons.data_object;
-      case 'yaml':
-      case 'yml':
-        return Icons.settings;
-      case 'md':
-        return Icons.description;
-      default:
-        return Icons.insert_drive_file;
-    }
+  IconData _getFileIcon(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    return switch (extension) {
+      'dart' => Icons.code_outlined,
+      'json' => Icons.data_object_outlined,
+      'yaml' || 'yml' => Icons.settings_outlined,
+      'md' => Icons.description_outlined,
+      'txt' => Icons.text_snippet_outlined,
+      'png' || 'jpg' || 'jpeg' || 'gif' || 'svg' => Icons.image_outlined,
+      'pdf' => Icons.picture_as_pdf_outlined,
+      _ => Icons.insert_drive_file_outlined,
+    };
   }
 }

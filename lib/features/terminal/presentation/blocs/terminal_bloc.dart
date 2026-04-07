@@ -29,13 +29,12 @@ class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
     Emitter<TerminalState> emit,
   ) async {
     final visibility = await _repository.loadVisibility();
-    final height = await _repository.loadHeight();
 
     emit(
       state.copyWith(
         isVisible: visibility,
-        height: height,
-        status: TerminalStatus.loaded,
+        height: 200,
+        status: .loaded,
       ),
     );
   }
@@ -67,9 +66,6 @@ class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
       TerminalConfig.minHeight,
       event.newHeight,
     );
-
-    // Save to repository
-    await _repository.saveHeight(constrainedHeight);
 
     emit(
       state.copyWith(

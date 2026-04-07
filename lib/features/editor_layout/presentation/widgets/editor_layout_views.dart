@@ -136,10 +136,10 @@ final class _EditorLayoutView extends StatelessWidget {
                             ),
                             BlocBuilder<TerminalBloc, TerminalState>(
                               builder: (context, terminalState) {
-                                if (!terminalState.isVisible) {
-                                  return const SizedBox.shrink();
-                                }
-                                return const TerminalPanelWidget();
+                                return Visibility.maintain(
+                                  visible: terminalState.isVisible,
+                                  child: const TerminalPanelWidget(),
+                                );
                               },
                             ),
                           ],
