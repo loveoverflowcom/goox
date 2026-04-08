@@ -126,6 +126,21 @@ class ProcessSpawnException extends PtyException {
         );
 }
 
+/// PTY creation exception
+///
+/// Thrown when creating a PTY instance fails.
+/// This is an alias for ProcessSpawnException for semantic clarity.
+///
+/// Example:
+/// ```dart
+/// try {
+///   await controller.initialize();
+/// } on PtyCreationException catch (e) {
+///   print('Failed to create PTY: ${e.message}');
+/// }
+/// ```
+typedef PtyCreationException = ProcessSpawnException;
+
 /// PTY resize exception
 ///
 /// Thrown when resizing the terminal fails.

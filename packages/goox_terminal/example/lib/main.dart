@@ -178,9 +178,9 @@ class _TerminalManagerAppState extends State<TerminalManagerApp> {
           if (snapshot.connectionState != ConnectionState.done) {
             return _BootstrapView(
               title: 'Goox Terminal',
-              message: 'Initializing Rust PTY bridge',
+              message: 'Initializing terminal system',
               details:
-                  'flutter_rust_bridge connects Dart to the Rust PTY backend before the first session is created.',
+                  'Setting up xterm terminal emulator and flutter_pty backend for shell process management.',
               actionLabel: 'Retry',
               onAction: _retryInitialization,
             );
@@ -691,7 +691,7 @@ class _EmptyState extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Create a terminal to spawn the Rust PTY backend and start sending commands.',
+                    'Create a terminal to spawn a shell process and start sending commands.',
                     textAlign: TextAlign.center,
                     style: Theme.of(
                       context,

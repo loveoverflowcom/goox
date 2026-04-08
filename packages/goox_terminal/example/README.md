@@ -1,6 +1,6 @@
 # Goox Terminal Example
 
-This app shows the `goox_terminal` package running end-to-end with the Rust PTY backend.
+This app shows the `goox_terminal` package running end-to-end with xterm and flutter_pty.
 
 ## What It Demonstrates
 
@@ -24,5 +24,5 @@ Use `-d macos` or `-d windows` on the matching desktop platform.
 
 ## Notes
 
-- The example uses the real Rust backend by default.
+- The example uses xterm for terminal emulation and flutter_pty for PTY management.
 - The widget test uses a fake backend so it can run without native PTY support.

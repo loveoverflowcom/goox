@@ -1,38 +1,102 @@
 # Goox Terminal
 
-`goox_terminal` is a Flutter desktop package for managing multiple terminal sessions through a Rust PTY backend exposed with `flutter_rust_bridge`.
+`goox_terminal` is a Flutter desktop package for managing multiple terminal sessions using pure Dart implementation with `xterm` (terminal emulator) and `flutter_pty` (PTY backend).
 
 ## What It Exposes
 
-- `initializeGooxTerminal()` and `disposeGooxTerminal()` for lifecycle setup and cleanup
-- `PtyManager` for `create`, `open`, `list`, `resize`, `close`, and multi-session management
-- `PtySession` for output streaming, transcript capture, input, resize, signal delivery, and shutdown
-- `PtyConfig`, `PtySize`, `TerminalStatus`, and related session metadata models
+- `TerminalPanel` - Complete terminal UI widget with tabs and session management
+- `TerminalSessionManager` - Singleton for managing multiple terminal sessions
+- `TerminalController` - Controller for individual terminal session lifecycle
+- `TerminalView` - Widget for rendering a single terminal with xterm
+- `TerminalTabBar` - Tab bar widget for switching between terminal sessions
+- `ShellDetector` - Service for detecting available shells on the system
+- Models: `TerminalStatus`, `ShellConfig`, `PtySize`, `TerminalTheme`
 
 ## Quick Start
 
-```dart
-import 'dart:convert';
+### Using TerminalPanel (Recommended)
 
+The easiest way to add terminal functionality to your app:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:goox_terminal/goox_terminal.dart';
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Column(
+          children: [
+            Expanded(child: YourEditorArea()),
+            TerminalPanel(
+              initialHeight: 300,
+              visible: true,
+              theme: TerminalTheme.dark(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+### Manual Session Management
+
+For more control over terminal sessions:
+
+```dart
 import 'package:goox_terminal/goox_terminal.dart';
 
 Future<void> runTerminal() async {
-  await initializeGooxTerminal();
+  final sessionManager = TerminalSessionManager.instance;
 
-  final session = await PtyManager.instance.createSessionHandle(
-    PtyConfig.defaultShell(size: const PtySize(rows: 24, cols: 80)),
+  // Create a new terminal session
+  final controller = await sessionManager.createSession(
+    shellConfig: ShellConfig.bash(),
+    initialSize: PtySize(rows: 24, cols: 80),
   );
 
-  session.outputStream.listen((data) {
-    final text = utf8.decode(data, allowMalformed: true);
-    print(text);
+  // Listen to status changes
+  controller.statusStream.listen((status) {
+    print('Terminal status: $status');
   });
 
-  await session.write('echo hello from Goox Terminal\n');
-  await session.resize(40, 120);
-  await session.close();
+  // Listen to title changes
+  controller.titleNotifier.addListener(() {
+    print('Terminal title: ${controller.title}');
+  });
 
-  await disposeGooxTerminal();
+  // Write input to terminal
+  await controller.write('echo "Hello from Goox Terminal"\n');
+
+  // Resize terminal
+  await controller.resize(30, 100);
+
+  // Close session
+  await sessionManager.closeSession(controller.id);
+}
+```
+
+### Shell Detection
+
+Automatically detect available shells:
+
+```dart
+import 'package:goox_terminal/goox_terminal.dart';
+
+Future<void> detectShells() async {
+  // Get default shell for the platform
+  final defaultShell = await ShellDetector.detectDefaultShell();
+  print('Default shell: ${defaultShell.shellPath}');
+
+  // Get all available shells
+  final availableShells = await ShellDetector.detectAvailableShells();
+  for (final shell in availableShells) {
+    print('Available: ${shell.shellPath}');
+  }
 }
 ```
 
@@ -40,11 +104,12 @@ Future<void> runTerminal() async {
 
 The desktop example is in [`example/`](example/). It demonstrates:
 
-- creating multiple terminals
-- toggling the visibility of each terminal panel
-- sending shell input
-- resizing sessions
-- closing a single session or all sessions
+- Creating multiple terminal sessions
+- Switching between terminals using tabs
+- Sending shell input and viewing output
+- Resizing terminal sessions
+- Closing individual sessions or all sessions
+- Custom terminal themes
 
 Run it from the package directory:
 
@@ -59,29 +124,64 @@ Use `-d macos` or `-d windows` on the matching desktop platform.
 
 ```mermaid
 flowchart LR
-  UI["Flutter UI"] --> Dart["goox_terminal Dart wrapper"]
-  Dart --> FRB["flutter_rust_bridge generated bindings"]
-  FRB --> Rust["pty_core Rust PTY layer"]
-  Rust --> PTY["portable-pty"]
+  App["Flutter App"] --> Panel["TerminalPanel"]
+  Panel --> Manager["TerminalSessionManager"]
+  Panel --> TabBar["TerminalTabBar"]
+  Panel --> View["TerminalView"]
+  Manager --> Controller["TerminalController"]
+  Controller --> XTerm["xterm Terminal"]
+  Controller --> PTY["flutter_pty"]
   PTY --> OS["OS PTY APIs"]
 ```
 
-The detailed lifecycle and runtime flow are documented in [`docs/flow.md`](docs/flow.md).
+### Key Components
+
+- **TerminalPanel**: Main UI widget that combines tab bar and terminal view
+- **TerminalSessionManager**: Manages multiple terminal sessions (max 10)
+- **TerminalController**: Manages lifecycle of a single terminal session
+- **TerminalView**: Renders xterm terminal with keyboard/mouse input
+- **TerminalTabBar**: Displays tabs for all sessions with create/close actions
+- **ShellDetector**: Detects available shells on the system
+
+## Features
+
+- ✅ Pure Dart implementation (no native code required)
+- ✅ Multiple terminal sessions (up to 10 concurrent)
+- ✅ Full xterm terminal emulation
+- ✅ Keyboard and mouse input support
+- ✅ Terminal resize handling
+- ✅ Custom themes (dark/light)
+- ✅ Automatic shell detection
+- ✅ Process ID and exit code tracking
+- ✅ Terminal restart capability
+- ✅ UTF-8 encoding/decoding with malformed character handling
+- ✅ Auto-scroll behavior
+- ✅ Terminal title management
 
 ## Tests
 
-The package includes fake-backend tests for lifecycle, output, resize, open/attach, and cleanup flows.
+The package includes comprehensive unit tests for all components:
 
 ```bash
 cd packages/goox_terminal
 flutter test
 ```
 
-## Bridge Files
+Test coverage includes:
+- Terminal controller lifecycle
+- Session manager operations
+- Shell configuration validation
+- PTY size validation
+- Terminal status transitions
+- UI widget rendering
 
-- FRB config: [`flutter_rust_bridge.yaml`](flutter_rust_bridge.yaml)
-- Generated Dart bindings: [`lib/src/rust/`](lib/src/rust/)
-- Generated Rust glue: [`rust/pty_core/src/frb_generated.rs`](rust/pty_core/src/frb_generated.rs)
+## Dependencies
+
+This package uses:
+- [`xterm ^4.0.0`](https://pub.dev/packages/xterm) - Terminal emulator
+- [`flutter_pty ^0.4.2`](https://pub.dev/packages/flutter_pty) - PTY backend
+
+No native code or build configuration required!
 
 ## Supported Platforms
 

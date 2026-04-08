@@ -5,10 +5,10 @@
 Pod::Spec.new do |s|
   s.name             = 'goox_terminal'
   s.version          = '0.0.1'
-  s.summary          = 'A Flutter plugin for terminal emulation with PTY support using Rust FFI.'
+  s.summary          = 'A Flutter plugin for terminal emulation with PTY support.'
   s.description      = <<-DESC
 A Flutter plugin that provides terminal emulation capabilities with pseudo-terminal (PTY) support.
-Built with Rust for high performance and cross-platform compatibility.
+Built with pure Dart using xterm and flutter_pty for cross-platform compatibility.
                        DESC
   s.homepage         = 'http://example.com'
   s.license          = { :file => '../LICENSE' }
@@ -21,13 +21,4 @@ Built with Rust for high performance and cross-platform compatibility.
   s.platform = :osx, '10.14'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
   s.swift_version = '5.0'
-
-  # Cargokit integration for Rust FFI
-  s.script_phase = {
-    :name => 'Build Rust library',
-    :script => 'sh "$PODS_TARGET_SRCROOT/../cargokit/build_pod.sh" ../rust goox_terminal',
-    :execution_position => :before_compile,
-    :input_files => ['${BUILT_PRODUCTS_DIR}/cargokit_phony'],
-    :output_files => ["${BUILT_PRODUCTS_DIR}/goox_terminal.framework"],
-  }
 end

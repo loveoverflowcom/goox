@@ -167,30 +167,30 @@ This implementation plan refactors the terminal module from Rust FFI-based archi
 - [x] 7. Checkpoint - Ensure session manager tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement TerminalView widget
-  - [ ] 8.1 Create TerminalView StatefulWidget
+- [x] 8. Implement TerminalView widget
+  - [x] 8.1 Create TerminalView StatefulWidget
     - Accept TerminalController and TerminalTheme parameters
     - Create state class with focus node
     - _Requirements: 5.1, 6.1_
   
-  - [ ] 8.2 Implement terminal rendering
+  - [x] 8.2 Implement terminal rendering
     - Use xterm TerminalView widget
     - Apply theme to terminal
     - Handle terminal focus management
     - _Requirements: 5.1, 6.1, 11.5_
   
-  - [ ] 8.3 Implement keyboard input handling
+  - [x] 8.3 Implement keyboard input handling
     - Handle character input and send to controller
     - Handle special keys (Enter, Backspace, Ctrl+C, Ctrl+D)
     - Send appropriate escape sequences
     - _Requirements: 11.1, 11.2_
   
-  - [ ] 8.4 Implement mouse input handling
+  - [x] 8.4 Implement mouse input handling
     - Handle mouse clicks for cursor positioning
     - Handle scroll events
     - _Requirements: 11.3, 11.4_
   
-  - [ ] 8.5 Implement auto-scroll behavior
+  - [x] 8.5 Implement auto-scroll behavior
     - Auto-scroll to bottom when at bottom and new output arrives
     - Disable auto-scroll when user scrolls up
     - Re-enable auto-scroll when user scrolls to bottom
@@ -203,20 +203,20 @@ This implementation plan refactors the terminal module from Rust FFI-based archi
     - Test focus management
     - _Requirements: All Requirement 11_
 
-- [ ] 9. Implement TerminalTabBar widget
-  - [ ] 9.1 Create TerminalTabBar StatelessWidget
+- [x] 9. Implement TerminalTabBar widget
+  - [x] 9.1 Create TerminalTabBar StatelessWidget
     - Accept TerminalSessionManager and TerminalTheme parameters
     - Listen to session manager changes
     - _Requirements: 5.1_
   
-  - [ ] 9.2 Implement tab rendering
+  - [x] 9.2 Implement tab rendering
     - Display tab for each session
     - Show active tab indicator
     - Show terminal status indicators (running, exited, error)
     - Display terminal title in tab
     - _Requirements: 5.4, 5.5, 16.3_
   
-  - [ ] 9.3 Implement tab interactions
+  - [x] 9.3 Implement tab interactions
     - Handle tab click to switch active session
     - Handle close button click to close session
     - Handle new terminal button click to create session
@@ -232,25 +232,25 @@ This implementation plan refactors the terminal module from Rust FFI-based archi
     - Test session limit UI
     - _Requirements: All Requirement 5_
 
-- [ ] 10. Implement TerminalPanel widget
-  - [ ] 10.1 Create TerminalPanel StatefulWidget
+- [x] 10. Implement TerminalPanel widget
+  - [x] 10.1 Create TerminalPanel StatefulWidget
     - Accept optional sessionManager, theme, initialHeight, visible parameters
     - Create state class with panel height management
     - _Requirements: 5.1, 15.1_
   
-  - [ ] 10.2 Implement panel layout
+  - [x] 10.2 Implement panel layout
     - Display TerminalTabBar at top
     - Display active TerminalView below tabs
     - Handle panel visibility toggle
     - Handle panel resize with drag handle
     - _Requirements: 5.1_
   
-  - [ ] 10.3 Implement keyboard shortcuts
+  - [x] 10.3 Implement keyboard shortcuts
     - Ctrl+Shift+` to create new terminal
     - Handle shortcuts via Shortcuts widget
     - _Requirements: 11.1, 11.2_
   
-  - [ ] 10.4 Wire up session manager
+  - [x] 10.4 Wire up session manager
     - Use TerminalSessionManager.instance by default
     - Listen to active session changes
     - Update displayed terminal view when active session changes
@@ -263,40 +263,40 @@ This implementation plan refactors the terminal module from Rust FFI-based archi
     - Test keyboard shortcuts
     - _Requirements: All Requirement 5_
 
-- [ ] 11. Checkpoint - Ensure UI component tests pass
+- [x] 11. Checkpoint - Ensure UI component tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Implement buffer management in TerminalController
-  - [ ] 12.1 Configure terminal buffer limits
+- [x] 12. Implement buffer management in TerminalController
+  - [x] 12.1 Configure terminal buffer limits
     - Set maxLines to 1000 in Terminal constructor
     - Verify xterm handles line removal automatically
     - _Requirements: 12.1, 12.2_
 
-- [ ] 13. Implement UTF-8 handling
-  - [ ] 13.1 Add UTF-8 encoding/decoding
+- [x] 13. Implement UTF-8 handling
+  - [x] 13.1 Add UTF-8 encoding/decoding
     - Decode PTY output with allowMalformed: true
     - Encode terminal input as UTF-8 before writing to PTY
     - _Requirements: 7.3, 7.4_
 
-- [ ] 14. Implement error handling
-  - [ ] 14.1 Add PtyCreationException class
+- [x] 14. Implement error handling
+  - [x] 14.1 Add PtyCreationException class
     - Create custom exception for PTY creation failures
     - Include descriptive error messages
     - _Requirements: 9.1_
   
-  - [ ] 14.2 Add error handling in TerminalController
+  - [x] 14.2 Add error handling in TerminalController
     - Wrap PTY.start in try-catch and throw PtyCreationException
     - Handle PTY output stream errors and set status to error
     - Validate inputs and throw ArgumentError/StateError appropriately
     - _Requirements: 9.1, 9.2, 9.4, 9.5_
   
-  - [ ] 14.3 Add error UI indicators
+  - [x] 14.3 Add error UI indicators
     - Show error indicator in terminal tab when status is error
     - Show "Restart Terminal" button in TerminalView when status is error
     - _Requirements: 9.2_
 
 - [ ] 15. Create public API exports
-  - [ ] 15.1 Create goox_terminal.dart barrel file
+  - [x] 15.1 Create goox_terminal.dart barrel file
     - Export TerminalPanel widget
     - Export TerminalSessionManager
     - Export TerminalController
@@ -305,42 +305,42 @@ This implementation plan refactors the terminal module from Rust FFI-based archi
     - Do not export internal implementation details
     - _Requirements: 15.4_
 
-- [ ] 16. Remove Rust FFI code from goox_terminal package
-  - [ ] 16.1 Delete Rust FFI artifacts
+- [x] 16. Remove Rust FFI code from goox_terminal package
+  - [x] 16.1 Delete Rust FFI artifacts
     - Delete rust/ directory
     - Delete lib/src/rust/ generated bindings
     - Delete flutter_rust_bridge.yaml config
     - _Requirements: 14.1, 14.4_
   
-  - [ ] 16.2 Update package documentation
+  - [x] 16.2 Update package documentation
     - Update README.md to reflect new architecture
     - Remove Rust build instructions
     - Add xterm and flutter_pty usage documentation
     - _Requirements: 14.1_
 
-- [ ] 17. Remove lib/features/terminal from main app
-  - [ ] 17.1 Delete terminal feature directory
+- [x] 17. Remove lib/features/terminal from main app
+  - [x] 17.1 Delete terminal feature directory
     - Delete lib/features/terminal/ directory completely
     - _Requirements: 14.5, 15.5_
   
-  - [ ] 17.2 Update main app imports
+  - [x] 17.2 Update main app imports
     - Replace all imports from lib/features/terminal with goox_terminal package imports
     - Update editor layout to use TerminalPanel from goox_terminal
     - _Requirements: 15.5_
   
-  - [ ] 17.3 Remove terminal-related blocs from main app
+  - [x] 17.3 Remove terminal-related blocs from main app
     - Remove terminal bloc if it exists in main app
     - Verify all terminal state is managed by goox_terminal
     - _Requirements: 15.2, 15.3_
 
-- [ ] 18. Integration and wiring
-  - [ ] 18.1 Integrate TerminalPanel into main app layout
+- [x] 18. Integration and wiring
+  - [x] 18.1 Integrate TerminalPanel into main app layout
     - Add TerminalPanel to editor layout
     - Configure initial height and visibility
     - Wire up theme from app theme
     - _Requirements: 5.1, 6.1_
   
-  - [ ] 18.2 Test end-to-end terminal functionality
+  - [x] 18.2 Test end-to-end terminal functionality
     - Create terminal session from UI
     - Execute commands and verify output
     - Switch between multiple terminals
@@ -356,7 +356,7 @@ This implementation plan refactors the terminal module from Rust FFI-based archi
     - Test theme application
     - _Requirements: All requirements_
 
-- [ ] 19. Final checkpoint - Ensure all tests pass
+- [x] 19. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

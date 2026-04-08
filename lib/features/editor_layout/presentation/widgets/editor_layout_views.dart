@@ -8,8 +8,8 @@ import 'package:goox/features/file_explorer/data.dart';
 import 'package:goox/features/file_explorer/presentation.dart';
 import 'package:goox/features/status_bar/presentation.dart';
 import 'package:goox/features/tab_manager/presentation.dart';
-import 'package:goox/features/terminal.dart';
 import 'package:goox/features/theme.dart';
+import 'package:goox_terminal/goox_terminal.dart';
 import 'package:goox_ui/goox_ui.dart';
 
 part 'editor_layout_views_resize_handle.dart';
@@ -55,11 +55,6 @@ final class EditorLayoutView extends StatelessWidget {
           create: (context) => EditorContentBloc(
             repository: context.read<FileRepository>(),
           ),
-        ),
-        BlocProvider(
-          create: (context) => TerminalBloc(
-            repository: context.read<TerminalRepository>(),
-          )..add(const InitializeTerminalEvent()),
         ),
       ],
       child: MultiBlocListener(
@@ -134,11 +129,16 @@ final class _EditorLayoutView extends StatelessWidget {
                             Expanded(
                               child: _EditorAreaWidget(theme: editorTheme),
                             ),
-                            BlocBuilder<TerminalBloc, TerminalState>(
-                              builder: (context, terminalState) {
-                                return Visibility.maintain(
-                                  visible: terminalState.isVisible,
-                                  child: const TerminalPanelWidget(),
+                            BlocBuilder<ThemeBloc, ThemeState>(
+                              builder: (context, themeState) {
+                                // Wire up terminal theme from app theme
+                                final terminalTheme = themeState.resolvedBrightness == Brightness.dark
+                                    ? TerminalTheme.dark()
+                                    : TerminalTheme.light();
+                                
+                                return TerminalPanel(
+                                  initialHeight: 300,
+                                  theme: terminalTheme,
                                 );
                               },
                             ),
@@ -167,49 +167,6 @@ final class _EditorLayoutView extends StatelessWidget {
     // Ctrl/Cmd + B: Toggle sidebar
     if (isCtrlOrCmd && event.logicalKey == LogicalKeyboardKey.keyB) {
       context.read<EditorLayoutBloc>().add(const ToggleSidebarEvent());
-      return KeyEventResult.handled;
-    }
-
-    // Ctrl + ` (backtick): Toggle terminal
-    if (HardwareKeyboard.instance.isControlPressed &&
-        event.logicalKey == LogicalKeyboardKey.backquote &&
-        !isShift) {
-      context.read<TerminalBloc>().add(const ToggleTerminalEvent());
-      return KeyEventResult.handled;
-    }
-
-    // Ctrl + Shift + ` (backtick): Create new terminal
-    if (HardwareKeyboard.instance.isControlPressed &&
-        isShift &&
-        event.logicalKey == LogicalKeyboardKey.backquote) {
-      context.read<TerminalBloc>().add(const CreateTerminalEvent());
-      return KeyEventResult.handled;
-    }
-
-    // Ctrl + PageUp: Cycle to previous terminal
-    if (HardwareKeyboard.instance.isControlPressed &&
-        event.logicalKey == LogicalKeyboardKey.pageUp) {
-      context.read<TerminalBloc>().add(const CycleTerminalEvent(forward: false));
-      return KeyEventResult.handled;
-    }
-
-    // Ctrl + PageDown: Cycle to next terminal
-    if (HardwareKeyboard.instance.isControlPressed &&
-        event.logicalKey == LogicalKeyboardKey.pageDown) {
-      context.read<TerminalBloc>().add(const CycleTerminalEvent(forward: true));
-      return KeyEventResult.handled;
-    }
-
-    // Ctrl + Shift + W: Close active terminal
-    if (HardwareKeyboard.instance.isControlPressed &&
-        isShift &&
-        event.logicalKey == LogicalKeyboardKey.keyW) {
-      final terminalState = context.read<TerminalBloc>().state;
-      if (terminalState.activeTerminalId != null) {
-        context.read<TerminalBloc>().add(
-              CloseTerminalEvent(terminalState.activeTerminalId!),
-            );
-      }
       return KeyEventResult.handled;
     }
 

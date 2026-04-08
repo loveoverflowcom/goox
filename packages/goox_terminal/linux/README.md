@@ -9,9 +9,13 @@ This folder contains the Linux-specific implementation of the `goox_terminal` pl
 - `include/goox_terminal/goox_terminal_plugin.h` - Plugin header file
 - `.gitignore` - Git ignore rules for Linux build artifacts
 
+## Overview
+
+The goox_terminal package uses pure Dart implementation with `flutter_pty` for PTY management. No native Rust code compilation is required.
+
 ## Building
 
-The plugin uses Cargokit to build the Rust library. The build process is integrated into the CMake build.
+The plugin integrates seamlessly with Flutter's standard build process.
 
 ### Requirements
 
@@ -19,7 +23,6 @@ The plugin uses Cargokit to build the Rust library. The build process is integra
 - CMake 3.10 or later
 - GCC/Clang compiler
 - GTK 3.0 development libraries
-- Rust toolchain (for building the native library)
 
 ### Dependencies
 
@@ -31,15 +34,16 @@ sudo apt-get install libgtk-3-dev
 
 ### Build Process
 
-1. Run `flutter build linux` in your app directory
-2. The Cargokit CMake integration will automatically build the Rust library
-3. The compiled library will be linked with the Flutter app
+Simply run:
 
-## Integration with Rust
+```bash
+flutter build linux
+```
 
-The Rust FFI library is built using Cargokit, which handles:
-- Cross-compilation for different architectures
-- Integration with CMake build system
-- Proper linking with the Flutter engine
+The plugin will be automatically included in your Flutter app build.
 
-The Rust code is located in `../rust/` directory.
+## Notes
+
+- The plugin uses `flutter_pty` which handles PTY operations through Dart FFI
+- No additional build configuration is needed
+- The plugin is compatible with all Linux distributions that support Flutter

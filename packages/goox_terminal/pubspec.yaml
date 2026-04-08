@@ -1,5 +1,5 @@
 name: goox_terminal
-description: Flutter terminal session management backed by Rust PTY via flutter_rust_bridge.
+description: Flutter terminal session management using pure Dart with xterm and flutter_pty.
 version: 0.1.0
 homepage: https://github.com/yourusername/goox_terminal
 

@@ -32,18 +32,20 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1
-  flutter_pty: ^0.3.0
+  flutter_pty: ^0.4.2
   fpdart: ^1.2.0
   google_fonts: ^8.0.2
   goox_editor_engine:
     path: packages/goox_editor_engine
+  goox_terminal:
+    path: packages/goox_terminal
   goox_ui:
     path: packages/goox_ui
   native_splash_screen: ^3.0.0
   path: ^1.8.3
   shared_preferences: ^2.2.2
   uuid: ^4.1.0
-  xterm: ^3.5.0
+  xterm: ^4.0.0
 
 dev_dependencies:
   bloc_test: ^10.0.0
