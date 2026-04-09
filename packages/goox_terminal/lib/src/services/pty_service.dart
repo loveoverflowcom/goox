@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:goox/features/terminal/data/models/shell_config.dart';
+import 'package:goox_terminal/src/models/shell_config.dart';
 
 /// Abstract interface for PTY (pseudo-terminal) service
 /// 

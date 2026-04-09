@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:goox/features/terminal/data/models/ansi_style.dart';
+import 'package:goox_terminal/src/models/ansi_style.dart';
 
 /// Represents the output buffer for a terminal instance
 class TerminalOutput extends Equatable {

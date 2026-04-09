@@ -127,7 +127,7 @@ class TerminalSessionManager extends ChangeNotifier {
     // Create TerminalController with provided or default config
     final controller = TerminalController(
       id: sessionId,
-      shellConfig: shellConfig ?? ShellConfig.bash(),
+      shellConfig: shellConfig ?? ShellConfig.forPlatform(),
       initialSize: initialSize ?? PtySize.defaultSize,
     );
 

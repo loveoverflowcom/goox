@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_pty/flutter_pty.dart';
-import 'package:goox/features/terminal/data/models/shell_config.dart';
-import '../../../../../packages/goox_terminal/lib/src/services/pty_service.dart';
+import 'package:goox_terminal/src/models/shell_config.dart';
+import 'package:goox_terminal/src/services/pty_service.dart';
 
 /// Implementation of PTYService using flutter_pty package
 /// 

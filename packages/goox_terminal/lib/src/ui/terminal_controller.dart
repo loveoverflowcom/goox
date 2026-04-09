@@ -18,16 +18,13 @@ class TerminalController extends ChangeNotifier {
   /// Creates a terminal controller
   TerminalController({
     required PTYService ptyService,
-    required ShellDetector shellDetector,
     required ANSIParser ansiParser,
     required this.workingDirectory,
     this.title,
   })  : _ptyService = ptyService,
-        _shellDetector = shellDetector,
         _ansiParser = ansiParser;
 
   final PTYService _ptyService;
-  final ShellDetector _shellDetector;
   final ANSIParser _ansiParser;
 
   /// Working directory for the terminal
@@ -68,7 +65,7 @@ class TerminalController extends ChangeNotifier {
 
     try {
       // Detect shell
-      final shellConfig = await _shellDetector.detectShell();
+      final shellConfig = await ShellDetector.detectDefaultShell();
       
       // Set title if not already set
       title ??= shellConfig.shellPath.split('/').last.split(r'\').last;

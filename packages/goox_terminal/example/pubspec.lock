@@ -256,7 +256,7 @@ packages:
     source: hosted
     version: "15.0.2"
   xterm:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: xterm
       sha256: "168dfedca77cba33fdb6f52e2cd001e9fde216e398e89335c19b524bb22da3a2"

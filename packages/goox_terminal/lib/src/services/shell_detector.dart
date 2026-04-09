@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../models/shell_config.dart';
+import 'package:goox_terminal/src/models/shell_config.dart';
 
 /// Service for detecting available shells on the system
 ///

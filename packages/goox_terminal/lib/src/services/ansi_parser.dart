@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:goox/features/terminal/data/models/ansi_style.dart';
-import 'package:goox/features/terminal/data/models/terminal_output.dart';
+import 'package:goox_terminal/src/models/ansi_style.dart';
+import 'package:goox_terminal/src/models/terminal_output.dart';
 
 /// Parser for ANSI escape codes in terminal output
 /// 

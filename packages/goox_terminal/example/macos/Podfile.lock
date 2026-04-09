@@ -1,21 +1,21 @@
 PODS:
-  - FlutterMacOS (1.0.0)
-  - goox_terminal (0.0.1):
+  - flutter_pty (0.0.1):
     - FlutterMacOS
+  - FlutterMacOS (1.0.0)
 
 DEPENDENCIES:
+  - flutter_pty (from `Flutter/ephemeral/.symlinks/plugins/flutter_pty/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - goox_terminal (from `Flutter/ephemeral/.symlinks/plugins/goox_terminal/macos`)
 
 EXTERNAL SOURCES:
+  flutter_pty:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_pty/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
-  goox_terminal:
-    :path: Flutter/ephemeral/.symlinks/plugins/goox_terminal/macos
 
 SPEC CHECKSUMS:
+  flutter_pty: 41b6f848ade294be726a6b94cdd4a67c3bc52f59
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  goox_terminal: 6b5446f9bb4c001fa61760bfef56c2b933d022d8
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
 

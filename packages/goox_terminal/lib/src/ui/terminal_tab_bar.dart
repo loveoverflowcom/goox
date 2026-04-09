@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../controllers/terminal_session_manager.dart';
-import '../models/terminal_status.dart';
-import 'terminal_theme.dart';
+import 'package:goox_terminal/src/controllers/terminal_controller.dart';
+import 'package:goox_terminal/src/controllers/terminal_session_manager.dart';
+import 'package:goox_terminal/src/models/terminal_status.dart';
+import 'package:goox_terminal/src/ui/terminal_theme.dart';
 
 /// Tab bar widget that displays all terminal tabs and the create button.
 ///
@@ -161,7 +162,7 @@ class _TerminalTab extends StatefulWidget {
     this.theme,
   });
 
-  final dynamic controller;
+  final TerminalController controller;
   final bool isActive;
   final VoidCallback onTap;
   final VoidCallback onClose;

@@ -4,7 +4,6 @@ import 'package:goox_terminal/src/controllers/terminal_session_manager.dart';
 import 'package:goox_terminal/src/exceptions/pty_exception.dart';
 import 'package:goox_terminal/src/models/pty_size.dart';
 import 'package:goox_terminal/src/models/shell_config.dart';
-import 'package:goox_terminal/src/models/terminal_status.dart';
 import 'package:goox_terminal/src/ui/terminal_panel.dart';
 import 'package:goox_terminal/src/ui/terminal_theme.dart';
 

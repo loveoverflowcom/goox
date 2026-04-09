@@ -66,7 +66,7 @@ final class TerminalSessionInfo {
   final DateTime? lastActivityAt;
 
   /// Returns true when the session can still accept input.
-  bool get canSendInput => status.canAcceptInput;
+  bool get canSendInput => status.canSendInput;
 
   /// Returns true if the session is still running.
   bool get isRunning => status.isActive;
@@ -75,7 +75,7 @@ final class TerminalSessionInfo {
   bool get hasExited => status == TerminalStatus.exited;
 
   /// Returns true if the session has been closed and cleaned up.
-  bool get isClosed => status == TerminalStatus.closed;
+  bool get isClosed => status == TerminalStatus.exited;
 
   /// Returns a copy of the session info with the provided fields replaced.
   TerminalSessionInfo copyWith({

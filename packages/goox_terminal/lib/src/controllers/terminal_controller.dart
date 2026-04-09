@@ -53,7 +53,17 @@ class TerminalController {
         _size = initialSize,
         _terminal = Terminal(maxLines: 1000),
         _statusController = StreamController<TerminalStatus>.broadcast(),
-        _titleNotifier = ValueNotifier<String>(_defaultTitle);
+        _titleNotifier = ValueNotifier<String>(_defaultTitle) {
+    // Register onResize callback immediately to handle automatic PTY resize
+    // when terminal view changes size
+    // Note: xterm onResize gives (width, height) but pty.resize takes (rows, cols)
+    _terminal.onResize = (width, height, pixelWidth, pixelHeight) {
+      if (_pty != null && status == TerminalStatus.running) {
+        _pty!.resize(height, width);
+        _size = PtySize(rows: height, cols: width);
+      }
+    };
+  }
 
   /// Unique identifier for this terminal session.
   final String id;
@@ -152,6 +162,13 @@ class TerminalController {
         rows: _size.rows,
       );
       
+      // Step 2.5: Sync PTY size with terminal view size
+      // If terminal view has valid dimensions, sync PTY to match
+      if (_terminal.viewWidth > 0 && _terminal.viewHeight > 0) {
+        _pty!.resize(_terminal.viewHeight, _terminal.viewWidth);
+        _size = PtySize(rows: _terminal.viewHeight, cols: _terminal.viewWidth);
+      }
+      
       // Step 3: Connect PTY output stream to terminal input
       // Decode UTF-8 with malformed character handling
       _outputSubscription = _pty!.output.listen(
@@ -185,6 +202,8 @@ class TerminalController {
         }
       };
       
+      // Note: onResize callback is registered in constructor
+      
       // Step 5: Set status to running and capture PID
       _updateStatus(TerminalStatus.running);
       
@@ -214,6 +233,9 @@ class TerminalController {
       _outputSubscription = null;
     }
     
+    // Clear onResize callback
+    _terminal.onResize = null;
+    
     // Step 2: Kill PTY process
     if (_pty != null) {
       try {
@@ -235,6 +257,10 @@ class TerminalController {
   }
 
   /// Resizes the terminal to the specified dimensions.
+  ///
+  /// This method is for manual or programmatic resize operations.
+  /// Automatic resize when the terminal view changes size is handled
+  /// by the onResize callback registered during initialization.
   ///
   /// Updates both the PTY size and xterm view dimensions.
   ///
@@ -422,6 +448,8 @@ class TerminalController {
           _pty!.write(utf8.encode(output));
         }
       };
+      
+      // Note: onResize callback is registered in constructor
       
       // Step 4: Update status to running on success
       _updateStatus(TerminalStatus.running);

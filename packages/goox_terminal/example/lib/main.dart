@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:goox_terminal/goox_terminal.dart';
+import 'package:xterm/xterm.dart' as xterm;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,37 +15,23 @@ class TerminalManagerApp extends StatefulWidget {
   const TerminalManagerApp({
     super.key,
     this.manager,
-    this.initialize = initializeGooxTerminal,
-    this.disposeTerminal = disposeGooxTerminal,
   });
 
   /// Optional manager override for tests.
-  final PtyManager? manager;
-
-  /// Initialization hook used by the production app.
-  final Future<void> Function() initialize;
-
-  /// Disposal hook used by the production app.
-  final Future<void> Function() disposeTerminal;
+  final TerminalSessionManager? manager;
 
   @override
   State<TerminalManagerApp> createState() => _TerminalManagerAppState();
 }
 
 class _TerminalManagerAppState extends State<TerminalManagerApp> {
-  late final PtyManager _manager = widget.manager ?? PtyManager.instance;
-  late Future<void> _bootstrapFuture;
+  late final TerminalSessionManager _manager =
+      widget.manager ?? TerminalSessionManager.instance;
 
-  final List<PtySession> _sessions = <PtySession>[];
+  final List<TerminalController> _sessions = <TerminalController>[];
 
   bool _creatingSession = false;
   String? _statusMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _bootstrapFuture = widget.initialize();
-  }
 
   @override
   void dispose() {
@@ -54,22 +41,12 @@ class _TerminalManagerAppState extends State<TerminalManagerApp> {
 
   Future<void> _shutdown() async {
     try {
-      await _manager.closeAllSessions();
+      for (final session in _sessions) {
+        await session.dispose();
+      }
     } catch (_) {
       // Best-effort cleanup while the widget tree is going away.
     }
-    try {
-      await widget.disposeTerminal();
-    } catch (_) {
-      // Same here: shutdown should not crash the example app on exit.
-    }
-  }
-
-  void _retryInitialization() {
-    setState(() {
-      _statusMessage = null;
-      _bootstrapFuture = widget.initialize();
-    });
   }
 
   Future<void> _createSession() async {
@@ -83,12 +60,13 @@ class _TerminalManagerAppState extends State<TerminalManagerApp> {
     });
 
     try {
-      final session = await _manager.createSessionHandle(
-        PtyConfig.defaultShell(size: const PtySize(rows: 24, cols: 80)),
+      final session = await _manager.createSession(
+        shellConfig: ShellConfig.bash(),
+        initialSize: const PtySize(rows: 24, cols: 80),
       );
 
       if (!mounted) {
-        await session.close();
+        await session.dispose();
         return;
       }
 
@@ -112,7 +90,7 @@ class _TerminalManagerAppState extends State<TerminalManagerApp> {
     }
   }
 
-  Future<void> _closeSession(PtySession session) async {
+  Future<void> _closeSession(TerminalController session) async {
     if (mounted) {
       setState(() {
         _sessions.remove(session);
@@ -120,7 +98,7 @@ class _TerminalManagerAppState extends State<TerminalManagerApp> {
     }
 
     try {
-      await session.close();
+      await _manager.closeSession(session.id);
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -142,7 +120,9 @@ class _TerminalManagerAppState extends State<TerminalManagerApp> {
     }
 
     try {
-      await _manager.closeAllSessions();
+      for (final session in List<TerminalController>.from(_sessions)) {
+        await _manager.closeSession(session.id);
+      }
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -172,127 +152,101 @@ class _TerminalManagerAppState extends State<TerminalManagerApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: theme,
-      home: FutureBuilder<void>(
-        future: _bootstrapFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return _BootstrapView(
-              title: 'Goox Terminal',
-              message: 'Initializing terminal system',
-              details:
-                  'Setting up xterm terminal emulator and flutter_pty backend for shell process management.',
-              actionLabel: 'Retry',
-              onAction: _retryInitialization,
-            );
-          }
-
-          if (snapshot.hasError) {
-            return _BootstrapView(
-              title: 'Goox Terminal',
-              message: 'Terminal backend failed to initialize',
-              details: snapshot.error.toString(),
-              actionLabel: 'Retry',
-              onAction: _retryInitialization,
-            );
-          }
-
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Goox Terminal'),
-              actions: [
-                TextButton.icon(
-                  onPressed: _creatingSession ? null : _createSession,
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  icon: const Icon(Icons.add),
-                  label: const Text('New terminal'),
-                ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: _sessions.isEmpty ? null : _closeAllSessions,
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  icon: const Icon(Icons.close),
-                  label: const Text('Close all'),
-                ),
-                const SizedBox(width: 8),
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Goox Terminal'),
+          actions: [
+            TextButton.icon(
+              onPressed: _creatingSession ? null : _createSession,
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              icon: const Icon(Icons.add),
+              label: const Text('New terminal'),
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: _sessions.isEmpty ? null : _closeAllSessions,
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              icon: const Icon(Icons.close),
+              label: const Text('Close all'),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF08111D),
+                Color(0xFF0D1B2A),
+                Color(0xFF132238),
               ],
             ),
-            body: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF08111D),
-                    Color(0xFF0D1B2A),
-                    Color(0xFF132238),
-                  ],
-                ),
-              ),
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Manage multiple terminal sessions from a single Flutter screen.',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Manage multiple terminal sessions from a single Flutter screen.',
+                          style:
+                              Theme.of(context).textTheme.headlineSmall?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                   ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Chip(
-                            label: Text(
-                              '${_sessions.length} open',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            side: BorderSide(color: _alpha(Colors.white, 0.12)),
-                            backgroundColor: _alpha(
-                              const Color(0xFF10263D),
-                              0.9,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                    if (_statusMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: _StatusBanner(message: _statusMessage!),
+                      const SizedBox(width: 16),
+                      Chip(
+                        label: Text(
+                          '${_sessions.length} open',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        side: BorderSide(color: _alpha(Colors.white, 0.12)),
+                        backgroundColor: _alpha(
+                          const Color(0xFF10263D),
+                          0.9,
+                        ),
                       ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: _sessions.isEmpty
-                          ? _EmptyState(
-                              isCreating: _creatingSession,
-                              onCreate: _createSession,
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                              itemCount: _sessions.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(height: 16),
-                              itemBuilder: (context, index) {
-                                final session = _sessions[index];
-                                return TerminalSessionCard(
-                                  key: ValueKey(session.id),
-                                  session: session,
-                                  onClose: _closeSession,
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                if (_statusMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _StatusBanner(message: _statusMessage!),
+                  ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: _sessions.isEmpty
+                      ? _EmptyState(
+                          isCreating: _creatingSession,
+                          onCreate: _createSession,
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                          itemCount: _sessions.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 16),
+                          itemBuilder: (context, index) {
+                            final session = _sessions[index];
+                            return TerminalSessionCard(
+                              key: ValueKey(session.id),
+                              session: session,
+                              onClose: _closeSession,
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -305,8 +259,8 @@ class TerminalSessionCard extends StatefulWidget {
     required this.onClose,
   });
 
-  final PtySession session;
-  final Future<void> Function(PtySession session) onClose;
+  final TerminalController session;
+  final Future<void> Function(TerminalController session) onClose;
 
   @override
   State<TerminalSessionCard> createState() => _TerminalSessionCardState();
@@ -386,11 +340,13 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: widget.session,
-      builder: (context, _) {
-        final session = widget.session;
-        final info = session.info;
+    return StreamBuilder<TerminalStatus>(
+      stream: widget.session.statusStream,
+      initialData: widget.session.status,
+      builder: (context, snapshot) {
+        final status = snapshot.data ?? TerminalStatus.initializing;
+        final shellPath = 'Shell'; // Shell path is private in controller
+        final size = const PtySize(rows: 24, cols: 80); // Default size
 
         return Material(
           color: Colors.transparent,
@@ -419,8 +375,10 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _shortId(session.id),
-                              style: Theme.of(context).textTheme.titleLarge
+                              _shortId(widget.session.id),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
@@ -428,15 +386,17 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${info.shell}  •  ${info.size.cols} x ${info.size.rows}  •  ${info.attached ? 'attached' : 'detached'}',
-                              style: Theme.of(context).textTheme.bodySmall
+                              '$shellPath  •  ${size.cols} x ${size.rows}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
                                   ?.copyWith(color: Colors.white70),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 12),
-                      _StatusChip(status: info.status),
+                      _StatusChip(status: status),
                       IconButton(
                         tooltip: _showOutput ? 'Hide output' : 'Show output',
                         onPressed: () {
@@ -453,9 +413,8 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
                       ),
                       IconButton(
                         tooltip: 'Close terminal',
-                        onPressed: _busy
-                            ? null
-                            : () => widget.onClose(widget.session),
+                        onPressed:
+                            _busy ? null : () => widget.onClose(widget.session),
                         icon: const Icon(Icons.close),
                         color: Colors.white,
                       ),
@@ -467,19 +426,20 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
                     runSpacing: 8,
                     children: [
                       _InfoChip(
-                        label: 'PID',
-                        value: info.pid?.toString() ?? 'pending',
+                        label: 'Status',
+                        value: status.name,
                       ),
                       _InfoChip(
-                        label: 'Attached',
-                        value: info.attached ? 'yes' : 'no',
+                        label: 'Size',
+                        value: '${size.cols} x ${size.rows}',
                       ),
-                      _InfoChip(label: 'Status', value: info.status.name),
                     ],
                   ),
                   if (_showOutput) ...[
                     const SizedBox(height: 14),
-                    _TerminalOutputPanel(transcript: session.transcript),
+                    _TerminalOutputPanel(
+                      terminal: widget.session.terminal,
+                    ),
                     const SizedBox(height: 14),
                     Wrap(
                       spacing: 8,
@@ -488,8 +448,7 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
                         OutlinedButton.icon(
                           onPressed: _busy
                               ? null
-                              : () =>
-                                    _resize(const PtySize(rows: 24, cols: 80)),
+                              : () => _resize(const PtySize(rows: 24, cols: 80)),
                           icon: const Icon(Icons.crop_16_9),
                           label: const Text('80 x 24'),
                         ),
@@ -497,7 +456,7 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
                           onPressed: _busy
                               ? null
                               : () =>
-                                    _resize(const PtySize(rows: 40, cols: 120)),
+                                  _resize(const PtySize(rows: 40, cols: 120)),
                           icon: const Icon(Icons.aspect_ratio),
                           label: const Text('120 x 40'),
                         ),
@@ -510,7 +469,7 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
                       Expanded(
                         child: TextField(
                           controller: _inputController,
-                          enabled: !_busy,
+                          enabled: !_busy && status.canSendInput,
                           onSubmitted: (_) => _send(),
                           textInputAction: TextInputAction.send,
                           style: const TextStyle(color: Colors.white),
@@ -544,7 +503,7 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
                       ),
                       const SizedBox(width: 12),
                       FilledButton.icon(
-                        onPressed: _busy ? null : _send,
+                        onPressed: _busy || !status.canSendInput ? null : _send,
                         icon: _busy
                             ? const SizedBox(
                                 width: 16,
@@ -565,89 +524,6 @@ class _TerminalSessionCardState extends State<TerminalSessionCard> {
           ),
         );
       },
-    );
-  }
-}
-
-class _BootstrapView extends StatelessWidget {
-  const _BootstrapView({
-    required this.title,
-    required this.message,
-    required this.details,
-    required this.actionLabel,
-    required this.onAction,
-  });
-
-  final String title;
-  final String message;
-  final String details;
-  final String actionLabel;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF08111D), Color(0xFF0D1B2A), Color(0xFF132238)],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: _alpha(const Color(0xFF0F1B2D), 0.96),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: _alpha(Colors.white, 0.08)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          message,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: Colors.white70),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          details,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: Colors.white60),
-                        ),
-                        const SizedBox(height: 20),
-                        FilledButton.icon(
-                          onPressed: onAction,
-                          icon: const Icon(Icons.refresh),
-                          label: Text(actionLabel),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -685,17 +561,18 @@ class _EmptyState extends StatelessWidget {
                   Text(
                     'No sessions yet',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Create a terminal to spawn a shell process and start sending commands.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.white60),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: Colors.white60),
                   ),
                   const SizedBox(height: 20),
                   FilledButton.icon(
@@ -795,13 +672,33 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _TerminalOutputPanel extends StatelessWidget {
-  const _TerminalOutputPanel({required this.transcript});
+class _TerminalOutputPanel extends StatefulWidget {
+  const _TerminalOutputPanel({required this.terminal});
 
-  final String transcript;
+  final xterm.Terminal terminal;
 
   @override
+  State<_TerminalOutputPanel> createState() => _TerminalOutputPanelState();
+}
+
+class _TerminalOutputPanelState extends State<_TerminalOutputPanel> {
+  @override
   Widget build(BuildContext context) {
+    // Get the terminal buffer content
+    final buffer = widget.terminal.buffer;
+    final lines = <String>[];
+    
+    // Extract visible lines from terminal buffer
+    for (var i = 0; i < buffer.lines.length; i++) {
+      final line = buffer.lines[i];
+      final text = line.toString();
+      if (text.isNotEmpty) {
+        lines.add(text);
+      }
+    }
+    
+    final content = lines.isEmpty ? 'No output yet.' : lines.join('\n');
+
     return Container(
       constraints: const BoxConstraints(minHeight: 140, maxHeight: 260),
       decoration: BoxDecoration(
@@ -813,7 +710,7 @@ class _TerminalOutputPanel extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: SelectableText(
-            transcript.isEmpty ? 'No output yet.' : transcript,
+            content,
             style: const TextStyle(
               color: Color(0xFFD7E8FF),
               fontFamily: 'monospace',
@@ -837,7 +734,7 @@ Color _alpha(Color color, double opacity) {
 
 ({Color background, Color foreground}) _statusColors(TerminalStatus status) {
   switch (status) {
-    case TerminalStatus.starting:
+    case TerminalStatus.initializing:
       return (
         background: _brightnessAdjusted(const Color(0xFF10263D), 0.9),
         foreground: const Color(0xFF8FD3F4),
@@ -852,12 +749,7 @@ Color _alpha(Color color, double opacity) {
         background: _brightnessAdjusted(const Color(0xFF3A2A10), 0.9),
         foreground: const Color(0xFFF4D58D),
       );
-    case TerminalStatus.closed:
-      return (
-        background: _brightnessAdjusted(const Color(0xFF2E2F35), 0.9),
-        foreground: const Color(0xFFB7C0D8),
-      );
-    case TerminalStatus.failed:
+    case TerminalStatus.error:
       return (
         background: _brightnessAdjusted(const Color(0xFF4A1F27), 0.9),
         foreground: const Color(0xFFFF8FA3),

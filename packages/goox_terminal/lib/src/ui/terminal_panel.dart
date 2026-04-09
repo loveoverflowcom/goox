@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -82,6 +83,13 @@ class _TerminalPanelState extends State<TerminalPanel> {
     _isVisible = widget.visible;
     _sessionManager =
         widget._sessionManager ?? TerminalSessionManager.instance;
+    
+    // Automatically create first terminal session if none exists
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_sessionManager.sessionCount == 0) {
+        _createNewTerminal();
+      }
+    });
   }
 
   @override
@@ -232,9 +240,13 @@ class _TerminalPanelState extends State<TerminalPanel> {
   }
 
   /// Creates a new terminal session.
-  void _createNewTerminal() {
+  Future<void> _createNewTerminal() async {
     if (_sessionManager.canCreateSession) {
-      _sessionManager.createSession();
+      try {
+        await _sessionManager.createSession();
+      } catch (e) {
+        debugPrint('Failed to create terminal session: $e');
+      }
     }
   }
 
