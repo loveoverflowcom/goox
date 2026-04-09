@@ -33,8 +33,8 @@ final class EditorLayoutView extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => EditorLayoutBloc()
-            ..add(InitializeLayoutEvent(workspacePath)),
+          create: (context) =>
+              EditorLayoutBloc()..add(InitializeLayoutEvent(workspacePath)),
         ),
         BlocProvider(
           create: (context) {
@@ -65,24 +65,25 @@ final class EditorLayoutView extends StatelessWidget {
               final tabState = context.read<TabManagerBloc>().state;
               if (tabState.activeTabId != null) {
                 context.read<TabManagerBloc>().add(
-                      UpdateTabModifiedEvent(
-                        tabId: tabState.activeTabId!,
-                        isModified: state.isModified,
-                      ),
-                    );
+                  UpdateTabModifiedEvent(
+                    tabId: tabState.activeTabId!,
+                    isModified: state.isModified,
+                  ),
+                );
               }
             },
           ),
           BlocListener<TabManagerBloc, TabManagerState>(
-            listenWhen: (previous, current) => previous.activeTabId != current.activeTabId,
+            listenWhen: (previous, current) =>
+                previous.activeTabId != current.activeTabId,
             listener: (context, state) {
               final noTabOpened = state.activeTabId == null;
-              context.read<EditorContentBloc>()
-                .add(noTabOpened 
-                  ? const CloseContentEvent() 
-                  : LoadFileContentEvent(state.activeTab!.filePath)
-                );
-            }
+              context.read<EditorContentBloc>().add(
+                noTabOpened
+                    ? const CloseContentEvent()
+                    : LoadFileContentEvent(state.activeTab!.filePath),
+              );
+            },
           ),
         ],
         child: const _EditorLayoutView(),
@@ -97,7 +98,7 @@ final class _EditorLayoutView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
-    
+
     return Scaffold(
       backgroundColor: editorTheme.editorBackground,
       body: Focus(
@@ -129,18 +130,10 @@ final class _EditorLayoutView extends StatelessWidget {
                             Expanded(
                               child: _EditorAreaWidget(theme: editorTheme),
                             ),
-                            BlocBuilder<ThemeBloc, ThemeState>(
-                              builder: (context, themeState) {
-                                // Wire up terminal theme from app theme
-                                final terminalTheme = themeState.resolvedBrightness == Brightness.dark
-                                    ? TerminalTheme.dark()
-                                    : TerminalTheme.light();
-                                
-                                return TerminalPanel(
-                                  initialHeight: 300,
-                                  theme: terminalTheme,
-                                );
-                              },
+                            GooxTerminalPanel(
+                              backgroundColor: editorTheme.editorBackground,
+                              backgroundOpacity: 0.92,
+                              enableDebug: true,
                             ),
                           ],
                         ),
@@ -160,7 +153,8 @@ final class _EditorLayoutView extends StatelessWidget {
   KeyEventResult _handleKeyEvent(BuildContext context, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    final isCtrlOrCmd = HardwareKeyboard.instance.isControlPressed ||
+    final isCtrlOrCmd =
+        HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
     final isShift = HardwareKeyboard.instance.isShiftPressed;
 
@@ -171,12 +165,14 @@ final class _EditorLayoutView extends StatelessWidget {
     }
 
     // Ctrl/Cmd + W: Close active tab
-    if (isCtrlOrCmd && event.logicalKey == LogicalKeyboardKey.keyW && !isShift) {
+    if (isCtrlOrCmd &&
+        event.logicalKey == LogicalKeyboardKey.keyW &&
+        !isShift) {
       final tabState = context.read<TabManagerBloc>().state;
       if (tabState.activeTabId != null) {
-        context
-            .read<TabManagerBloc>()
-            .add(CloseTabEvent(tabState.activeTabId!));
+        context.read<TabManagerBloc>().add(
+          CloseTabEvent(tabState.activeTabId!),
+        );
       }
       return KeyEventResult.handled;
     }

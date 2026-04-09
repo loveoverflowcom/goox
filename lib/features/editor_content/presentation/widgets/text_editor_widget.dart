@@ -46,24 +46,18 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
     }
   }
 
-  void _handleTapInEmptyArea(TapDownDetails details) {
-    // Calculate text height based on number of lines and line height
+  void _handleEditorTapDown(TapDownDetails details) {
+    // Calculate text height based on number of lines and line height.
     final lines = _controller.text.split('\n').length;
     const lineHeight = AppSpacing.fontSize * AppSpacing.lineHeight;
     final textHeight = lines * lineHeight + AppSpacing.editorPadding * 2;
-
-    // Detect tap below content area
     final tapY = details.localPosition.dy;
-    
+
+    _focusNode.requestFocus();
+
     if (tapY > textHeight) {
-      // Move cursor to end of last line
       final endPosition = _controller.text.length;
       _controller.selection = TextSelection.collapsed(offset: endPosition);
-      
-      // Request focus for text field
-      _focusNode.requestFocus();
-      
-      // Update cursor position in bloc
       _updateCursorPosition();
     }
   }
@@ -191,13 +185,13 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
                   ),
                   // Editor content
                   Expanded(
-                    child: Scrollbar(
-                      controller: _scrollController,
-                      child: SingleChildScrollView(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTapDown: _handleEditorTapDown,
+                      child: Scrollbar(
                         controller: _scrollController,
-                        child: GestureDetector(
-                          onTapDown: _handleTapInEmptyArea,
-                          behavior: HitTestBehavior.translucent,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
                           child: TextField(
                             controller: _controller,
                             focusNode: _focusNode,

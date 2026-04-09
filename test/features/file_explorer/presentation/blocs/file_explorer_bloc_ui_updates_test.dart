@@ -1,7 +1,5 @@
-import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:goox/core/errors/failures.dart';
 import 'package:goox/features/file_explorer/data.dart';
 import 'package:goox/features/file_explorer/presentation/blocs/file_explorer_bloc.dart';
 import 'package:mocktail/mocktail.dart';

@@ -1,28 +1,17 @@
-# Goox Terminal Example
+# example
 
-This app shows the `goox_terminal` package running end-to-end with xterm and flutter_pty.
+A new Flutter project.
 
-## What It Demonstrates
+## Getting Started
 
-- create multiple terminal sessions
-- toggle terminal panels on and off
-- send shell input
-- resize a session
-- close one session or all sessions
-- display live session status and accumulated output
+This project is a starting point for a Flutter application.
 
-## Run It
+A few resources to get you started if this is your first Flutter project:
 
-From the package directory:
+- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
+- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
 
-```bash
-cd packages/goox_terminal/example
-flutter run -d linux
-```
-
-Use `-d macos` or `-d windows` on the matching desktop platform.
-
-## Notes
-
-- The example uses xterm for terminal emulation and flutter_pty for PTY management.
-- The widget test uses a fake backend so it can run without native PTY support.
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.

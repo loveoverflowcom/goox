@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:goox/features/file_explorer/data/models/file_node.dart';
 import 'package:goox/features/file_explorer/presentation/blocs/file_explorer_bloc.dart';
-import 'package:goox/features/file_explorer/presentation/widgets/file_explorer_toolbar.dart';
 import 'package:goox/features/file_explorer/presentation/widgets/file_explorer_toolbar_callbacks.dart';
 import 'package:goox/features/file_explorer/presentation/widgets/helpers/context_menu_action_handler.dart';
 import 'package:goox_ui/goox_ui.dart';
+import 'package:path/path.dart' as path_helper;
 
 /// Widget for displaying file explorer tree.
 final class FileExplorerWidget extends StatelessWidget {
@@ -27,7 +27,6 @@ final class FileExplorerWidget extends StatelessWidget {
       SnackBar(
         content: Text(message),
         backgroundColor: Theme.of(context).colorScheme.error,
-        duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'Dismiss',
@@ -50,6 +49,14 @@ final class FileExplorerWidget extends StatelessWidget {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  /// Opens a folder picker and loads the selected workspace.
+  Future<void> _pickWorkspaceFolder(BuildContext context) async {
+    final result = await FilePicker.platform.getDirectoryPath();
+    if (result != null && context.mounted) {
+      context.read<FileExplorerBloc>().add(LoadWorkspaceEvent(result));
+    }
   }
 
   /// Shows context menu at the specified position.
@@ -75,6 +82,7 @@ final class FileExplorerWidget extends StatelessWidget {
           position.dy,
         ),
         items: _buildContextMenuItems(node, callbacks),
+        popUpAnimationStyle: AnimationStyle.noAnimation,
       ),
     );
   }
@@ -91,7 +99,7 @@ final class FileExplorerWidget extends StatelessWidget {
           onTap: callbacks.onNewFile,
           child: const Row(
             children: [
-              Icon(Icons.insert_drive_file_outlined, size: 18),
+              Icon(Icons.note_add_outlined, size: 18),
               SizedBox(width: 8),
               Text('New File'),
             ],
@@ -107,17 +115,6 @@ final class FileExplorerWidget extends StatelessWidget {
             ],
           ),
         ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
-          onTap: callbacks.onRefresh,
-          child: const Row(
-            children: [
-              Icon(Icons.refresh, size: 18),
-              SizedBox(width: 8),
-              Text('Refresh'),
-            ],
-          ),
-        ),
       ];
     } else if (node.type == FileNodeType.directory) {
       // Folder menu
@@ -126,7 +123,7 @@ final class FileExplorerWidget extends StatelessWidget {
           onTap: callbacks.onNewFile,
           child: const Row(
             children: [
-              Icon(Icons.insert_drive_file_outlined, size: 18),
+              Icon(Icons.note_add_outlined, size: 18),
               SizedBox(width: 8),
               Text('New File'),
             ],
@@ -154,23 +151,23 @@ final class FileExplorerWidget extends StatelessWidget {
           ),
         ),
         PopupMenuItem<String>(
-          onTap: callbacks.onDelete,
-          child: const Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18),
-              SizedBox(width: 8),
-              Text('Delete'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
           onTap: callbacks.onCopyPath,
           child: const Row(
             children: [
               Icon(Icons.content_copy, size: 18),
               SizedBox(width: 8),
               Text('Copy Path'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onDelete,
+          child: const Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18),
+              SizedBox(width: 8),
+              Text('Delete'),
             ],
           ),
         ),
@@ -189,23 +186,23 @@ final class FileExplorerWidget extends StatelessWidget {
           ),
         ),
         PopupMenuItem<String>(
-          onTap: callbacks.onDelete,
-          child: const Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18),
-              SizedBox(width: 8),
-              Text('Delete'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
           onTap: callbacks.onCopyPath,
           child: const Row(
             children: [
               Icon(Icons.content_copy, size: 18),
               SizedBox(width: 8),
               Text('Copy Path'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          onTap: callbacks.onDelete,
+          child: const Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18),
+              SizedBox(width: 8),
+              Text('Delete'),
             ],
           ),
         ),
@@ -221,7 +218,7 @@ final class FileExplorerWidget extends StatelessWidget {
         if (state.fileToOpen != null) {
           final fileNode = state.fileToOpen!;
           onFileSelected(fileNode.path, fileNode.name);
-          
+
           // Clear the fileToOpen flag after opening
           context.read<FileExplorerBloc>().add(
             const ClearFileToOpenEvent(),
@@ -260,7 +257,9 @@ final class FileExplorerWidget extends StatelessWidget {
                 const SizedBox(height: AppSpacing.lg),
                 _OpenFolderButton(
                   onFolderSelected: (path) {
-                    context.read<FileExplorerBloc>().add(LoadWorkspaceEvent(path));
+                    context.read<FileExplorerBloc>().add(
+                      LoadWorkspaceEvent(path),
+                    );
                   },
                 ),
               ],
@@ -276,13 +275,17 @@ final class FileExplorerWidget extends StatelessWidget {
                 Icon(
                   Icons.folder_open,
                   size: AppSpacing.xxxlg,
-                  color: Theme.of(context).extension<EditorThemeExtension>()!.textColorDimmed,
+                  color: Theme.of(
+                    context,
+                  ).extension<EditorThemeExtension>()!.textColorDimmed,
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Text(
                   'No folder opened',
                   style: TextStyle(
-                    color: Theme.of(context).extension<EditorThemeExtension>()!.textColor,
+                    color: Theme.of(
+                      context,
+                    ).extension<EditorThemeExtension>()!.textColor,
                     fontSize: 16,
                   ),
                 ),
@@ -290,14 +293,18 @@ final class FileExplorerWidget extends StatelessWidget {
                 Text(
                   'Open a folder to start editing',
                   style: TextStyle(
-                    color: Theme.of(context).extension<EditorThemeExtension>()!.textColorDimmed,
+                    color: Theme.of(
+                      context,
+                    ).extension<EditorThemeExtension>()!.textColorDimmed,
                     fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xlg),
                 _OpenFolderButton(
                   onFolderSelected: (path) {
-                    context.read<FileExplorerBloc>().add(LoadWorkspaceEvent(path));
+                    context.read<FileExplorerBloc>().add(
+                      LoadWorkspaceEvent(path),
+                    );
                   },
                 ),
               ],
@@ -307,9 +314,13 @@ final class FileExplorerWidget extends StatelessWidget {
 
         return Column(
           children: [
-            FileExplorerToolbar(
-              onNewFile: () => FileExplorerToolbarCallbacks.handleNewFile(context),
-              onNewFolder: () => FileExplorerToolbarCallbacks.handleNewFolder(context),
+            _WorkspaceHeader(
+              workspacePath: state.workspacePath ?? '',
+              onOpenFolder: () => _pickWorkspaceFolder(context),
+              onNewFile: () =>
+                  FileExplorerToolbarCallbacks.handleNewFile(context),
+              onNewFolder: () =>
+                  FileExplorerToolbarCallbacks.handleNewFolder(context),
             ),
             Expanded(
               child: GestureDetector(
@@ -342,6 +353,107 @@ final class FileExplorerWidget extends StatelessWidget {
   }
 }
 
+/// Header row for the opened workspace root.
+final class _WorkspaceHeader extends StatelessWidget {
+  const _WorkspaceHeader({
+    required this.workspacePath,
+    required this.onOpenFolder,
+    required this.onNewFile,
+    required this.onNewFolder,
+  });
+
+  final String workspacePath;
+  final VoidCallback onOpenFolder;
+  final VoidCallback onNewFile;
+  final VoidCallback onNewFolder;
+
+  @override
+  Widget build(BuildContext context) {
+    final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final workspaceName = path_helper.basename(workspacePath).isNotEmpty
+        ? path_helper.basename(workspacePath)
+        : workspacePath;
+
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: editorTheme.borderColor),
+        ),
+        color: colorScheme.surface,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.folder_outlined,
+            size: AppSpacing.iconSize,
+            color: editorTheme.textColor,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              workspaceName,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.fileExplorer.copyWith(
+                color: editorTheme.textColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          _WorkspaceHeaderAction(
+            icon: Icons.folder_open_outlined,
+            tooltip: 'Open Folder',
+            onPressed: onOpenFolder,
+            color: editorTheme.textColor,
+          ),
+          _WorkspaceHeaderAction(
+            icon: Icons.note_add_outlined,
+            tooltip: 'New File',
+            onPressed: onNewFile,
+            color: editorTheme.textColor,
+          ),
+          _WorkspaceHeaderAction(
+            icon: Icons.create_new_folder_outlined,
+            tooltip: 'New Folder',
+            onPressed: onNewFolder,
+            color: editorTheme.textColor,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+final class _WorkspaceHeaderAction extends StatelessWidget {
+  const _WorkspaceHeaderAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon),
+      tooltip: tooltip,
+      iconSize: AppSpacing.iconSize,
+      color: color,
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+    );
+  }
+}
+
 /// Widget for the "Open Folder" button.
 final class _OpenFolderButton extends StatelessWidget {
   const _OpenFolderButton({
@@ -362,7 +474,9 @@ final class _OpenFolderButton extends StatelessWidget {
       icon: const Icon(Icons.folder_open),
       label: const Text('Open Folder'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Theme.of(context).extension<EditorThemeExtension>()!.statusBarBackground,
+        backgroundColor: Theme.of(
+          context,
+        ).extension<EditorThemeExtension>()!.statusBarBackground,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
@@ -374,7 +488,7 @@ final class _OpenFolderButton extends StatelessWidget {
 }
 
 /// Widget for displaying a single file node in the tree.
-final class _FileNodeWidget extends StatelessWidget {
+final class _FileNodeWidget extends StatefulWidget {
   const _FileNodeWidget({
     required this.node,
     required this.depth,
@@ -390,96 +504,112 @@ final class _FileNodeWidget extends StatelessWidget {
   final String workspacePath;
 
   @override
+  State<_FileNodeWidget> createState() => _FileNodeWidgetState();
+}
+
+final class _FileNodeWidgetState extends State<_FileNodeWidget> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final isSelected = state.selectedPath == node.path;
-    final isExpanded = state.expandedFolders.containsKey(node.path);
-    final children = state.expandedFolders[node.path] ?? [];
+    final isSelected = widget.state.selectedPath == widget.node.path;
+    final isExpanded = widget.state.expandedFolders.containsKey(
+      widget.node.path,
+    );
+    final children = widget.state.expandedFolders[widget.node.path] ?? [];
     final editorTheme = Theme.of(context).extension<EditorThemeExtension>()!;
+    final backgroundColor = isSelected
+        ? editorTheme.selectedItemColor
+        : _isHovered
+        ? editorTheme.hoverColor
+        : Colors.transparent;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onSecondaryTapDown: (details) {
-            _showNodeContextMenu(
-              context: context,
-              position: details.globalPosition,
-              node: node,
-              workspacePath: workspacePath,
-            );
-          },
-          child: InkWell(
-            onTap: () {
-              if (node.type == .directory) {
-                context.read<FileExplorerBloc>().add(ToggleFolderEvent(node.path));
-              } else {
-                context.read<FileExplorerBloc>().add(SelectFileEvent(node.path));
-                onFileSelected(node.path, node.name);
-              }
+        MouseRegion(
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _handleTap(context),
+            onSecondaryTapDown: (details) {
+              _selectNode(context);
+              _showNodeContextMenu(
+                context: context,
+                position: details.globalPosition,
+              );
             },
-            hoverColor: editorTheme.hoverColor,
-            child: ColoredBox(
-              color: isSelected ? editorTheme.selectedItemColor : Colors.transparent,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 8.0 + (depth * AppSpacing.fileItemIndent),
-                  top: 4,
-                  bottom: 4,
-                  right: 8,
-                ),
-                child: Row(
-                  children: [
-                    if (node.type == .directory)
-                      Icon(
-                        isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
-                        size: 18,
-                        color: editorTheme.textColor,
-                      )
-                    else
-                      Icon(
-                        _getFileIcon(node.name),
-                        size: AppSpacing.iconSize,
-                        color: editorTheme.textColor,
-                      ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        node.name,
-                        style: AppTextStyles.fileExplorer,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+            child: Container(
+              color: backgroundColor,
+              padding: EdgeInsets.only(
+                left: 8.0 + (widget.depth * AppSpacing.fileItemIndent),
+                top: 4,
+                bottom: 4,
+                right: 8,
+              ),
+              child: Row(
+                children: [
+                  if (widget.node.type == .directory)
+                    Icon(
+                      isExpanded
+                          ? Icons.keyboard_arrow_down
+                          : Icons.keyboard_arrow_right,
+                      size: 18,
+                      color: editorTheme.textColor,
+                    )
+                  else
+                    Icon(
+                      _getFileIcon(widget.node.name),
+                      size: AppSpacing.iconSize,
+                      color: editorTheme.textColor,
                     ),
-                  ],
-                ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      widget.node.name,
+                      style: AppTextStyles.fileExplorer.copyWith(
+                        color: editorTheme.textColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
-        if (node.type == .directory && isExpanded)
+        if (widget.node.type == .directory && isExpanded)
           for (final child in children)
             _FileNodeWidget(
               node: child,
-              depth: depth + 1,
-              state: state,
-              onFileSelected: onFileSelected,
-              workspacePath: workspacePath,
+              depth: widget.depth + 1,
+              state: widget.state,
+              onFileSelected: widget.onFileSelected,
+              workspacePath: widget.workspacePath,
             ),
       ],
     );
   }
 
-  /// Shows context menu for this node.
+  void _handleTap(BuildContext context) {
+    _selectNode(context);
+    if (widget.node.type == .directory) {
+      context.read<FileExplorerBloc>().add(ToggleFolderEvent(widget.node.path));
+    } else {
+      widget.onFileSelected(widget.node.path, widget.node.name);
+    }
+  }
+
+  void _selectNode(BuildContext context) {
+    context.read<FileExplorerBloc>().add(SelectFileEvent(widget.node.path));
+  }
+
   void _showNodeContextMenu({
     required BuildContext context,
     required Offset position,
-    required FileNode node,
-    required String workspacePath,
   }) {
-    final handler = ContextMenuActionHandler(
-      context: context,
-      workspacePath: workspacePath,
-    );
-    final callbacks = handler.getCallbacks(node: node);
+    final callbacks = _contextMenuCallbacks(context);
 
     unawaited(
       showMenu(
@@ -490,24 +620,31 @@ final class _FileNodeWidget extends StatelessWidget {
           position.dx,
           position.dy,
         ),
-        items: _buildContextMenuItems(node, callbacks),
+        items: _buildContextMenuItems(widget.node, callbacks),
+        popUpAnimationStyle: AnimationStyle.noAnimation,
       ),
     );
   }
 
-  /// Builds context menu items based on node type.
+  ContextMenuCallbacks _contextMenuCallbacks(BuildContext context) {
+    final handler = ContextMenuActionHandler(
+      context: context,
+      workspacePath: widget.workspacePath,
+    );
+    return handler.getCallbacks(node: widget.node);
+  }
+
   List<PopupMenuEntry<String>> _buildContextMenuItems(
     FileNode node,
     ContextMenuCallbacks callbacks,
   ) {
     if (node.type == FileNodeType.directory) {
-      // Folder menu
       return [
         PopupMenuItem<String>(
           onTap: callbacks.onNewFile,
           child: const Row(
             children: [
-              Icon(Icons.insert_drive_file_outlined, size: 18),
+              Icon(Icons.note_add_outlined, size: 18),
               SizedBox(width: 8),
               Text('New File'),
             ],
@@ -556,42 +693,41 @@ final class _FileNodeWidget extends StatelessWidget {
           ),
         ),
       ];
-    } else {
-      // File menu
-      return [
-        PopupMenuItem<String>(
-          onTap: callbacks.onRename,
-          child: const Row(
-            children: [
-              Icon(Icons.edit_outlined, size: 18),
-              SizedBox(width: 8),
-              Text('Rename'),
-            ],
-          ),
-        ),
-        PopupMenuItem<String>(
-          onTap: callbacks.onDelete,
-          child: const Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18),
-              SizedBox(width: 8),
-              Text('Delete'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
-          onTap: callbacks.onCopyPath,
-          child: const Row(
-            children: [
-              Icon(Icons.content_copy, size: 18),
-              SizedBox(width: 8),
-              Text('Copy Path'),
-            ],
-          ),
-        ),
-      ];
     }
+
+    return [
+      PopupMenuItem<String>(
+        onTap: callbacks.onRename,
+        child: const Row(
+          children: [
+            Icon(Icons.edit_outlined, size: 18),
+            SizedBox(width: 8),
+            Text('Rename'),
+          ],
+        ),
+      ),
+      PopupMenuItem<String>(
+        onTap: callbacks.onDelete,
+        child: const Row(
+          children: [
+            Icon(Icons.delete_outline, size: 18),
+            SizedBox(width: 8),
+            Text('Delete'),
+          ],
+        ),
+      ),
+      const PopupMenuDivider(),
+      PopupMenuItem<String>(
+        onTap: callbacks.onCopyPath,
+        child: const Row(
+          children: [
+            Icon(Icons.content_copy, size: 18),
+            SizedBox(width: 8),
+            Text('Copy Path'),
+          ],
+        ),
+      ),
+    ];
   }
 
   IconData _getFileIcon(String fileName) {

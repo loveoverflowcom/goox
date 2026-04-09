@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:goox/features/file_explorer/data/models/file_node.dart';
 
 /// Widget hiển thị context menu cho file explorer.
-/// 
+///
 /// Menu items thay đổi dựa trên loại node:
-/// - File: Rename, Delete, Copy Path
-/// - Folder: New File, New Folder, Rename, Delete, Copy Path
-/// - Empty area (node == null): New File, New Folder, Refresh
+/// - File: Rename, Copy Path, Delete
+/// - Folder: New File, New Folder, Rename, Copy Path, Delete
+/// - Empty area (node == null): New File, New Folder
 final class FileNodeContextMenu extends StatelessWidget {
   /// Creates a context menu widget.
   const FileNodeContextMenu({
@@ -17,7 +17,6 @@ final class FileNodeContextMenu extends StatelessWidget {
     this.onRename,
     this.onDelete,
     this.onCopyPath,
-    this.onRefresh,
     super.key,
   });
 
@@ -42,28 +41,26 @@ final class FileNodeContextMenu extends StatelessWidget {
   /// Callback khi chọn "Copy Path".
   final VoidCallback? onCopyPath;
 
-  /// Callback khi chọn "Refresh".
-  final VoidCallback? onRefresh;
-
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       position: PopupMenuPosition.under,
       itemBuilder: (context) => _buildMenuItems(),
-      onSelected: (value) => _handleMenuSelection(value),
+      onSelected: _handleMenuSelection,
+      popUpAnimationStyle: AnimationStyle.noAnimation,
     );
   }
 
   /// Build menu items dựa trên node type.
   List<PopupMenuEntry<String>> _buildMenuItems() {
     if (node == null) {
-      // Empty area menu: New File, New Folder, Refresh
+      // Empty area menu: New File, New Folder
       return [
         const PopupMenuItem<String>(
           value: 'new_file',
           child: Row(
             children: [
-              Icon(Icons.insert_drive_file_outlined, size: 18),
+              Icon(Icons.note_add_outlined, size: 18),
               SizedBox(width: 8),
               Text('New File'),
             ],
@@ -76,29 +73,18 @@ final class FileNodeContextMenu extends StatelessWidget {
               Icon(Icons.create_new_folder_outlined, size: 18),
               SizedBox(width: 8),
               Text('New Folder'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'refresh',
-          child: Row(
-            children: [
-              Icon(Icons.refresh, size: 18),
-              SizedBox(width: 8),
-              Text('Refresh'),
             ],
           ),
         ),
       ];
     } else if (node!.type == FileNodeType.directory) {
-      // Folder menu: New File, New Folder, Rename, Delete, Copy Path
+      // Folder menu: New File, New Folder, Rename, Copy Path, Delete
       return [
         const PopupMenuItem<String>(
           value: 'new_file',
           child: Row(
             children: [
-              Icon(Icons.insert_drive_file_outlined, size: 18),
+              Icon(Icons.note_add_outlined, size: 18),
               SizedBox(width: 8),
               Text('New File'),
             ],
@@ -126,17 +112,6 @@ final class FileNodeContextMenu extends StatelessWidget {
           ),
         ),
         const PopupMenuItem<String>(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18),
-              SizedBox(width: 8),
-              Text('Delete'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
           value: 'copy_path',
           child: Row(
             children: [
@@ -146,9 +121,20 @@ final class FileNodeContextMenu extends StatelessWidget {
             ],
           ),
         ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18),
+              SizedBox(width: 8),
+              Text('Delete'),
+            ],
+          ),
+        ),
       ];
     } else {
-      // File menu: Rename, Delete, Copy Path
+      // File menu: Rename, Copy Path, Delete
       return [
         const PopupMenuItem<String>(
           value: 'rename',
@@ -161,23 +147,23 @@ final class FileNodeContextMenu extends StatelessWidget {
           ),
         ),
         const PopupMenuItem<String>(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18),
-              SizedBox(width: 8),
-              Text('Delete'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
           value: 'copy_path',
           child: Row(
             children: [
               Icon(Icons.content_copy, size: 18),
               SizedBox(width: 8),
               Text('Copy Path'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18),
+              SizedBox(width: 8),
+              Text('Delete'),
             ],
           ),
         ),
@@ -198,8 +184,6 @@ final class FileNodeContextMenu extends StatelessWidget {
         onDelete?.call();
       case 'copy_path':
         onCopyPath?.call();
-      case 'refresh':
-        onRefresh?.call();
     }
   }
 }

@@ -1,41 +1,47 @@
-# Goox Terminal
+# goox_terminal
 
-`goox_terminal` is a Flutter desktop package for managing multiple terminal sessions using pure Dart implementation with `xterm` (terminal emulator) and `flutter_pty` (PTY backend).
+A simple terminal wrapper for Flutter using `xterm` and `flutter_pty`.
 
-## What It Exposes
+## Features
 
-- `TerminalPanel` - Complete terminal UI widget with tabs and session management
-- `TerminalSessionManager` - Singleton for managing multiple terminal sessions
-- `TerminalController` - Controller for individual terminal session lifecycle
-- `TerminalView` - Widget for rendering a single terminal with xterm
-- `TerminalTabBar` - Tab bar widget for switching between terminal sessions
-- `ShellDetector` - Service for detecting available shells on the system
-- Models: `TerminalStatus`, `ShellConfig`, `PtySize`, `TerminalTheme`
+- Simple terminal widget wrapper
+- Multi-terminal panel with tab management
+- Cross-platform support (Linux, macOS, Windows)
+- Copy/paste support with right-click
+- Automatic shell detection
+- Minimal dependencies
 
-## Quick Start
+## Installation
 
-### Using TerminalPanel (Recommended)
+Add this to your package's `pubspec.yaml` file:
 
-The easiest way to add terminal functionality to your app:
+```yaml
+dependencies:
+  goox_terminal:
+    path: packages/goox_terminal
+```
+
+## Usage
+
+### Basic Usage
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:goox_terminal/goox_terminal.dart';
+
+void main() {
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        body: Column(
-          children: [
-            Expanded(child: YourEditorArea()),
-            TerminalPanel(
-              initialHeight: 300,
-              visible: true,
-              theme: TerminalTheme.dark(),
-            ),
-          ],
+        body: GooxTerminal(
+          onTerminalReady: (controller) {
+            print('Terminal ready!');
+          },
         ),
       ),
     );
@@ -43,150 +49,80 @@ class MyApp extends StatelessWidget {
 }
 ```
 
-### Manual Session Management
-
-For more control over terminal sessions:
+### Custom Configuration
 
 ```dart
-import 'package:goox_terminal/goox_terminal.dart';
-
-Future<void> runTerminal() async {
-  final sessionManager = TerminalSessionManager.instance;
-
-  // Create a new terminal session
-  final controller = await sessionManager.createSession(
-    shellConfig: ShellConfig.bash(),
-    initialSize: PtySize(rows: 24, cols: 80),
-  );
-
-  // Listen to status changes
-  controller.statusStream.listen((status) {
-    print('Terminal status: $status');
-  });
-
-  // Listen to title changes
-  controller.titleNotifier.addListener(() {
-    print('Terminal title: ${controller.title}');
-  });
-
-  // Write input to terminal
-  await controller.write('echo "Hello from Goox Terminal"\n');
-
-  // Resize terminal
-  await controller.resize(30, 100);
-
-  // Close session
-  await sessionManager.closeSession(controller.id);
-}
+GooxTerminal(
+  maxLines: 10000,
+  autofocus: true,
+  backgroundOpacity: 0.7,
+  backgroundColor: Colors.black,
+  onTerminalReady: (controller) {
+    // Terminal is ready
+    controller.write('Welcome to Goox Terminal!\n');
+  },
+)
 ```
 
-### Shell Detection
-
-Automatically detect available shells:
+### Multi-terminal Panel
 
 ```dart
-import 'package:goox_terminal/goox_terminal.dart';
+GooxTerminalPanel(
+  maxLines: 10000,
+  enableDebug: false,
+)
+```
 
-Future<void> detectShells() async {
-  // Get default shell for the platform
-  final defaultShell = await ShellDetector.detectDefaultShell();
-  print('Default shell: ${defaultShell.shellPath}');
+The panel keeps each terminal session alive in its own tab, and the `+`
+button opens a new session while the `x` button closes the current one.
 
-  // Get all available shells
-  final availableShells = await ShellDetector.detectAvailableShells();
-  for (final shell in availableShells) {
-    print('Available: ${shell.shellPath}');
+### Using Controller
+
+```dart
+class MyTerminal extends StatefulWidget {
+  @override
+  State<MyTerminal> createState() => _MyTerminalState();
+}
+
+class _MyTerminalState extends State<MyTerminal> {
+  GooxTerminalController? _controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            _controller?.write('echo "Hello World"\n');
+          },
+          child: Text('Run Command'),
+        ),
+        Expanded(
+          child: GooxTerminal(
+            onTerminalReady: (controller) {
+              _controller = controller;
+            },
+          ),
+        ),
+      ],
+    );
   }
 }
 ```
 
-## Example App
-
-The desktop example is in [`example/`](example/). It demonstrates:
-
-- Creating multiple terminal sessions
-- Switching between terminals using tabs
-- Sending shell input and viewing output
-- Resizing terminal sessions
-- Closing individual sessions or all sessions
-- Custom terminal themes
-
-Run it from the package directory:
-
-```bash
-cd packages/goox_terminal/example
-flutter run -d linux
-```
-
-Use `-d macos` or `-d windows` on the matching desktop platform.
-
-## Architecture
-
-```mermaid
-flowchart LR
-  App["Flutter App"] --> Panel["TerminalPanel"]
-  Panel --> Manager["TerminalSessionManager"]
-  Panel --> TabBar["TerminalTabBar"]
-  Panel --> View["TerminalView"]
-  Manager --> Controller["TerminalController"]
-  Controller --> XTerm["xterm Terminal"]
-  Controller --> PTY["flutter_pty"]
-  PTY --> OS["OS PTY APIs"]
-```
-
-### Key Components
-
-- **TerminalPanel**: Main UI widget that combines tab bar and terminal view
-- **TerminalSessionManager**: Manages multiple terminal sessions (max 10)
-- **TerminalController**: Manages lifecycle of a single terminal session
-- **TerminalView**: Renders xterm terminal with keyboard/mouse input
-- **TerminalTabBar**: Displays tabs for all sessions with create/close actions
-- **ShellDetector**: Detects available shells on the system
-
 ## Features
 
-- ✅ Pure Dart implementation (no native code required)
-- ✅ Multiple terminal sessions (up to 10 concurrent)
-- ✅ Full xterm terminal emulation
-- ✅ Keyboard and mouse input support
-- ✅ Terminal resize handling
-- ✅ Custom themes (dark/light)
-- ✅ Automatic shell detection
-- ✅ Process ID and exit code tracking
-- ✅ Terminal restart capability
-- ✅ UTF-8 encoding/decoding with malformed character handling
-- ✅ Auto-scroll behavior
-- ✅ Terminal title management
-
-## Tests
-
-The package includes comprehensive unit tests for all components:
-
-```bash
-cd packages/goox_terminal
-flutter test
-```
-
-Test coverage includes:
-- Terminal controller lifecycle
-- Session manager operations
-- Shell configuration validation
-- PTY size validation
-- Terminal status transitions
-- UI widget rendering
+- Right-click to copy selected text or paste from clipboard
+- Automatic shell detection (bash, zsh, cmd.exe)
+- Login shell is disabled by default to avoid shell startup failures
+- Terminal resize support
+- Process exit handling
 
 ## Dependencies
 
-This package uses:
-- [`xterm ^4.0.0`](https://pub.dev/packages/xterm) - Terminal emulator
-- [`flutter_pty ^0.4.2`](https://pub.dev/packages/flutter_pty) - PTY backend
+- [xterm](https://pub.dev/packages/xterm) - Terminal emulator
+- [flutter_pty](https://pub.dev/packages/flutter_pty) - PTY backend
 
-No native code or build configuration required!
+## License
 
-## Supported Platforms
-
-- macOS
-- Linux
-- Windows
-
-This package is intended for desktop terminals, not mobile or web.
+MIT

@@ -5,102 +5,125 @@ import 'package:goox_terminal/goox_terminal.dart';
 /// Integration test for terminal functionality
 ///
 /// This test verifies:
-/// - Terminal panel can be created
-/// - Terminal sessions can be created
-/// - Terminal theme can be applied
-/// - Multiple terminals can be managed
+/// - Terminal widget can be created and rendered
+/// - Terminal controller can be accessed
+/// - Terminal can write and paste text
 void main() {
   group('Terminal Integration Tests', () {
-    test('TerminalSessionManager can create and manage sessions', () async {
-      final sessionManager = TerminalSessionManager.instance;
-      
-      // Verify initial state
-      expect(sessionManager.sessionCount, 0);
-      expect(sessionManager.canCreateSession, true);
-      
-      // Create a session
-      final controller = await sessionManager.createSession();
-      
-      // Verify session was created
-      expect(sessionManager.sessionCount, 1);
-      expect(sessionManager.activeSession, controller);
-      expect(controller.status, TerminalStatus.running);
-      
-      // Create another session
-      final controller2 = await sessionManager.createSession();
-      
-      // Verify second session
-      expect(sessionManager.sessionCount, 2);
-      expect(sessionManager.activeSession, controller2);
-      
-      // Switch to first session
-      sessionManager.activeSessionId = controller.id;
-      expect(sessionManager.activeSession, controller);
-      
-      // Close first session
-      await sessionManager.closeSession(controller.id);
-      expect(sessionManager.sessionCount, 1);
-      
-      // Close all sessions
-      await sessionManager.closeAllSessions();
-      expect(sessionManager.sessionCount, 0);
+    testWidgets('GooxTerminal can be rendered', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: GooxTerminal(),
+          ),
+        ),
+      );
+
+      // Wait for widget to build
+      await tester.pump();
+
+      // Verify terminal widget is rendered
+      expect(find.byType(GooxTerminal), findsOneWidget);
     });
 
-    test('Terminal themes can be created and converted', () {
-      // Test dark theme
-      final darkTheme = TerminalTheme.dark();
-      expect(darkTheme.background, isNotNull);
-      expect(darkTheme.foreground, isNotNull);
-      
-      final darkXtermTheme = darkTheme.toXTermTheme();
-      expect(darkXtermTheme, isNotNull);
-      
-      // Test light theme
-      final lightTheme = TerminalTheme.light();
-      expect(lightTheme.background, isNotNull);
-      expect(lightTheme.foreground, isNotNull);
-      
-      final lightXtermTheme = lightTheme.toXTermTheme();
-      expect(lightXtermTheme, isNotNull);
-    });
+    testWidgets('GooxTerminal with custom configuration', (tester) async {
+      GooxTerminalController? controller;
 
-    testWidgets('TerminalPanel can be rendered', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: TerminalPanel(
-              initialHeight: 300,
-              theme: TerminalTheme.dark(),
+            body: GooxTerminal(
+              maxLines: 5000,
+              autofocus: false,
+              backgroundOpacity: 0.5,
+              onTerminalReady: (ctrl) {
+                controller = ctrl;
+              },
             ),
           ),
         ),
       );
-      
-      // Wait for widget to build
-      await tester.pump();
-      
-      // Verify terminal panel is rendered
-      expect(find.byType(TerminalPanel), findsOneWidget);
+
+      // Wait for terminal to be ready
+      await tester.pumpAndSettle();
+
+      // Verify controller is available
+      expect(controller, isNotNull);
     });
 
-    test('Session limit is enforced', () async {
-      final sessionManager = TerminalSessionManager.instance;
-      
-      // Clean up any existing sessions
-      await sessionManager.closeAllSessions();
-      
-      // Create maximum number of sessions (10)
-      final controllers = <TerminalController>[];
-      for (int i = 0; i < 10; i++) {
-        final controller = await sessionManager.createSession();
-        controllers.add(controller);
-      }
-      
-      expect(sessionManager.sessionCount, 10);
-      expect(sessionManager.canCreateSession, false);
-      
-      // Clean up
-      await sessionManager.closeAllSessions();
+    testWidgets('Terminal controller can write text', (tester) async {
+      GooxTerminalController? controller;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GooxTerminal(
+              onTerminalReady: (ctrl) {
+                controller = ctrl;
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Write text to terminal
+      controller?.write('Hello Terminal\n');
+      await tester.pump();
+
+      // Verify no errors occurred
+      expect(controller, isNotNull);
+    });
+
+    testWidgets('Terminal controller can paste text', (tester) async {
+      GooxTerminalController? controller;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GooxTerminal(
+              onTerminalReady: (ctrl) {
+                controller = ctrl;
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Paste text to terminal
+      controller?.paste('Pasted text');
+      await tester.pump();
+
+      // Verify no errors occurred
+      expect(controller, isNotNull);
+    });
+
+    testWidgets('Terminal controller can clear selection', (tester) async {
+      GooxTerminalController? controller;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GooxTerminal(
+              onTerminalReady: (ctrl) {
+                controller = ctrl;
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Clear selection
+      controller?.clearSelection();
+      await tester.pump();
+
+      // Verify no errors occurred
+      expect(controller, isNotNull);
     });
   });
 }
