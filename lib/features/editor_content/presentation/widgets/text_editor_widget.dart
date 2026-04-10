@@ -46,19 +46,24 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
     }
   }
 
-  void _handleEditorTapDown(TapDownDetails details) {
-    // Calculate text height based on number of lines and line height.
-    final lines = _controller.text.split('\n').length;
-    const lineHeight = AppSpacing.fontSize * AppSpacing.lineHeight;
-    final textHeight = lines * lineHeight + AppSpacing.editorPadding * 2;
-    final tapY = details.localPosition.dy;
-
+  void _handleEditorPointerDown(PointerDownEvent event) {
     _focusNode.requestFocus();
 
-    if (tapY > textHeight) {
-      final endPosition = _controller.text.length;
-      _controller.selection = TextSelection.collapsed(offset: endPosition);
-      _updateCursorPosition();
+    // Defer the selection update so TextField's own tap handling does not
+    // overwrite the end-of-file cursor placement on blank space clicks.
+    final lines = _controller.text.split('\n').length;
+    const lineHeight = AppSpacing.fontSize * AppSpacing.lineHeight;
+    final contentHeight = lines * lineHeight + AppSpacing.editorPadding * 2;
+    final tapY = event.localPosition.dy + _scrollController.offset;
+
+    if (tapY >= contentHeight) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        final endPosition = _controller.text.length;
+        _controller.selection = TextSelection.collapsed(offset: endPosition);
+        _updateCursorPosition();
+      });
     }
   }
 
@@ -78,19 +83,21 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
       child: Focus(
         autofocus: true,
         child: BlocConsumer<EditorContentBloc, EditorContentState>(
-          listenWhen: (_, current) => current.fileContent != null && current.fileContent!.content != _controller.text,
+          listenWhen: (_, current) =>
+              current.fileContent != null &&
+              current.fileContent!.content != _controller.text,
           listener: (context, state) {
             _controller.text = state.fileContent!.content;
           },
           builder: (context, state) {
-            if (state.status == .loading) {
+            if (state.status == EditorContentStatus.loading) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (state.status == .error) {
+            if (state.status == EditorContentStatus.error) {
               return Center(
                 child: Column(
-                  mainAxisAlignment: .center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.error_outline,
@@ -123,7 +130,7 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
             if (state.fileContent == null) {
               return Center(
                 child: Column(
-                  mainAxisAlignment: .center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.code,
@@ -156,71 +163,80 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
 
             return ColoredBox(
               color: editorTheme.editorBackground,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Line numbers
-                  Container(
-                    width: AppSpacing.lineNumberWidth,
-                    color: editorTheme.editorBackground,
-                    padding: const EdgeInsets.only(
-                      right: AppSpacing.editorPadding,
-                      top: AppSpacing.editorPadding,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        for (var i = 0; i < lineCount; i++)
-                          Text(
-                            '${i + 1}',
-                            style: TextStyle(
-                              color: editorTheme.textColorDimmed,
-                              fontSize: AppSpacing.fontSize,
-                              fontFamily: 'monospace',
-                              height: AppSpacing.lineHeight,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  // Editor content
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTapDown: _handleEditorTapDown,
-                      child: Scrollbar(
+              child: SizedBox.expand(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Scrollbar(
+                      controller: _scrollController,
+                      child: SingleChildScrollView(
                         controller: _scrollController,
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: _focusNode,
-                            maxLines: null,
-                            style: TextStyle(
-                              color: editorTheme.textColor,
-                              fontSize: AppSpacing.fontSize,
-                              fontFamily: 'monospace',
-                              height: AppSpacing.lineHeight,
-                            ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.all(
-                                AppSpacing.editorPadding,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Line numbers scroll together with the editor content.
+                            Container(
+                              width: AppSpacing.lineNumberWidth,
+                              color: editorTheme.editorBackground,
+                              padding: const EdgeInsets.only(
+                                right: AppSpacing.editorPadding,
+                                top: AppSpacing.editorPadding,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  for (var i = 0; i < lineCount; i++)
+                                    Text(
+                                      '${i + 1}',
+                                      style: TextStyle(
+                                        color: editorTheme.textColorDimmed,
+                                        fontSize: AppSpacing.fontSize,
+                                        fontFamily: 'monospace',
+                                        height: AppSpacing.lineHeight,
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                            onChanged: (value) {
-                              context.read<EditorContentBloc>().add(
-                                UpdateContentEvent(value),
-                              );
-                              _updateCursorPosition();
-                            },
-                            onTap: _updateCursorPosition,
-                          ),
+                            // Editor content
+                            Expanded(
+                              child: TextField(
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                maxLines: null,
+                                style: TextStyle(
+                                  color: editorTheme.textColor,
+                                  fontSize: AppSpacing.fontSize,
+                                  fontFamily: 'monospace',
+                                  height: AppSpacing.lineHeight,
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.all(
+                                    AppSpacing.editorPadding,
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  context.read<EditorContentBloc>().add(
+                                    UpdateContentEvent(value),
+                                  );
+                                  _updateCursorPosition();
+                                },
+                                onTap: _updateCursorPosition,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    Positioned.fill(
+                      child: Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: _handleEditorPointerDown,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
