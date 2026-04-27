@@ -94,10 +94,10 @@ final class EditorPatch extends Equatable {
 
   @override
   List<Object?> get props => [
-        filePath,
-        startOffset,
-        endOffset,
-        newText,
-        version,
-      ];
+    filePath,
+    startOffset,
+    endOffset,
+    newText,
+    version,
+  ];
 }

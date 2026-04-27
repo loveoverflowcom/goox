@@ -3,7 +3,6 @@ part of 'editor_content_bloc.dart';
 enum EditorContentStatus { initial, loading, loaded, saving, saved, error }
 
 final class EditorContentState extends Equatable {
-
   const EditorContentState({
     this.fileContent,
     this.originalContent = '',
@@ -39,16 +38,16 @@ final class EditorContentState extends Equatable {
 
   int get totalLines {
     if (fileContent == null) return 0;
-    return fileContent!.content.split('\n').length;
+    return fileContent!.lineCount;
   }
 
   @override
   List<Object?> get props => [
-        fileContent,
-        originalContent,
-        cursorPosition,
-        isModified,
-        status,
-        errorMessage,
-      ];
+    fileContent,
+    originalContent,
+    cursorPosition,
+    isModified,
+    status,
+    errorMessage,
+  ];
 }

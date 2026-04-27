@@ -9,7 +9,7 @@ final class StatusBarWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return BlocBuilder<EditorContentBloc, EditorContentState>(
       builder: (context, state) {
         return ColoredBox(
@@ -22,7 +22,8 @@ final class StatusBarWidget extends StatelessWidget {
                 children: [
                   if (state.fileContent != null) ...[
                     _StatusItem(
-                      text: 'Ln ${state.cursorPosition.line}, Col ${state.cursorPosition.column}',
+                      text:
+                          'Ln ${state.cursorPosition.line}, Col ${state.cursorPosition.column}',
                     ),
                     const SizedBox(width: AppSpacing.lg),
                     _StatusItem(text: state.fileContent!.language),
@@ -63,7 +64,7 @@ final class _StatusItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Text(
       text,
       style: TextStyle(

@@ -73,6 +73,32 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
 
     return CallbackShortcuts(
       bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): () {
+          context.read<EditorContentBloc>().add(const UndoContentEvent());
+        },
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): () {
+          context.read<EditorContentBloc>().add(const UndoContentEvent());
+        },
+        const SingleActivator(LogicalKeyboardKey.keyY, control: true): () {
+          context.read<EditorContentBloc>().add(const RedoContentEvent());
+        },
+        const SingleActivator(LogicalKeyboardKey.keyY, meta: true): () {
+          context.read<EditorContentBloc>().add(const RedoContentEvent());
+        },
+        const SingleActivator(
+          LogicalKeyboardKey.keyZ,
+          control: true,
+          shift: true,
+        ): () {
+          context.read<EditorContentBloc>().add(const RedoContentEvent());
+        },
+        const SingleActivator(
+          LogicalKeyboardKey.keyZ,
+          meta: true,
+          shift: true,
+        ): () {
+          context.read<EditorContentBloc>().add(const RedoContentEvent());
+        },
         const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
           context.read<EditorContentBloc>().add(const SaveFileEvent());
         },
@@ -83,9 +109,9 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
       child: Focus(
         autofocus: true,
         child: BlocConsumer<EditorContentBloc, EditorContentState>(
-          listenWhen: (_, current) =>
+          listenWhen: (previous, current) =>
               current.fileContent != null &&
-              current.fileContent!.content != _controller.text,
+              !identical(previous.fileContent, current.fileContent),
           listener: (context, state) {
             _controller.text = state.fileContent!.content;
           },
@@ -158,8 +184,7 @@ final class _TextEditorWidgetState extends State<TextEditorWidget> {
               );
             }
 
-            final lines = state.fileContent!.content.split('\n');
-            final lineCount = lines.length;
+            final lineCount = state.fileContent!.lineCount;
 
             return ColoredBox(
               color: editorTheme.editorBackground,

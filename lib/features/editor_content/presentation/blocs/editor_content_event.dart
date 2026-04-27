@@ -8,7 +8,6 @@ abstract class EditorContentEvent extends Equatable {
 }
 
 final class LoadFileContentEvent extends EditorContentEvent {
-
   const LoadFileContentEvent(this.filePath);
   final String filePath;
 
@@ -17,7 +16,6 @@ final class LoadFileContentEvent extends EditorContentEvent {
 }
 
 final class UpdateContentEvent extends EditorContentEvent {
-
   const UpdateContentEvent(this.content);
   final String content;
 
@@ -25,8 +23,15 @@ final class UpdateContentEvent extends EditorContentEvent {
   List<Object?> get props => [content];
 }
 
-final class UpdateCursorPositionEvent extends EditorContentEvent {
+final class UndoContentEvent extends EditorContentEvent {
+  const UndoContentEvent();
+}
 
+final class RedoContentEvent extends EditorContentEvent {
+  const RedoContentEvent();
+}
+
+final class UpdateCursorPositionEvent extends EditorContentEvent {
   const UpdateCursorPositionEvent({
     required this.line,
     required this.column,
